@@ -362,11 +362,11 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
                     const dayShifts = shifts.filter((s) => s.date.startsWith(dateStr))
                     const warnings = computeCoverageWarnings(dayShifts, coverageRules, day)
                     const dow = (day.getDay() + 6) % 7
-                    const hasRules = coverageRules.some((r) => r.dayOfWeek === dow)
-                    const hasShifts = dayShifts.some((s) => s.userId)
+                    const dayRules = coverageRules.filter((r) => r.dayOfWeek === dow)
+                    const hasShifts = dayShifts.length > 0
                     return (
                       <td key={i} className="align-top border-l border-gray-100 first:border-l-0 py-1">
-                        <CoverageWarningsBar warnings={warnings} hasRules={hasRules} hasShifts={hasShifts} />
+                        <CoverageWarningsBar warnings={warnings} dayRules={dayRules} locations={locations} hasShifts={hasShifts} />
                       </td>
                     )
                   })}

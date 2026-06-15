@@ -20,6 +20,7 @@ export type CoverageWarning = {
 }
 
 type ShiftLike = {
+  userId: string | null
   locationId: string
   startTime: string
   endTime: string
@@ -37,7 +38,7 @@ export function computeCoverageWarnings(
   const dayRules = rules.filter((r) => r.dayOfWeek === dow)
   if (dayRules.length === 0) return []
 
-  const activeShifts = shifts.filter((s) => s.status !== 'CANCELLED')
+  const activeShifts = shifts.filter((s) => s.status !== 'CANCELLED' && s.userId !== null)
 
   return dayRules.flatMap((rule) => {
     const relevant = activeShifts.filter((s) => {

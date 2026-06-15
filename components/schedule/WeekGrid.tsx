@@ -119,11 +119,11 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
 
   function getWeekHours(userId: string) {
     return shifts
-      .filter((s) => s.userId === userId && s.timeEntry?.checkoutAt)
+      .filter((s) => s.userId === userId)
       .reduce((sum, s) => {
-        const entry = s.timeEntry!
-        const ms = new Date(entry.checkoutAt!).getTime() - new Date(entry.checkinAt).getTime()
-        return sum + ms / 3_600_000
+        const [sh, sm] = s.startTime.split(':').map(Number)
+        const [eh, em] = s.endTime.split(':').map(Number)
+        return sum + ((eh * 60 + em) - (sh * 60 + sm)) / 60
       }, 0)
   }
 

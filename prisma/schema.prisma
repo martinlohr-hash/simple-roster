@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+}
+
+enum ShiftStatus {
+  PLANNED
+  ACTIVE
+  DONE
+  CANCELLED
+}
+
+model User {
+  id                String      @id @default(cuid())
+  name              String
+  email             String      @unique
+  passwordHash      String?
+  status            UserStatus  @default(ACTIVE)
+  inviteToken       String?     @unique
+  inviteTokenExpiry DateTime?
+  role              Role        @default(EMPLOYEE)
+  hourlyRate        Float       @default(0)
+  overheadPercent   Float       @default(0)
+  maxHoursWeek      Float?
+  maxHoursMonth     Float?
+  primaryLocationId String?
+  primaryLocation   Location?   @relation("PrimaryLocation", fields: [primaryLocationId], references: [id])
+  shifts               Shift[]
+  timeEntries          TimeEntry[]
+  shiftTemplateEntries ShiftTemplateEntry[]
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+}
+
+model Location {
+  id           String      @id @default(cuid())
+  name         String
+  color        String      @default("#3B82F6")
+  primaryUsers         User[]               @relation("PrimaryLocation")
+  shifts               Shift[]
+  timeEntries          TimeEntry[]
+  shiftTemplateEntries ShiftTemplateEntry[]
+  coverageRules        CoverageRule[]
+}
+
+model CoverageRule {
+  id         String    @id @default(cuid())
+  dayOfWeek  Int
+  startTime  String
+  endTime    String
+  minStaff   Int       @default(1)
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  label      String?
+  createdAt  DateTime  @default(now())
+}
+
+model Shift {
+  id         String      @id @default(cuid())
+  userId     String?
+  locationId String
+  date       DateTime
+  startTime  String
+  endTime    String
+  status     ShiftStatus @default(PLANNED)
+  user       User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location   Location    @relation(fields: [locationId], references: [id])
+  timeEntry  TimeEntry?
+  createdAt  DateTime    @default(now())
+}
+
+model TimeEntry {
+  id         String    @id @default(cuid())
+  shiftId    String?   @unique
+  userId     String
+  locationId String
+  checkinAt  DateTime
+  checkoutAt DateTime?
+  shift      Shift?    @relation(fields: [shiftId], references: [id])
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location   Location  @relation(fields: [locationId], references: [id])
+  createdAt  DateTime  @default(now())
+}
+
+enum BudgetPeriod {
+  WEEKLY
+  MONTHLY
+}
+
+enum BudgetType {
+  HOURS
+  EUROS
+}
+
+model Budget {
+  id          String       @id @default(cuid())
+  period      BudgetPeriod
+  year        Int
+  weekOrMonth Int
+  type        BudgetType
+  amount      Float
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([period, year, weekOrMonth])
+}
+
+model DayNote {
+  date    String @id
+  content String
+}
+
+model ShiftTemplate {
+  id        String               @id @default(cuid())
+  name      String
+  isDefault Boolean              @default(false)
+  entries   ShiftTemplateEntry[]
+  createdAt DateTime             @default(now())
+}
+
+model ShiftTemplateEntry {
+  id         String        @id @default(cuid())
+  templateId String
+  userId     String?
+  locationId String
+  dayOfWeek  Int
+  startTime  String
+  endTime    String
+  template   ShiftTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  user       User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location   Location      @relation(fields: [locationId], references: [id])
+}

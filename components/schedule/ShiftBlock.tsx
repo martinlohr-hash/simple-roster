@@ -1,0 +1,100 @@
+'use client'
+
+import { useDraggable } from '@dnd-kit/core'
+import { CSS } from '@dnd-kit/utilities'
+import { ShiftData } from './WeekGrid'
+
+type Props = {
+  shift: ShiftData
+  onDelete: (id: string) => void
+  onDuplicate: (id: string) => void
+  onEdit: (shift: ShiftData) => void
+  previewEndTime?: string
+}
+
+export default function ShiftBlock({ shift, onDelete, onDuplicate, onEdit, previewEndTime }: Props) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: shift.id,
+  })
+
+  const { attributes: resizeAttributes, listeners: resizeListeners, setNodeRef: setResizeRef } = useDraggable({
+    id: `resize-end__${shift.id}`,
+  })
+
+  const isUnassigned = !shift.userId
+  const isActive = shift.status === 'ACTIVE' || (!!shift.timeEntry && !shift.timeEntry.checkoutAt)
+  const isDone = shift.status === 'DONE' || !!shift.timeEntry?.checkoutAt
+  const bgColor = isUnassigned ? '#d97706' : isActive ? '#22c55e' : shift.location.color
+  const displayEndTime = previewEndTime ?? shift.endTime
+  const isResizing = !!previewEndTime
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Translate.toString(transform),
+        opacity: isDragging ? 0.3 : 1,
+        backgroundColor: isUnassigned ? undefined : bgColor,
+        borderColor: isUnassigned ? bgColor : undefined,
+      }}
+      className={`group/block relative w-full rounded-lg cursor-grab active:cursor-grabbing select-none transition-opacity duration-150 ${
+        isUnassigned
+          ? 'border-2 border-dashed bg-amber-50 text-amber-800'
+          : 'text-white'
+      }`}
+      onClick={() => onEdit(shift)}
+      {...listeners}
+      {...attributes}
+      suppressHydrationWarning
+    >
+      <div className="px-2.5 py-2 pb-3">
+        <div className="font-semibold text-sm leading-tight">
+          {shift.startTime} –{' '}
+          <span className={isResizing ? 'bg-black/10 rounded px-0.5' : ''}>{displayEndTime}</span>
+        </div>
+        <div className={`text-[10px] truncate mt-0.5 ${isUnassigned ? 'text-amber-600' : 'text-white/70'}`}>
+          {isUnassigned ? '+ Mitarbeiter wählen' : shift.location.name}
+        </div>
+      </div>
+
+      {isDone && (
+        <span
+          className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-white/60"
+          title="Abgeschlossen"
+        />
+      )}
+
+      <button
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); onDuplicate(shift.id) }}
+        className="absolute -top-1 -left-1 w-4 h-4 bg-white rounded-full text-gray-500 hover:text-indigo-600 shadow flex items-center justify-center opacity-0 group-hover/block:opacity-100 pointer-events-none group-hover/block:pointer-events-auto transition duration-[125ms]"
+        title="Schicht duplizieren"
+      >
+        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      </button>
+
+      <button
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); onDelete(shift.id) }}
+        className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full text-gray-500 hover:text-red-500 shadow flex items-center justify-center opacity-0 group-hover/block:opacity-100 pointer-events-none group-hover/block:pointer-events-auto transition duration-[125ms] text-[10px] font-bold"
+        title="Schicht löschen"
+      >
+        ×
+      </button>
+
+      {/* Resize handle */}
+      <div
+        ref={setResizeRef}
+        onPointerDown={(e) => e.stopPropagation()}
+        {...resizeListeners}
+        {...resizeAttributes}
+        className="absolute bottom-0 inset-x-0 h-3 cursor-ns-resize rounded-b-lg opacity-0 group-hover/block:opacity-100 flex items-center justify-center hover:bg-black/20 transition-opacity duration-[125ms]"
+        title="Zum Verlängern/Verkürzen ziehen"
+      >
+        <div className="w-6 h-0.5 bg-white/60 rounded-full" />
+      </div>
+    </div>
+  )
+}

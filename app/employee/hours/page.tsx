@@ -1,0 +1,96 @@
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
+import { de } from 'date-fns/locale'
+import { prisma } from '@/lib/db'
+import { getSession } from '@/app/actions/auth'
+import { redirect } from 'next/navigation'
+import { calcHours, getTrafficLight } from '@/lib/calculations'
+
+export default async function HoursPage() {
+  const session = await getSession()
+  if (!session) redirect('/login')
+
+  const now = new Date()
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 })
+  const weekEnd = endOfWeek(now, { weekStartsOn: 1 })
+  const monthStart = startOfMonth(now)
+  const monthEnd = endOfMonth(now)
+
+  const [user, weekEntries, monthEntries] = await Promise.all([
+    prisma.user.findUnique({ where: { id: session.userId } }),
+    prisma.timeEntry.findMany({
+      where: { userId: session.userId, checkinAt: { gte: weekStart, lte: weekEnd }, checkoutAt: { not: null } },
+      include: { location: true },
+      orderBy: { checkinAt: 'desc' },
+    }),
+    prisma.timeEntry.findMany({
+      where: { userId: session.userId, checkinAt: { gte: monthStart, lte: monthEnd }, checkoutAt: { not: null } },
+      include: { location: true },
+    }),
+  ])
+
+  const weekHours = weekEntries.reduce((sum, e) => sum + calcHours(e.checkinAt, e.checkoutAt!), 0)
+  const monthHours = monthEntries.reduce((sum, e) => sum + calcHours(e.checkinAt, e.checkoutAt!), 0)
+
+  const weekLight = getTrafficLight(weekHours, user?.maxHoursWeek)
+  const monthLight = getTrafficLight(monthHours, user?.maxHoursMonth)
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-semibold text-gray-900">Meine Stunden</h1>
+
+      <div className="grid grid-cols-2 gap-4">
+        <StatCard label="Diese Woche" hours={weekHours} max={user?.maxHoursWeek} light={weekLight} />
+        <StatCard label="Dieser Monat" hours={monthHours} max={user?.maxHoursMonth} light={monthLight} />
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100">
+          <h2 className="text-sm font-medium text-gray-900">Diese Woche</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {format(weekStart, 'd. MMM', { locale: de })} – {format(weekEnd, 'd. MMM', { locale: de })}
+          </p>
+        </div>
+        {weekEntries.length === 0 ? (
+          <p className="px-4 py-6 text-sm text-gray-400 text-center">Noch keine Einträge diese Woche</p>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {weekEntries.map((entry) => {
+              const hours = calcHours(entry.checkinAt, entry.checkoutAt!)
+              return (
+                <div key={entry.id} className="px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {format(entry.checkinAt, 'EEEE, d. MMM', { locale: de })}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {format(entry.checkinAt, 'HH:mm')} – {format(entry.checkoutAt!, 'HH:mm')} · {entry.location.name}
+                    </div>
+                  </div>
+                  <div className="text-sm font-medium text-gray-900">{hours.toFixed(2)}h</div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function StatCard({ label, hours, max, light }: { label: string; hours: number; max: number | null | undefined; light: 'green' | 'yellow' | 'red' }) {
+  const colors = { green: 'text-green-600 bg-green-50', yellow: 'text-yellow-600 bg-yellow-50', red: 'text-red-600 bg-red-50' }
+  const dotColors = { green: 'bg-green-500', yellow: 'bg-yellow-500', red: 'bg-red-500' }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <div className="text-xs text-gray-500 mb-2">{label}</div>
+      <div className="text-2xl font-semibold text-gray-900">{hours.toFixed(1)}h</div>
+      {max && (
+        <div className={`flex items-center gap-1.5 mt-2 text-xs font-medium px-2 py-1 rounded-full w-fit ${colors[light]}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${dotColors[light]}`} />
+          von {max}h
+        </div>
+      )}
+    </div>
+  )
+}

@@ -1,0 +1,29 @@
+import { differenceInMinutes } from 'date-fns'
+
+export function calcHours(checkinAt: Date, checkoutAt: Date): number {
+  return differenceInMinutes(checkoutAt, checkinAt) / 60
+}
+
+export function calcLaborCost(hours: number, hourlyRate: number, overheadPercent: number): number {
+  return hours * hourlyRate * (1 + overheadPercent / 100)
+}
+
+export type TrafficLightStatus = 'green' | 'yellow' | 'red'
+
+export function getTrafficLight(actual: number, max: number | null | undefined): TrafficLightStatus {
+  if (!max || max <= 0) return 'green'
+  const pct = actual / max
+  if (pct >= 1) return 'red'
+  if (pct >= 0.8) return 'yellow'
+  return 'green'
+}
+
+export type BudgetStatus = 'green' | 'warning' | 'red'
+
+export function getBudgetStatus(actual: number, budget: number): BudgetStatus {
+  if (budget <= 0) return 'green'
+  const pct = actual / budget
+  if (pct >= 1) return 'red'
+  if (pct >= 0.9) return 'warning'
+  return 'green'
+}

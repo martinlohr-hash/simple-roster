@@ -18,12 +18,12 @@ export async function proxy(request: NextRequest) {
   }
 
   if (session && isPublic) {
-    const dest = session.role === 'ADMIN' ? '/admin/schedule' : '/employee/dashboard'
+    const dest = session.role === 'ADMIN' ? '/admin/schedule' : '/employee/schedule'
     return NextResponse.redirect(new URL(dest, request.url))
   }
 
   if (session && isAdmin && session.role !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/employee/dashboard', request.url))
+    return NextResponse.redirect(new URL('/employee/schedule', request.url))
   }
 
   return NextResponse.next()

@@ -1,0 +1,69 @@
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+
+const tabs = [
+  {
+    href: '/employee/schedule',
+    label: 'Mein Plan',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    ),
+  },
+  {
+    href: '/employee/dashboard',
+    label: 'Heute',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+    ),
+  },
+  {
+    href: '/employee/open-shifts',
+    label: 'Anfragen',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+      </svg>
+    ),
+  },
+  {
+    href: '/employee/hours',
+    label: 'Meine Stunden',
+    icon: (
+      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+]
+
+export default function BottomNav() {
+  const pathname = usePathname()
+
+  return (
+    <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-20">
+      <div className="max-w-lg mx-auto flex">
+        {tabs.map((tab) => {
+          const active = pathname.startsWith(tab.href)
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors ${
+                active ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <span className={active ? 'text-indigo-600' : 'text-gray-400'}>{tab.icon}</span>
+              {tab.label}
+            </Link>
+          )
+        })}
+      </div>
+    </nav>
+  )
+}

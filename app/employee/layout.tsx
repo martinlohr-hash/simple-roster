@@ -1,7 +1,7 @@
 import { logout, getSession } from '@/app/actions/auth'
 import { redirect } from 'next/navigation'
-import EmployeeNavLink from '@/components/employee/EmployeeNavLink'
 import BugReportButton from '@/components/ui/BugReportButton'
+import BottomNav from '@/components/employee/BottomNav'
 
 export default async function EmployeeLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession()
@@ -19,19 +19,15 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
             </div>
             <span className="font-semibold text-gray-900 text-sm">SimpleRoster</span>
           </div>
-          <nav className="flex items-center gap-1">
-            <EmployeeNavLink href="/employee/dashboard">Heute</EmployeeNavLink>
-            <EmployeeNavLink href="/employee/hours">Meine Stunden</EmployeeNavLink>
-            <EmployeeNavLink href="/employee/open-shifts">Offene Schichten</EmployeeNavLink>
-            <form action={logout}>
-              <button type="submit" className="ml-2 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition active:scale-[0.97]">
-                Abmelden
-              </button>
-            </form>
-          </nav>
+          <form action={logout}>
+            <button type="submit" className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition active:scale-[0.97]">
+              Abmelden
+            </button>
+          </form>
         </div>
       </header>
-      <main className="max-w-lg mx-auto px-4 py-6">{children}</main>
+      <main className="max-w-lg mx-auto px-4 py-6 pb-24">{children}</main>
+      <BottomNav />
       <BugReportButton />
     </div>
   )

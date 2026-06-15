@@ -1,7 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { logout } from '@/app/actions/auth'
 import NavLink from './NavLink'
 
@@ -42,67 +40,63 @@ const LogoutIcon = () => (
   </svg>
 )
 
-type Props = {
-  userName: string
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase())
+    .slice(0, 2)
+    .join('')
 }
 
-export default function AdminSidebar({ userName }: Props) {
-  const [collapsed, setCollapsed] = useState(false)
+type Props = {
+  userName: string
+  userRole: 'ADMIN' | 'EMPLOYEE'
+}
 
-  useEffect(() => {
-    const stored = localStorage.getItem('sidebar-collapsed')
-    if (stored === 'true') setCollapsed(true)
-  }, [])
-
-  function toggle() {
-    setCollapsed((v) => {
-      localStorage.setItem('sidebar-collapsed', String(!v))
-      return !v
-    })
-  }
+export default function AdminSidebar({ userName, userRole }: Props) {
+  const initials = getInitials(userName)
+  const roleLabel = userRole === 'ADMIN' ? 'Administrator' : 'Mitarbeiter'
 
   return (
-    <aside
-      className={`bg-gray-900 text-gray-300 flex flex-col shrink-0 transition-all duration-200 ${
-        collapsed ? 'w-14' : 'w-56'
-      }`}
-    >
-      <button
-        onClick={toggle}
-        className="px-3 py-5 border-b border-gray-800 flex items-center gap-2.5 hover:bg-gray-800 transition w-full text-left"
-        title={collapsed ? 'Menü aufklappen' : 'Menü einklappen'}
-      >
-        <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
-          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
+    <aside className="bg-white border-r border-gray-200 flex flex-col shrink-0 w-56">
+      <div className="px-5 h-14 flex items-center border-b border-gray-100">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <span className="font-semibold text-gray-900 text-sm tracking-tight">SimpleRoster</span>
         </div>
-        {!collapsed && (
-          <span className="font-semibold text-white text-sm truncate">SimpleRoster</span>
-        )}
-      </button>
+      </div>
 
-      <nav className="flex-1 py-4 px-2 space-y-0.5">
-        <NavLink href="/admin/schedule" icon={<CalendarIcon />} collapsed={collapsed}>Dienstplan</NavLink>
-        <NavLink href="/admin/templates" icon={<TemplateIcon />} collapsed={collapsed}>Vorlagen</NavLink>
-        <NavLink href="/admin/employees" icon={<UsersIcon />} collapsed={collapsed}>Mitarbeiter</NavLink>
-        <NavLink href="/admin/costs" icon={<ChartIcon />} collapsed={collapsed}>Lohnkosten</NavLink>
-        <NavLink href="/admin/export" icon={<DownloadIcon />} collapsed={collapsed}>Export</NavLink>
-        <NavLink href="/admin/settings" icon={<SettingsIcon />} collapsed={collapsed}>Einstellungen</NavLink>
+      <nav className="flex-1 py-3 px-2.5 space-y-0.5">
+        <NavLink href="/admin/schedule" icon={<CalendarIcon />}>Dienstplan</NavLink>
+        <NavLink href="/admin/templates" icon={<TemplateIcon />}>Vorlagen</NavLink>
+        <NavLink href="/admin/employees" icon={<UsersIcon />}>Mitarbeiter</NavLink>
+        <NavLink href="/admin/costs" icon={<ChartIcon />}>Lohnkosten</NavLink>
+        <NavLink href="/admin/export" icon={<DownloadIcon />}>Export</NavLink>
+        <NavLink href="/admin/settings" icon={<SettingsIcon />}>Einstellungen</NavLink>
       </nav>
 
-      <div className="p-2 border-t border-gray-800">
-        {!collapsed && (
-          <div className="px-2 py-1.5 text-xs text-gray-500 truncate">{userName}</div>
-        )}
+      <div className="border-t border-gray-100 p-2.5 space-y-0.5">
+        <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg">
+          <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
+            <span className="text-xs font-semibold text-white">{initials}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-gray-900 truncate">{userName}</div>
+            <div className="text-xs text-gray-500">{roleLabel}</div>
+          </div>
+        </div>
         <form action={logout}>
           <button
             type="submit"
-            title="Abmelden"
-            className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition active:scale-[0.97]"
+            className="w-full flex items-center gap-2.5 px-2 py-1.5 text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150 active:scale-[0.97]"
           >
             <LogoutIcon />
-            {!collapsed && 'Abmelden'}
+            Abmelden
           </button>
         </form>
       </div>

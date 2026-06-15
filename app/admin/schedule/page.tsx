@@ -119,30 +119,18 @@ export default async function SchedulePage({ searchParams }: Props) {
   }))
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="p-6 max-w-[1400px]">
+      <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Dienstplan</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {format(weekStart, 'd. MMM', { locale: de })} – {format(addDays(weekStart, 6), 'd. MMM yyyy', { locale: de })}
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">Dienstplan</h1>
+          <div className="flex items-center gap-1 mt-1 text-sm text-gray-500 select-none">
+            {format(weekStart, 'd. MMMM', { locale: de })} – {format(addDays(weekStart, 6), 'd. MMMM yyyy', { locale: de })}
+            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          <TemplateToolbar weekStart={format(weekStart, 'yyyy-MM-dd')} templates={templatesJson} />
-          <div className="w-px h-6 bg-gray-200" />
-          <Link href={`/admin/schedule?week=${format(prevWeek, 'yyyy-MM-dd')}`}
-            className="px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition active:scale-[0.97] font-medium">
-            ← Vorwoche
-          </Link>
-          <Link href="/admin/schedule"
-            className="px-3 py-2 text-sm bg-indigo-600 text-white border border-indigo-600 rounded-lg hover:bg-indigo-700 transition active:scale-[0.97] font-medium">
-            Heute
-          </Link>
-          <Link href={`/admin/schedule?week=${format(nextWeek, 'yyyy-MM-dd')}`}
-            className="px-3 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition active:scale-[0.97] font-medium">
-            Nächste →
-          </Link>
-        </div>
+        <TemplateToolbar weekStart={format(weekStart, 'yyyy-MM-dd')} templates={templatesJson} />
       </div>
 
       {weekBudget && budgetStatus !== 'green' && (
@@ -160,7 +148,16 @@ export default async function SchedulePage({ searchParams }: Props) {
         </div>
       )}
 
-      <WeekGrid shifts={shiftsJson} users={usersJson} locations={locationsJson} weekStart={weekStart} dayNotes={dayNotesMap} coverageRules={coverageRulesJson} />
+      <WeekGrid
+        shifts={shiftsJson}
+        users={usersJson}
+        locations={locationsJson}
+        weekStart={weekStart}
+        dayNotes={dayNotesMap}
+        coverageRules={coverageRulesJson}
+        prevWeekHref={`/admin/schedule?week=${format(prevWeek, 'yyyy-MM-dd')}`}
+        nextWeekHref={`/admin/schedule?week=${format(nextWeek, 'yyyy-MM-dd')}`}
+      />
     </div>
   )
 }

@@ -18,6 +18,7 @@ import DropCell from './DropCell'
 import CreateShiftModal from './CreateShiftModal'
 import ShiftEditModal from './ShiftEditModal'
 import DayNoteCell from './DayNoteCell'
+import Link from 'next/link'
 import { updateShift, deleteShift, createShift, duplicateShift } from '@/app/actions/shifts'
 import { addMinutesToTime } from '@/lib/timeUtils'
 import CoverageWarningsBar from './CoverageWarningsBar'
@@ -56,11 +57,22 @@ type Props = {
   weekStart: Date
   dayNotes: Record<string, string>
   coverageRules: CoverageRuleData[]
+  prevWeekHref: string
+  nextWeekHref: string
 }
 
 const DAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 
-export default function WeekGrid({ shifts, users, locations, weekStart, dayNotes, coverageRules }: Props) {
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase())
+    .slice(0, 2)
+    .join('')
+}
+
+export default function WeekGrid({ shifts, users, locations, weekStart, dayNotes, coverageRules, prevWeekHref, nextWeekHref }: Props) {
   const [activeShift, setActiveShift] = useState<ShiftData | null>(null)
   const [resizingShift, setResizingShift] = useState<{ id: string; previewEndTime: string } | null>(null)
   const [modalCell, setModalCell] = useState<{ userId: string; date: string } | null>(null)
@@ -199,27 +211,55 @@ export default function WeekGrid({ shifts, users, locations, weekStart, dayNotes
           {dragError}
         </div>
       )}
-      <div className="flex items-center gap-2 mb-4">
-        <button
-          onClick={() => setFilterLocationId(null)}
-          className={`px-3 py-1.5 text-xs font-medium rounded-full transition active:scale-[0.97] ${filterLocationId === null ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-        >
-          Alle Standorte
-        </button>
-        {locations.map((loc) => (
+
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-1.5">
           <button
-            key={loc.id}
-            onClick={() => setFilterLocationId(loc.id === filterLocationId ? null : loc.id)}
-            className="px-3 py-1.5 text-xs font-medium rounded-full transition active:scale-[0.97]"
-            style={
-              filterLocationId === loc.id
-                ? { backgroundColor: loc.color, color: '#fff' }
-                : { backgroundColor: '#f3f4f6', color: '#4b5563' }
-            }
+            onClick={() => setFilterLocationId(null)}
+            className={`px-3.5 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 active:scale-[0.97] ${
+              filterLocationId === null
+                ? 'bg-indigo-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
           >
-            {loc.name}
+            Alle Standorte
           </button>
-        ))}
+          {locations.map((loc) => (
+            <button
+              key={loc.id}
+              onClick={() => setFilterLocationId(loc.id === filterLocationId ? null : loc.id)}
+              className="px-3.5 py-1.5 text-sm font-medium rounded-full transition-colors duration-150 active:scale-[0.97]"
+              style={
+                filterLocationId === loc.id
+                  ? { backgroundColor: loc.color, color: '#fff' }
+                  : { color: '#4b5563' }
+              }
+            >
+              {loc.name}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-1">
+          <Link
+            href={prevWeekHref}
+            className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150 font-medium"
+          >
+            ← Vorwoche
+          </Link>
+          <Link
+            href="/admin/schedule"
+            className="px-3.5 py-1.5 text-sm font-medium rounded-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors duration-150"
+          >
+            Heute
+          </Link>
+          <Link
+            href={nextWeekHref}
+            className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150 font-medium"
+          >
+            Nächste Woche →
+          </Link>
+        </div>
       </div>
 
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd}>
@@ -227,19 +267,19 @@ export default function WeekGrid({ shifts, users, locations, weekStart, dayNotes
           <table className="w-full border-collapse min-w-[700px]">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="w-36 bg-gray-50 px-4 text-left">
+                <th className="w-44 bg-gray-50/80 px-4 py-3 text-left">
                   <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">KW {getISOWeek(weekStart)}</span>
                 </th>
                 {days.map((day, i) => (
                   <th
                     key={i}
-                    className="text-center text-xs font-medium text-gray-500 px-2 py-3 bg-gray-50 min-w-[120px]"
+                    className="text-center px-2 py-3 bg-gray-50/80 min-w-[120px]"
                   >
-                    <div className={isToday(day) ? 'text-indigo-600 font-semibold' : ''}>
+                    <div className={`text-xs font-medium ${isToday(day) ? 'text-indigo-500' : 'text-gray-400'}`}>
                       {DAY_NAMES[i]}
                     </div>
                     <div
-                      className={`text-sm mt-0.5 ${isToday(day) ? 'text-indigo-600 font-semibold' : 'text-gray-900'}`}
+                      className={`text-sm font-semibold mt-0.5 ${isToday(day) ? 'text-indigo-600' : 'text-gray-800'}`}
                     >
                       {format(day, 'd. MMM', { locale: de })}
                     </div>
@@ -284,10 +324,19 @@ export default function WeekGrid({ shifts, users, locations, weekStart, dayNotes
             </tbody>
             <tbody className="divide-y divide-gray-100">
               {unassignedShifts.length > 0 && (
-                <tr className="group bg-amber-50/40">
-                  <td className="px-4 py-3 align-top bg-amber-50/60">
-                    <div className="text-sm font-medium text-amber-700">Nicht besetzt</div>
-                    <div className="text-xs text-amber-500 mt-0.5">Klicken zum Zuweisen</div>
+                <tr className="group bg-amber-50/30">
+                  <td className="px-3 py-3 align-top bg-amber-50/50">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                        <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-amber-700">Nicht besetzt</div>
+                        <div className="text-xs text-amber-500 mt-0.5">Klicken zum Zuweisen</div>
+                      </div>
+                    </div>
                   </td>
                   {days.map((day, di) => {
                     const dayShifts = getUnassignedForDay(day)
@@ -316,20 +365,28 @@ export default function WeekGrid({ shifts, users, locations, weekStart, dayNotes
               {users.map((user) => {
                 const weekHours = getWeekHours(user.id)
                 const light = getLight(weekHours, user.maxHoursWeek)
+                const initials = getInitials(user.name)
                 return (
                   <tr key={user.id} className="group">
-                    <td className="px-4 py-3 align-top bg-gray-50/50">
-                      <div className="text-sm font-medium text-gray-900 truncate">{user.name}</div>
-                      {user.maxHoursWeek && (
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <span
-                            className={`inline-block w-2 h-2 rounded-full ${light === 'red' ? 'bg-red-500' : light === 'yellow' ? 'bg-yellow-500' : 'bg-green-500'}`}
-                          />
-                          <span className="text-xs text-gray-400">
-                            {weekHours.toFixed(1)}h / {user.maxHoursWeek}h
-                          </span>
+                    <td className="px-3 py-3 align-top bg-white">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0 text-xs font-semibold text-gray-600">
+                          {initials}
                         </div>
-                      )}
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-gray-900 truncate">{user.name}</div>
+                          {user.maxHoursWeek && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span
+                                className={`inline-block w-1.5 h-1.5 rounded-full ${light === 'red' ? 'bg-red-500' : light === 'yellow' ? 'bg-yellow-500' : 'bg-green-500'}`}
+                              />
+                              <span className="text-xs text-gray-400">
+                                {weekHours.toFixed(1)}h / {user.maxHoursWeek}h
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     {days.map((day, di) => {
                       const cellShifts = getShiftsForCell(user.id, day)

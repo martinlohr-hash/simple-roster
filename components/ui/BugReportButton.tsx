@@ -71,7 +71,7 @@ export default function BugReportButton() {
       <button
         onClick={() => setOpen(true)}
         title="Fehler melden"
-        className="fixed bottom-5 right-5 z-50 w-11 h-11 rounded-full bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 hover:shadow-lg transition-all duration-150 active:scale-95"
+        className="fixed bottom-20 right-5 z-30 w-11 h-11 rounded-full bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 hover:shadow-lg transition-all duration-150 active:scale-95"
       >
         <BugIcon />
       </button>
@@ -79,7 +79,7 @@ export default function BugReportButton() {
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-end p-5" onClick={handleClose}>
           <div
-            className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-80 mb-16 mr-0 overflow-hidden"
+            className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-80 mb-28 mr-0 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">

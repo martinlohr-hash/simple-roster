@@ -68,6 +68,6 @@ export default async function SchedulePage({ searchParams }: Props) {
   })
 
   return (
-    <WeekPlanView weekStart={format(weekStart, 'yyyy-MM-dd')} days={days} />
+    <WeekPlanView weekStart={format(weekStart, 'yyyy-MM-dd')} days={days} userName={session.name} />
   )
 }

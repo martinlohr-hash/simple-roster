@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { format, parseISO, addWeeks, subWeeks, endOfWeek } from 'date-fns'
+import { format, parseISO, addWeeks, subWeeks, endOfWeek, getISOWeek } from 'date-fns'
 import { de } from 'date-fns/locale'
 
 type Colleague = { name: string }
@@ -19,6 +19,7 @@ type DayData = {
 type Props = {
   weekStart: string
   days: DayData[]
+  userName: string
 }
 
 function timeToMinutes(t: string) {
@@ -111,7 +112,7 @@ function FreeDayCard() {
 
 const DAY_SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 
-export default function WeekPlanView({ weekStart, days }: Props) {
+export default function WeekPlanView({ weekStart, days, userName }: Props) {
   const router = useRouter()
   const start = parseISO(weekStart)
   const end = endOfWeek(start, { weekStartsOn: 1 })
@@ -119,11 +120,20 @@ export default function WeekPlanView({ weekStart, days }: Props) {
   const startMonth = format(start, 'MMMM', { locale: de })
   const endMonth = format(end, 'MMMM', { locale: de })
   const year = format(end, 'yyyy')
+  const kw = getISOWeek(start)
 
   const weekLabel =
     startMonth === endMonth
       ? `${format(start, 'd')}. – ${format(end, 'd')}. ${startMonth} ${year}`
       : `${format(start, 'd')}. ${startMonth} – ${format(end, 'd')}. ${endMonth} ${year}`
+
+  const firstName = userName.split(' ')[0]
+  const initials = userName
+    .split(' ')
+    .filter(Boolean)
+    .map((p) => p[0].toUpperCase())
+    .slice(0, 2)
+    .join('')
 
   function navigate(direction: 'prev' | 'next') {
     const target = direction === 'prev' ? subWeeks(start, 1) : addWeeks(start, 1)
@@ -132,6 +142,17 @@ export default function WeekPlanView({ weekStart, days }: Props) {
 
   return (
     <div className="space-y-3">
+      {/* Name header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Mein Plan</h1>
+          <p className="text-sm text-gray-400">{firstName}</p>
+        </div>
+        <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center">
+          <span className="text-sm font-semibold text-indigo-700">{initials}</span>
+        </div>
+      </div>
+
       {/* Week navigator */}
       <div className="flex items-center gap-2">
         <button
@@ -144,7 +165,8 @@ export default function WeekPlanView({ weekStart, days }: Props) {
           </svg>
         </button>
         <div className="flex-1 text-center">
-          <span className="text-sm font-semibold text-gray-800">{weekLabel}</span>
+          <p className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wide">KW {kw}</p>
+          <p className="text-sm font-semibold text-gray-800 leading-tight">{weekLabel}</p>
         </div>
         <button
           onClick={() => navigate('next')}

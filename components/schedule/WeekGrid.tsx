@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   DndContext,
   DragEndEvent,
@@ -20,9 +21,11 @@ import ShiftEditModal from './ShiftEditModal'
 import DayNoteCell from './DayNoteCell'
 import Link from 'next/link'
 import { updateShift, deleteShift, createShift, duplicateShift } from '@/app/actions/shifts'
+import { releaseWeek, assignShiftToApplicant } from '@/app/actions/bidding'
 import { addMinutesToTime } from '@/lib/timeUtils'
 import CoverageWarningsBar from './CoverageWarningsBar'
 import { computeCoverageWarnings, type CoverageRuleData } from '@/lib/coverage'
+import EmployeeEditModal from '@/components/admin/EmployeeEditModal'
 
 export type ShiftData = {
   id: string
@@ -50,15 +53,26 @@ export type LocationData = {
   color: string
 }
 
+export type ApplicationData = {
+  id: string
+  shiftId: string
+  userId: string
+  status: 'PENDING' | 'ASSIGNED' | 'REJECTED'
+  user: { id: string; name: string }
+}
+
 type Props = {
   shifts: ShiftData[]
   users: UserData[]
   locations: LocationData[]
   weekStart: Date
+  weekStartStr: string
   dayNotes: Record<string, string>
   coverageRules: CoverageRuleData[]
   prevWeekHref: string
   nextWeekHref: string
+  isWeekReleased: boolean
+  applications: ApplicationData[]
 }
 
 const DAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
@@ -72,13 +86,16 @@ function getInitials(name: string): string {
     .join('')
 }
 
-export default function WeekGrid({ shifts, users, locations, weekStart, dayNotes, coverageRules, prevWeekHref, nextWeekHref }: Props) {
+export default function WeekGrid({ shifts, users, locations, weekStart, weekStartStr, dayNotes, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications }: Props) {
+  const router = useRouter()
   const [activeShift, setActiveShift] = useState<ShiftData | null>(null)
   const [resizingShift, setResizingShift] = useState<{ id: string; previewEndTime: string } | null>(null)
   const [modalCell, setModalCell] = useState<{ userId: string; date: string } | null>(null)
   const [editShift, setEditShift] = useState<ShiftData | null>(null)
   const [filterLocationId, setFilterLocationId] = useState<string | null>(null)
   const [dragError, setDragError] = useState<string | null>(null)
+  const [releasing, setReleasing] = useState(false)
+  const [editEmployeeId, setEditEmployeeId] = useState<string | null>(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -193,6 +210,20 @@ export default function WeekGrid({ shifts, users, locations, weekStart, dayNotes
     setEditShift(null)
   }
 
+  async function handleAssign(shiftId: string, applicantUserId: string) {
+    await assignShiftToApplicant(shiftId, applicantUserId)
+    setEditShift(null)
+  }
+
+  async function handleRelease() {
+    setReleasing(true)
+    try {
+      await releaseWeek(weekStartStr)
+    } finally {
+      setReleasing(false)
+    }
+  }
+
   async function handleCreate(data: {
     userId: string
     locationId: string
@@ -240,25 +271,41 @@ export default function WeekGrid({ shifts, users, locations, weekStart, dayNotes
           ))}
         </div>
 
-        <div className="flex items-center gap-1">
-          <Link
-            href={prevWeekHref}
-            className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150 font-medium"
-          >
-            ← Vorwoche
-          </Link>
-          <Link
-            href="/admin/schedule"
-            className="px-3.5 py-1.5 text-sm font-medium rounded-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors duration-150"
-          >
-            Heute
-          </Link>
-          <Link
-            href={nextWeekHref}
-            className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150 font-medium"
-          >
-            Nächste Woche →
-          </Link>
+        <div className="flex items-center gap-2">
+          {isWeekReleased ? (
+            <span className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-lg">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+              Freigegeben
+            </span>
+          ) : (
+            <button
+              onClick={handleRelease}
+              disabled={releasing}
+              className="px-3 py-1.5 bg-white border border-gray-300 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition active:scale-[0.97]"
+            >
+              {releasing ? 'Wird freigegeben...' : 'Woche freigeben'}
+            </button>
+          )}
+          <div className="flex items-center gap-1">
+            <Link
+              href={prevWeekHref}
+              className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150 font-medium"
+            >
+              ← Vorwoche
+            </Link>
+            <Link
+              href="/admin/schedule"
+              className="px-3.5 py-1.5 text-sm font-medium rounded-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors duration-150"
+            >
+              Heute
+            </Link>
+            <Link
+              href={nextWeekHref}
+              className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-150 font-medium"
+            >
+              Nächste Woche →
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -353,6 +400,7 @@ export default function WeekGrid({ shifts, users, locations, weekStart, dayNotes
                                 onDuplicate={handleDuplicate}
                                 onEdit={handleEdit}
                                 previewEndTime={resizingShift?.id === shift.id ? resizingShift.previewEndTime : undefined}
+                                applicationCount={applications.filter((a) => a.shiftId === shift.id && a.status === 'PENDING').length}
                               />
                             ))}
                           </div>
@@ -374,7 +422,13 @@ export default function WeekGrid({ shifts, users, locations, weekStart, dayNotes
                           {initials}
                         </div>
                         <div className="min-w-0">
-                          <div className="text-sm font-medium text-gray-900 truncate">{user.name}</div>
+                          <button
+                            type="button"
+                            onClick={() => setEditEmployeeId(user.id)}
+                            className="text-sm font-medium text-gray-900 truncate hover:text-indigo-600 transition-colors text-left"
+                          >
+                            {user.name}
+                          </button>
                           {user.maxHoursWeek && (
                             <div className="flex items-center gap-1 mt-0.5">
                               <span
@@ -403,6 +457,7 @@ export default function WeekGrid({ shifts, users, locations, weekStart, dayNotes
                                   onDuplicate={handleDuplicate}
                                   onEdit={handleEdit}
                                   previewEndTime={resizingShift?.id === shift.id ? resizingShift.previewEndTime : undefined}
+                                  applicationCount={applications.filter((a) => a.shiftId === shift.id && a.status === 'PENDING').length}
                                 />
                               ))}
                               <button
@@ -455,6 +510,17 @@ export default function WeekGrid({ shifts, users, locations, weekStart, dayNotes
           onClose={() => setEditShift(null)}
           onSave={handleEditSave}
           onDelete={handleEditDelete}
+          isWeekReleased={isWeekReleased}
+          applications={applications.filter((a) => a.shiftId === editShift.id)}
+          onAssign={handleAssign}
+        />
+      )}
+      {editEmployeeId && (
+        <EmployeeEditModal
+          userId={editEmployeeId}
+          locations={locations}
+          onClose={() => setEditEmployeeId(null)}
+          onSaved={() => { setEditEmployeeId(null); router.refresh() }}
         />
       )}
     </>

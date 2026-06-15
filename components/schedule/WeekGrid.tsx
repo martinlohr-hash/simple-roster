@@ -314,11 +314,12 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
           <table className="w-full border-collapse min-w-[700px]">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="w-44 bg-gray-50/80 px-4 py-3 text-left">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">KW {getISOWeek(weekStart)}</span>
+                <th scope="col" className="w-44 bg-gray-50/80 px-4 py-3 text-left">
+                  <span className="text-xs font-semibold text-gray-400">KW {getISOWeek(weekStart)}</span>
                 </th>
                 {days.map((day, i) => (
                   <th
+                    scope="col"
                     key={i}
                     className="text-center px-2 py-3 bg-gray-50/80 min-w-[120px]"
                   >
@@ -338,7 +339,7 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
               {coverageRules.length > 0 && (
                 <tr className="border-b border-gray-100 bg-amber-50/40">
                   <td className="px-4 py-1 align-top">
-                    <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Vorgaben</span>
+                    <span className="text-[10px] font-medium text-gray-400">Vorgaben</span>
                   </td>
                   {days.map((day, i) => {
                     const dateStr = format(day, 'yyyy-MM-dd')
@@ -357,7 +358,7 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
               )}
               <tr className="border-b border-gray-100 bg-gray-50/30">
                 <td className="px-4 py-1 align-top">
-                  <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Notizen</span>
+                  <span className="text-[10px] font-medium text-gray-400">Notizen</span>
                 </td>
                 {days.map((day, i) => {
                   const dateStr = format(day, 'yyyy-MM-dd')
@@ -432,6 +433,7 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
                           {user.maxHoursWeek && (
                             <div className="flex items-center gap-1 mt-0.5">
                               <span
+                                aria-label={light === 'red' ? 'Stundenlimit überschritten' : light === 'yellow' ? 'Stundenlimit fast erreicht' : 'Stunden im grünen Bereich'}
                                 className={`inline-block w-1.5 h-1.5 rounded-full ${light === 'red' ? 'bg-red-500' : light === 'yellow' ? 'bg-yellow-500' : 'bg-green-500'}`}
                               />
                               <span className="text-xs text-gray-400">

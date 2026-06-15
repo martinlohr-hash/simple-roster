@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db'
-import { getSession } from '@/app/actions/auth'
+import { requireAdmin } from '@/app/actions/auth'
 
 type BudgetInput = {
   period: 'WEEKLY' | 'MONTHLY'
@@ -13,8 +13,7 @@ type BudgetInput = {
 }
 
 export async function setBudget(data: BudgetInput): Promise<void> {
-  const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  await requireAdmin()
 
   await prisma.budget.upsert({
     where: {

@@ -31,15 +31,15 @@ export default function EmployeesTable({ users, locations }: Props) {
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">Name</th>
-              <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">E-Mail</th>
-              <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">Status</th>
-              <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">Rolle</th>
-              <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">Standort</th>
-              <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">Vergütung</th>
-              <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">NK</th>
-              <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">Max Wo / Mo</th>
-              <th className="px-4 py-3" />
+              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Name</th>
+              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">E-Mail</th>
+              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Status</th>
+              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Rolle</th>
+              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Standort</th>
+              <th scope="col" className="text-right text-xs font-medium text-gray-500 px-4 py-3">Vergütung</th>
+              <th scope="col" className="text-right text-xs font-medium text-gray-500 px-4 py-3">NK</th>
+              <th scope="col" className="text-right text-xs font-medium text-gray-500 px-4 py-3">Max Wo / Mo</th>
+              <th scope="col" className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">

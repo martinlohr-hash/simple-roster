@@ -87,7 +87,10 @@ function StatCard({ label, hours, max, light }: { label: string; hours: number; 
       <div className="text-2xl font-semibold text-gray-900">{hours.toFixed(1)}h</div>
       {max && (
         <div className={`flex items-center gap-1.5 mt-2 text-xs font-medium px-2 py-1 rounded-full w-fit ${colors[light]}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${dotColors[light]}`} />
+          <span
+            aria-label={light === 'red' ? 'Limit überschritten' : light === 'yellow' ? 'Limit fast erreicht' : 'Im grünen Bereich'}
+            className={`w-1.5 h-1.5 rounded-full ${dotColors[light]}`}
+          />
           von {max}h
         </div>
       )}

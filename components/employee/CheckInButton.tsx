@@ -18,6 +18,26 @@ function formatElapsed(checkinAt: string): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
+function ElapsedTimer({ checkinAt }: { checkinAt: string }) {
+  const [elapsed, setElapsed] = useState(() => formatElapsed(checkinAt))
+
+  useEffect(() => {
+    const iv = setInterval(() => setElapsed(formatElapsed(checkinAt)), 1000)
+    return () => clearInterval(iv)
+  }, [checkinAt])
+
+  return (
+    <div
+      role="timer"
+      aria-live="off"
+      aria-label={`${elapsed} im Dienst`}
+      className="text-5xl font-mono text-gray-900 mb-2 tracking-tight tabular-nums"
+    >
+      {elapsed}
+    </div>
+  )
+}
+
 function Spinner() {
   return (
     <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24" aria-hidden="true">
@@ -28,21 +48,10 @@ function Spinner() {
 }
 
 export default function CheckInButton({ activeEntry, todayShift, locations, noShiftToday }: Props) {
-  const [elapsed, setElapsed] = useState(() =>
-    activeEntry ? formatElapsed(activeEntry.checkinAt) : ''
-  )
   const [loading, setLoading] = useState(false)
   const [selectedLocation, setSelectedLocation] = useState(
     todayShift?.locationId || locations[0]?.id || '',
   )
-
-  useEffect(() => {
-    if (!activeEntry) return
-    const update = () => setElapsed(formatElapsed(activeEntry.checkinAt))
-    update()
-    const iv = setInterval(update, 1000)
-    return () => clearInterval(iv)
-  }, [activeEntry])
 
   async function handleCheckin() {
     setLoading(true)
@@ -74,13 +83,7 @@ export default function CheckInButton({ activeEntry, todayShift, locations, noSh
           <span className="text-sm font-medium text-green-700">{activeEntry.locationName}</span>
         </div>
 
-        {/* Timer */}
-        <div
-          className="text-5xl font-mono text-gray-900 mb-2 tracking-tight tabular-nums"
-          aria-label={`${elapsed} im Dienst`}
-        >
-          {elapsed}
-        </div>
+        <ElapsedTimer checkinAt={activeEntry.checkinAt} />
         <p className="text-sm text-gray-500 mb-7">
           Eingestempelt seit{' '}
           {new Date(activeEntry.checkinAt).toLocaleTimeString('de-DE', {

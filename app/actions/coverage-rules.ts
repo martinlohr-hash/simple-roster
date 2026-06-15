@@ -2,12 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db'
-import { getSession } from '@/app/actions/auth'
-
-async function requireAdmin() {
-  const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
-}
+import { requireAdmin } from '@/app/actions/auth'
 
 export async function createCoverageRule(data: {
   dayOfWeek: number

@@ -33,7 +33,7 @@ export default async function SchedulePage({ searchParams }: Props) {
         userId: { not: null },
         date: { gte: weekStart, lte: weekEnd },
       },
-      include: { user: true, location: true },
+      include: { user: { select: { name: true } }, location: true },
       orderBy: { startTime: 'asc' },
     }),
   ])

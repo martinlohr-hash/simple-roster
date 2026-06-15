@@ -49,3 +49,8 @@ export async function getSession() {
   if (!token) return null
   return decrypt(token)
 }
+
+export async function requireAdmin(): Promise<void> {
+  const session = await getSession()
+  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+}

@@ -2,11 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db'
-import { getSession } from '@/app/actions/auth'
+import { requireAdmin } from '@/app/actions/auth'
 
 export async function upsertDayNote(date: string, content: string) {
-  const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  await requireAdmin()
 
   if (!content.trim()) {
     await prisma.dayNote.deleteMany({ where: { date } })

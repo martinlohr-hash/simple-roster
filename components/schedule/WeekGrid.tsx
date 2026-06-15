@@ -21,7 +21,7 @@ import ShiftEditModal from './ShiftEditModal'
 import DayNoteCell from './DayNoteCell'
 import Link from 'next/link'
 import { updateShift, deleteShift, createShift, duplicateShift } from '@/app/actions/shifts'
-import { releaseWeek, assignShiftToApplicant } from '@/app/actions/bidding'
+import { releaseWeek, revokeWeekRelease, assignShiftToApplicant } from '@/app/actions/bidding'
 import { addMinutesToTime } from '@/lib/timeUtils'
 import CoverageWarningsBar from './CoverageWarningsBar'
 import { computeCoverageWarnings, type CoverageRuleData } from '@/lib/coverage'
@@ -95,6 +95,7 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
   const [filterLocationId, setFilterLocationId] = useState<string | null>(null)
   const [dragError, setDragError] = useState<string | null>(null)
   const [releasing, setReleasing] = useState(false)
+  const [revoking, setRevoking] = useState(false)
   const [editEmployeeId, setEditEmployeeId] = useState<string | null>(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
@@ -224,6 +225,16 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
     }
   }
 
+  async function handleRevoke() {
+    if (!confirm('Freigabe zurückziehen? Mitarbeiter sehen diese Woche dann nicht mehr unter "Bewerben".')) return
+    setRevoking(true)
+    try {
+      await revokeWeekRelease(weekStartStr)
+    } finally {
+      setRevoking(false)
+    }
+  }
+
   async function handleCreate(data: {
     userId: string
     locationId: string
@@ -273,10 +284,15 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
 
         <div className="flex items-center gap-2">
           {isWeekReleased ? (
-            <span className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-lg">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
-              Freigegeben
-            </span>
+            <button
+              onClick={handleRevoke}
+              disabled={revoking}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-lg hover:bg-red-50 hover:text-red-600 hover:border hover:border-red-200 disabled:opacity-50 transition active:scale-[0.97] group"
+              title="Freigabe zurückziehen"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 group-hover:bg-red-500 inline-block transition-colors" />
+              {revoking ? 'Wird zurückgezogen...' : 'Freigegeben'}
+            </button>
           ) : (
             <button
               onClick={handleRelease}

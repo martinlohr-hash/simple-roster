@@ -10,6 +10,18 @@ function utcMonday(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - daysToMonday))
 }
 
+export async function revokeWeekRelease(weekStart: string): Promise<void> {
+  const session = await getSession()
+  if (!session || session.role !== 'ADMIN') throw new Error('Keine Berechtigung')
+
+  const monday = utcMonday(new Date(weekStart + 'T00:00:00.000Z'))
+
+  await prisma.weekRelease.deleteMany({ where: { weekStart: monday } })
+
+  revalidatePath('/admin/schedule')
+  revalidatePath('/employee/open-shifts')
+}
+
 export async function releaseWeek(weekStart: string): Promise<void> {
   const session = await getSession()
   if (!session || session.role !== 'ADMIN') throw new Error('Keine Berechtigung')

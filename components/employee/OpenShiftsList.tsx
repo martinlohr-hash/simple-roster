@@ -39,13 +39,9 @@ export default function OpenShiftsList({ shifts }: { shifts: ShiftItem[] }) {
     setLoadingId(shiftId)
     setErrors((e) => ({ ...e, [shiftId]: '' }))
     startTransition(async () => {
-      try {
-        await applyForShift(shiftId)
-      } catch (err) {
-        setErrors((e) => ({ ...e, [shiftId]: err instanceof Error ? err.message : 'Fehler' }))
-      } finally {
-        setLoadingId(null)
-      }
+      const result = await applyForShift(shiftId)
+      if (result.error) setErrors((e) => ({ ...e, [shiftId]: result.error! }))
+      setLoadingId(null)
     })
   }
 
@@ -53,13 +49,9 @@ export default function OpenShiftsList({ shifts }: { shifts: ShiftItem[] }) {
     setLoadingId(shiftId)
     setErrors((e) => ({ ...e, [shiftId]: '' }))
     startTransition(async () => {
-      try {
-        await withdrawApplication(applicationId)
-      } catch (err) {
-        setErrors((e) => ({ ...e, [shiftId]: err instanceof Error ? err.message : 'Fehler' }))
-      } finally {
-        setLoadingId(null)
-      }
+      const result = await withdrawApplication(applicationId)
+      if (result.error) setErrors((e) => ({ ...e, [shiftId]: result.error! }))
+      setLoadingId(null)
     })
   }
 

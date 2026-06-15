@@ -38,7 +38,7 @@ export default async function SchedulePage({ searchParams }: Props) {
       orderBy: { startTime: 'asc' },
     }),
     prisma.user.findMany({ orderBy: { name: 'asc' } }),
-    prisma.location.findMany({ orderBy: { name: 'asc' } }),
+    prisma.location.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.shiftTemplate.findMany({
       orderBy: { createdAt: 'desc' },
       include: { _count: { select: { entries: true } } },

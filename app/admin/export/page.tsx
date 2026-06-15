@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db'
 export default async function ExportPage() {
   const [users, locations] = await Promise.all([
     prisma.user.findMany({ orderBy: { name: 'asc' } }),
-    prisma.location.findMany({ orderBy: { name: 'asc' } }),
+    prisma.location.findMany({ orderBy: { sortOrder: 'asc' } }),
   ])
 
   const now = new Date()

@@ -9,7 +9,7 @@ export default async function EditEmployeePage({ params }: Props) {
   const { id } = await params
   const [user, locations] = await Promise.all([
     prisma.user.findUnique({ where: { id } }),
-    prisma.location.findMany({ orderBy: { name: 'asc' } }),
+    prisma.location.findMany({ orderBy: { sortOrder: 'asc' } }),
   ])
   if (!user) notFound()
 

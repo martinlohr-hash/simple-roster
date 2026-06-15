@@ -1,11 +1,19 @@
 import { logout, getSession } from '@/app/actions/auth'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import BugReportButton from '@/components/ui/BugReportButton'
 import BottomNav from '@/components/employee/BottomNav'
 
 export default async function EmployeeLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession()
   if (!session) redirect('/login')
+
+  const initials = session.name
+    .split(' ')
+    .map((w: string) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -19,11 +27,20 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
             </div>
             <span className="font-semibold text-gray-900 text-sm">SimpleRoster</span>
           </div>
-          <form action={logout}>
-            <button type="submit" className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition active:scale-[0.97]">
-              Abmelden
-            </button>
-          </form>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/employee/profile"
+              className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center hover:bg-indigo-200 transition active:scale-95"
+              aria-label="Mein Profil"
+            >
+              <span className="text-indigo-700 text-xs font-semibold">{initials}</span>
+            </Link>
+            <form action={logout}>
+              <button type="submit" className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition active:scale-[0.97]">
+                Abmelden
+              </button>
+            </form>
+          </div>
         </div>
       </header>
       <main id="main-content" className="max-w-lg mx-auto px-4 py-6 pb-24">{children}</main>

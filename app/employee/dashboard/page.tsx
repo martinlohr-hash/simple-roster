@@ -26,7 +26,7 @@ export default async function DashboardPage() {
       include: { location: true },
       orderBy: { startTime: 'asc' },
     }),
-    prisma.location.findMany({ orderBy: { name: 'asc' } }),
+    prisma.location.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.user.findUnique({ where: { id: session.userId } }),
   ])
 

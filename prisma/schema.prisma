@@ -46,6 +46,8 @@ model User {
   monthlyRate       Float?
   startDate         DateTime?
   endDate           DateTime?
+  phone             String?
+  address           String?
   primaryLocationId String?
   primaryLocation   Location?   @relation("PrimaryLocation", fields: [primaryLocationId], references: [id])
   shifts               Shift[]
@@ -61,6 +63,7 @@ model Location {
   id           String      @id @default(cuid())
   name         String
   color        String      @default("#3B82F6")
+  sortOrder    Int         @default(0)
   primaryUsers         User[]               @relation("PrimaryLocation")
   shifts               Shift[]
   timeEntries          TimeEntry[]

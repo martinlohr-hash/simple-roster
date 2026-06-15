@@ -8,7 +8,7 @@ export default async function EmployeesPage() {
       orderBy: { name: 'asc' },
       include: { primaryLocation: true },
     }),
-    prisma.location.findMany({ orderBy: { name: 'asc' } }),
+    prisma.location.findMany({ orderBy: { sortOrder: 'asc' } }),
   ])
 
   return (

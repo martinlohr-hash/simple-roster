@@ -5,7 +5,7 @@ import LocationsManager from '@/components/admin/LocationsManager'
 export default async function SettingsPage() {
   const [rules, locations] = await Promise.all([
     prisma.coverageRule.findMany({ orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }] }),
-    prisma.location.findMany({ orderBy: { name: 'asc' } }),
+    prisma.location.findMany({ orderBy: { sortOrder: 'asc' } }),
   ])
 
   const rulesJson = rules.map((r) => ({

@@ -46,13 +46,13 @@ export async function applyTemplate(templateId: string, weekStart: string) {
   })
   if (!template) throw new Error('Vorlage nicht gefunden')
 
-  const start = new Date(weekStart)
+  const start = new Date(weekStart + 'T00:00:00.000Z')
 
   await prisma.shift.createMany({
     data: template.entries.map((e) => ({
       userId: e.userId ?? null,
       locationId: e.locationId,
-      date: addDays(start, e.dayOfWeek),
+      date: new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate() + e.dayOfWeek)),
       startTime: e.startTime,
       endTime: e.endTime,
       status: 'PLANNED' as const,

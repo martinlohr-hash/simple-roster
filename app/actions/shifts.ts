@@ -22,7 +22,7 @@ export async function createShift(data: {
     data: {
       userId: data.userId ?? null,
       locationId: data.locationId,
-      date: new Date(data.date),
+      date: new Date(data.date + 'T00:00:00.000Z'),
       startTime: data.startTime,
       endTime: data.endTime,
     },

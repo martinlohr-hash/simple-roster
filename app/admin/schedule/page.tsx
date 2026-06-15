@@ -68,7 +68,7 @@ export default async function SchedulePage({ searchParams }: Props) {
           data: full.entries.map((e) => ({
             userId: e.userId ?? null,
             locationId: e.locationId,
-            date: addDays(weekStart, e.dayOfWeek),
+            date: new Date(Date.UTC(weekStart.getUTCFullYear(), weekStart.getUTCMonth(), weekStart.getUTCDate() + e.dayOfWeek)),
             startTime: e.startTime,
             endTime: e.endTime,
             status: 'PLANNED' as const,

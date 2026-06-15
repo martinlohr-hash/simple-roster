@@ -6,7 +6,6 @@ import { timeToMinutes } from '@/lib/timeUtils'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import WeekGrid from '@/components/schedule/WeekGrid'
-import TemplateToolbar from '@/components/schedule/TemplateToolbar'
 
 type Props = {
   searchParams: Promise<{ week?: string }>
@@ -111,7 +110,6 @@ export default async function SchedulePage({ searchParams }: Props) {
 
   const usersJson = users.map((u) => ({ id: u.id, name: u.name, maxHoursWeek: u.maxHoursWeek, maxHoursMonth: u.maxHoursMonth }))
   const locationsJson = locations.map((l) => ({ id: l.id, name: l.name, color: l.color }))
-  const templatesJson = templates.map((t) => ({ id: t.id, name: t.name, isDefault: t.isDefault, _count: { entries: t._count.entries } }))
   const dayNotesMap = Object.fromEntries(dayNotes.map((n) => [n.date, n.content]))
   const coverageRulesJson = coverageRules.map((r) => ({
     id: r.id,
@@ -125,17 +123,14 @@ export default async function SchedulePage({ searchParams }: Props) {
 
   return (
     <div className="p-6 max-w-[1400px]">
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dienstplan</h1>
-          <div className="flex items-center gap-1 mt-1 text-sm text-gray-500 select-none">
-            {format(weekStart, 'd. MMMM', { locale: de })} – {format(addDays(weekStart, 6), 'd. MMMM yyyy', { locale: de })}
-            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Dienstplan</h1>
+        <div className="flex items-center gap-1 mt-1 text-sm text-gray-500 select-none">
+          {format(weekStart, 'd. MMMM', { locale: de })} – {format(addDays(weekStart, 6), 'd. MMMM yyyy', { locale: de })}
+          <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </div>
-        <TemplateToolbar weekStart={format(weekStart, 'yyyy-MM-dd')} templates={templatesJson} />
       </div>
 
       {weekBudget && budgetStatus !== 'green' && (

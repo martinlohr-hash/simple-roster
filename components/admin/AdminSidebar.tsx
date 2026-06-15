@@ -5,7 +5,6 @@ import { logout } from '@/app/actions/auth'
 import NavLink from './NavLink'
 import {
   IconCalendarEvent,
-  IconTemplate,
   IconUsers,
   IconChartBar,
   IconDownload,
@@ -60,7 +59,6 @@ export default function AdminSidebar({ userName, userRole }: Props) {
       <nav className="flex-1 py-3 px-2 space-y-0.5">
         <NavLink href="/admin/schedule" icon={<IconCalendarEvent size={16} stroke={1.75} />} collapsed={collapsed}>Dienstplan</NavLink>
         <NavLink href="/admin/my-schedule" icon={<IconUser size={16} stroke={1.75} />} collapsed={collapsed}>Mein Plan</NavLink>
-        <NavLink href="/admin/templates" icon={<IconTemplate size={16} stroke={1.75} />} collapsed={collapsed}>Vorlagen</NavLink>
         <NavLink href="/admin/employees" icon={<IconUsers size={16} stroke={1.75} />} collapsed={collapsed}>Mitarbeiter</NavLink>
         <NavLink href="/admin/costs" icon={<IconChartBar size={16} stroke={1.75} />} collapsed={collapsed}>Lohnkosten</NavLink>
         <NavLink href="/admin/export" icon={<IconDownload size={16} stroke={1.75} />} collapsed={collapsed}>Export</NavLink>

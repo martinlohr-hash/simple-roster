@@ -287,7 +287,7 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
             <button
               onClick={handleRevoke}
               disabled={revoking}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-lg hover:bg-red-50 hover:text-red-600 hover:border hover:border-red-200 disabled:opacity-50 transition active:scale-[0.97] group"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-lg border border-transparent hover:bg-red-50 hover:text-red-600 hover:border-red-200 disabled:opacity-50 transition active:scale-[0.97] group"
               title="Freigabe zurückziehen"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 group-hover:bg-red-500 inline-block transition-colors" />

@@ -24,6 +24,12 @@ enum ShiftStatus {
   CANCELLED
 }
 
+enum ApplicationStatus {
+  PENDING
+  ASSIGNED
+  REJECTED
+}
+
 model User {
   id                String      @id @default(cuid())
   name              String
@@ -42,6 +48,8 @@ model User {
   shifts               Shift[]
   timeEntries          TimeEntry[]
   shiftTemplateEntries ShiftTemplateEntry[]
+  weekReleases         WeekRelease[]
+  shiftApplications    ShiftApplication[]
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 }
@@ -77,10 +85,11 @@ model Shift {
   startTime  String
   endTime    String
   status     ShiftStatus @default(PLANNED)
-  user       User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  location   Location    @relation(fields: [locationId], references: [id])
-  timeEntry  TimeEntry?
-  createdAt  DateTime    @default(now())
+  user         User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location     Location           @relation(fields: [locationId], references: [id])
+  timeEntry    TimeEntry?
+  applications ShiftApplication[]
+  createdAt    DateTime           @default(now())
 }
 
 model TimeEntry {
@@ -143,4 +152,38 @@ model ShiftTemplateEntry {
   template   ShiftTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   user       User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
   location   Location      @relation(fields: [locationId], references: [id])
+}
+
+model WeekRelease {
+  id             String   @id @default(cuid())
+  weekStart      DateTime @unique
+  releasedAt     DateTime @default(now())
+  releasedBy     String
+  releasedByUser User     @relation(fields: [releasedBy], references: [id])
+}
+
+model ShiftApplication {
+  id        String            @id @default(cuid())
+  shiftId   String
+  userId    String
+  status    ApplicationStatus @default(PENDING)
+  appliedAt DateTime          @default(now())
+  shift     Shift             @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([shiftId, userId])
+}
+
+enum BugReportStatus {
+  OPEN
+  RESOLVED
+}
+
+model BugReport {
+  id          String          @id @default(cuid())
+  area        String
+  description String
+  status      BugReportStatus @default(OPEN)
+  reportedBy  String?
+  createdAt   DateTime        @default(now())
 }

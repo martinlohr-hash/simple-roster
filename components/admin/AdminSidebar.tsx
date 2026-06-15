@@ -34,6 +34,12 @@ const SettingsIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
   </svg>
 )
+const BugIcon = () => (
+  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+      d="M12 8v4m0 4h.01M9 3h6l1 2H8L9 3zM4 8h2M18 8h2M5 5l1.5 2M19 5l-1.5 2M5 19l1.5-2M19 19l-1.5-2M8 20h8a2 2 0 002-2v-6a4 4 0 00-8 0v6a2 2 0 002 2z" />
+  </svg>
+)
 const LogoutIcon = () => (
   <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -78,6 +84,7 @@ export default function AdminSidebar({ userName, userRole }: Props) {
         <NavLink href="/admin/costs" icon={<ChartIcon />}>Lohnkosten</NavLink>
         <NavLink href="/admin/export" icon={<DownloadIcon />}>Export</NavLink>
         <NavLink href="/admin/settings" icon={<SettingsIcon />}>Einstellungen</NavLink>
+        <NavLink href="/admin/bugs" icon={<BugIcon />}>Fehlerberichte</NavLink>
       </nav>
 
       <div className="border-t border-gray-100 p-2.5 space-y-0.5">

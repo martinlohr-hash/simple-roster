@@ -1,6 +1,7 @@
 import { logout, getSession } from '@/app/actions/auth'
 import { redirect } from 'next/navigation'
 import AdminSidebar from '@/components/admin/AdminSidebar'
+import BugReportButton from '@/components/ui/BugReportButton'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession()
@@ -10,6 +11,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="flex min-h-screen bg-white">
       <AdminSidebar userName={session.name} userRole={session.role} />
       <main className="flex-1 overflow-auto bg-white">{children}</main>
+      <BugReportButton />
     </div>
   )
 }

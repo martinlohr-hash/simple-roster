@@ -4,11 +4,11 @@ import { useState } from 'react'
 import { LocationData } from './WeekGrid'
 
 type Props = {
-  userId: string
+  userId: string | null
   date: string
   locations: LocationData[]
   onClose: () => void
-  onCreate: (data: { userId: string; locationId: string; date: string; startTime: string; endTime: string }) => void
+  onCreate: (data: { userId: string | null; locationId: string; date: string; startTime: string; endTime: string }) => void
 }
 
 export default function CreateShiftModal({ userId, date, locations, onClose, onCreate }: Props) {
@@ -34,7 +34,9 @@ export default function CreateShiftModal({ userId, date, locations, onClose, onC
   return (
     <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/30">
       <div className="modal-panel bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Neue Schicht erstellen</h2>
+        <h2 className="text-base font-semibold text-gray-900 mb-4">
+          {userId === null ? 'Offene Schicht erstellen' : 'Neue Schicht erstellen'}
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="text-sm text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
             {date}

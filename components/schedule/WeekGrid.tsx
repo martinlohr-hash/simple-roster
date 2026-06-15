@@ -90,7 +90,7 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
   const router = useRouter()
   const [activeShift, setActiveShift] = useState<ShiftData | null>(null)
   const [resizingShift, setResizingShift] = useState<{ id: string; previewEndTime: string } | null>(null)
-  const [modalCell, setModalCell] = useState<{ userId: string; date: string } | null>(null)
+  const [modalCell, setModalCell] = useState<{ userId: string | null; date: string } | null>(null)
   const [editShift, setEditShift] = useState<ShiftData | null>(null)
   const [filterLocationId, setFilterLocationId] = useState<string | null>(null)
   const [dragError, setDragError] = useState<string | null>(null)
@@ -236,7 +236,7 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
   }
 
   async function handleCreate(data: {
-    userId: string
+    userId: string | null
     locationId: string
     date: string
     startTime: string
@@ -387,8 +387,7 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
               </tr>
             </tbody>
             <tbody className="divide-y divide-gray-100">
-              {unassignedShifts.length > 0 && (
-                <tr className="group bg-amber-50/30">
+              <tr className="group bg-amber-50/30">
                   <td className="px-3 py-3 align-top bg-amber-50/50">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
@@ -420,13 +419,19 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
                                 applicationCount={applications.filter((a) => a.shiftId === shift.id && a.status === 'PENDING').length}
                               />
                             ))}
+                            <button
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={() => setModalCell({ userId: null, date: dateStr })}
+                              className="w-full rounded border border-dashed border-amber-200 text-amber-300 hover:border-amber-400 hover:text-amber-500 transition text-xs py-1 flex items-center justify-center opacity-0 group-hover:opacity-100"
+                            >
+                              + Schicht
+                            </button>
                           </div>
                         </DropCell>
                       </td>
                     )
                   })}
                 </tr>
-              )}
               {users.map((user) => {
                 const weekHours = getWeekHours(user.id)
                 const light = getLight(weekHours, user.maxHoursWeek)

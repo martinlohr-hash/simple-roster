@@ -98,17 +98,18 @@ export default function ShiftBlock({ shift, onDelete, onDuplicate, onEdit, previ
         </button>
       )}
 
-      {/* Resize handle */}
-      <div
-        ref={setResizeRef}
-        onPointerDown={(e) => e.stopPropagation()}
-        {...resizeListeners}
-        {...resizeAttributes}
-        className="absolute bottom-0 inset-x-0 h-3 cursor-ns-resize rounded-b-lg opacity-0 group-hover/block:opacity-100 flex items-center justify-center hover:bg-black/20 transition-opacity duration-[125ms]"
-        title="Zum Verlängern/Verkürzen ziehen"
-      >
-        <div className="w-6 h-0.5 bg-white/60 rounded-full" />
-      </div>
+      {!isUnassigned && (
+        <div
+          ref={setResizeRef}
+          onPointerDown={(e) => e.stopPropagation()}
+          {...resizeListeners}
+          {...resizeAttributes}
+          className="absolute bottom-0 inset-x-0 h-3 cursor-ns-resize rounded-b-lg opacity-0 group-hover/block:opacity-100 flex items-center justify-center hover:bg-black/20 transition-opacity duration-[125ms]"
+          title="Zum Verlängern/Verkürzen ziehen"
+        >
+          <div className="w-6 h-0.5 bg-white/60 rounded-full" />
+        </div>
+      )}
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { timeToMinutes } from '@/lib/timeUtils'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import WeekGrid from '@/components/schedule/WeekGrid'
+import WeekJumper from '@/components/schedule/WeekJumper'
 
 type Props = {
   searchParams: Promise<{ week?: string }>
@@ -125,12 +126,7 @@ export default async function SchedulePage({ searchParams }: Props) {
     <div className="p-6 max-w-[1400px]">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Dienstplan</h1>
-        <div className="flex items-center gap-1 mt-1 text-sm text-gray-500 select-none">
-          {format(weekStart, 'd. MMMM', { locale: de })} – {format(addDays(weekStart, 6), 'd. MMMM yyyy', { locale: de })}
-          <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
+        <WeekJumper weekStart={format(weekStart, 'yyyy-MM-dd')} />
       </div>
 
       {weekBudget && budgetStatus !== 'green' && (

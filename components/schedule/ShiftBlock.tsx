@@ -10,9 +10,10 @@ type Props = {
   onDuplicate: (id: string) => void
   onEdit: (shift: ShiftData) => void
   previewEndTime?: string
+  applicationCount?: number
 }
 
-export default function ShiftBlock({ shift, onDelete, onDuplicate, onEdit, previewEndTime }: Props) {
+export default function ShiftBlock({ shift, onDelete, onDuplicate, onEdit, previewEndTime, applicationCount = 0 }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: shift.id,
   })
@@ -75,14 +76,23 @@ export default function ShiftBlock({ shift, onDelete, onDuplicate, onEdit, previ
         </svg>
       </button>
 
-      <button
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => { e.stopPropagation(); onDelete(shift.id) }}
-        className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full text-gray-500 hover:text-red-500 shadow flex items-center justify-center opacity-0 group-hover/block:opacity-100 pointer-events-none group-hover/block:pointer-events-auto transition duration-[125ms] text-[10px] font-bold"
-        title="Schicht löschen"
-      >
-        ×
-      </button>
+      {isUnassigned && applicationCount > 0 ? (
+        <span
+          className="absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 bg-amber-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center shadow pointer-events-none"
+          title={`${applicationCount} Bewerbung${applicationCount !== 1 ? 'en' : ''}`}
+        >
+          {applicationCount}
+        </span>
+      ) : (
+        <button
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); onDelete(shift.id) }}
+          className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full text-gray-500 hover:text-red-500 shadow flex items-center justify-center opacity-0 group-hover/block:opacity-100 pointer-events-none group-hover/block:pointer-events-auto transition duration-[125ms] text-[10px] font-bold"
+          title="Schicht löschen"
+        >
+          ×
+        </button>
+      )}
 
       {/* Resize handle */}
       <div

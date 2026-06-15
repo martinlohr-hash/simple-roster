@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { de } from 'date-fns/locale'
-import { ShiftData, LocationData, UserData } from './WeekGrid'
+import { ShiftData, LocationData, UserData, ApplicationData } from './WeekGrid'
 
 type Props = {
   shift: ShiftData
@@ -12,9 +12,12 @@ type Props = {
   onClose: () => void
   onSave: (id: string, data: { startTime: string; endTime: string; locationId: string; userId: string | null }) => void
   onDelete: (id: string) => void
+  isWeekReleased: boolean
+  applications: ApplicationData[]
+  onAssign: (shiftId: string, userId: string) => void
 }
 
-export default function ShiftEditModal({ shift, locations, users, onClose, onSave, onDelete }: Props) {
+export default function ShiftEditModal({ shift, locations, users, onClose, onSave, onDelete, isWeekReleased, applications, onAssign }: Props) {
   const isUnassigned = !shift.userId
   const [userId, setUserId] = useState(shift.userId ?? '')
   const [startTime, setStartTime] = useState(shift.startTime)
@@ -118,6 +121,41 @@ export default function ShiftEditModal({ shift, locations, users, onClose, onSav
           {error && (
             <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
           )}
+
+          {isUnassigned && isWeekReleased && (
+            <div className="border-t border-gray-100 pt-3 mt-1">
+              <p className="text-xs font-medium text-gray-500 mb-2">
+                Bewerbungen {applications.length > 0 && `(${applications.length})`}
+              </p>
+              {applications.length === 0 ? (
+                <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
+                  Woche ist freigegeben – noch keine Bewerbungen
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  {applications.map((app) => (
+                    <div key={app.id} className="flex items-center justify-between gap-2 bg-amber-50 rounded-lg px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-amber-200 flex items-center justify-center text-[10px] font-semibold text-amber-800">
+                          {app.user.name.split(' ').map((w) => w[0]).slice(0, 2).join('')}
+                        </div>
+                        <span className="text-sm text-gray-800">{app.user.name}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onAssign(shift.id, app.userId)}
+                        disabled={loading}
+                        className="px-2.5 py-1 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition active:scale-[0.97]"
+                      >
+                        Zuweisen
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-1">
             <button
               type="button"

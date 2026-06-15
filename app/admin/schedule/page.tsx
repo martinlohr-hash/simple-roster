@@ -31,13 +31,13 @@ export default async function SchedulePage({ searchParams }: Props) {
   const weekYear = getYear(weekStart)
   const weekNumber = getISOWeek(weekStart)
 
-  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget] = await Promise.all([
+  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications] = await Promise.all([
     prisma.shift.findMany({
       where: { date: { gte: weekStart, lt: weekEnd } },
       include: { user: true, location: true, timeEntry: true },
       orderBy: { startTime: 'asc' },
     }),
-    prisma.user.findMany({ where: { role: 'EMPLOYEE' }, orderBy: { name: 'asc' } }),
+    prisma.user.findMany({ orderBy: { name: 'asc' } }),
     prisma.location.findMany({ orderBy: { name: 'asc' } }),
     prisma.shiftTemplate.findMany({
       orderBy: { createdAt: 'desc' },
@@ -47,6 +47,11 @@ export default async function SchedulePage({ searchParams }: Props) {
     prisma.coverageRule.findMany({ orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }] }),
     prisma.budget.findUnique({
       where: { period_year_weekOrMonth: { period: 'WEEKLY', year: weekYear, weekOrMonth: weekNumber } },
+    }),
+    prisma.weekRelease.findUnique({ where: { weekStart } }),
+    prisma.shiftApplication.findMany({
+      where: { shift: { date: { gte: weekStart, lt: weekEnd } } },
+      select: { id: true, shiftId: true, userId: true, status: true, user: { select: { id: true, name: true } } },
     }),
   ])
 
@@ -157,6 +162,15 @@ export default async function SchedulePage({ searchParams }: Props) {
         coverageRules={coverageRulesJson}
         prevWeekHref={`/admin/schedule?week=${format(prevWeek, 'yyyy-MM-dd')}`}
         nextWeekHref={`/admin/schedule?week=${format(nextWeek, 'yyyy-MM-dd')}`}
+        isWeekReleased={!!weekRelease}
+        weekStartStr={format(weekStart, 'yyyy-MM-dd')}
+        applications={applications.map((a) => ({
+          id: a.id,
+          shiftId: a.shiftId,
+          userId: a.userId,
+          status: a.status as 'PENDING' | 'ASSIGNED' | 'REJECTED',
+          user: a.user,
+        }))}
       />
     </div>
   )

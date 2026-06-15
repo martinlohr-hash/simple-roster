@@ -3,13 +3,19 @@
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/app/actions/auth'
 import { prisma } from '@/lib/db'
-import { startOfWeek } from 'date-fns'
+
+function utcMonday(date: Date): Date {
+  const utcDay = date.getUTCDay() // 0=Sun, 1=Mon, ..., 6=Sat
+  const daysToMonday = (utcDay + 6) % 7
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - daysToMonday))
+}
 
 export async function releaseWeek(weekStart: string): Promise<void> {
   const session = await getSession()
   if (!session || session.role !== 'ADMIN') throw new Error('Keine Berechtigung')
 
-  const monday = startOfWeek(new Date(weekStart), { weekStartsOn: 1 })
+  // Parse as UTC midnight to avoid local-timezone drift
+  const monday = utcMonday(new Date(weekStart + 'T00:00:00.000Z'))
 
   await prisma.weekRelease.upsert({
     where: { weekStart: monday },
@@ -47,7 +53,7 @@ export async function applyForShift(shiftId: string): Promise<{ error?: string }
   if (!shift) return { error: 'Schicht nicht gefunden' }
   if (shift.userId !== null) return { error: 'Schicht ist bereits besetzt' }
 
-  const monday = startOfWeek(shift.date, { weekStartsOn: 1 })
+  const monday = utcMonday(shift.date)
   const release = await prisma.weekRelease.findUnique({ where: { weekStart: monday } })
   if (!release) return { error: 'Diese Woche ist noch nicht freigegeben' }
 

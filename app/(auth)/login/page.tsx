@@ -1,7 +1,16 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { login } from '@/app/actions/auth'
+
+const SAMMIE_IMAGES = [
+  '/sammie-1.png',
+  '/sammie-2.png',
+  '/sammie-3.png',
+  '/sammie-4.png',
+  '/sammie-5.png',
+  '/sammie-6.png',
+]
 
 export default function LoginPage() {
   const [error, action, pending] = useActionState(
@@ -12,8 +21,19 @@ export default function LoginPage() {
     undefined,
   )
 
+  const [sammie, setSammie] = useState<string | null>(null)
+  useEffect(() => {
+    setSammie(SAMMIE_IMAGES[Math.floor(Math.random() * SAMMIE_IMAGES.length)])
+  }, [])
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 overflow-hidden">
+      {sammie && (
+        <div className="fixed bottom-0 right-0 pointer-events-none select-none" style={{ mixBlendMode: 'multiply' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={sammie} alt="" className="w-[280px] sm:w-[360px] lg:w-[420px]" />
+        </div>
+      )}
       <div className="w-full max-w-sm">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
           <div className="mb-8 text-center">

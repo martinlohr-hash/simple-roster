@@ -63,9 +63,15 @@ export default function DayNoteCell({ date, initialContent }: Props) {
       title="Klicken zum Bearbeiten"
     >
       {value ? (
-        <p className="text-[11px] text-amber-700 leading-snug whitespace-pre-wrap break-words">
-          {value}
-        </p>
+        <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 shadow-sm">
+          <svg className="w-3 h-3 text-amber-500 mt-px shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+            <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
+          </svg>
+          <p className="text-[11px] font-medium text-amber-800 leading-snug whitespace-pre-wrap break-words">
+            {value}
+          </p>
+        </div>
       ) : (
         <span className="text-[10px] text-gray-300 opacity-0 group-hover/note:opacity-100 transition-opacity select-none">
           + Hinweis

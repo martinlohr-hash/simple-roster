@@ -16,6 +16,7 @@ export default function NewEmployeeForm({ locations }: { locations: Location[] }
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [salaryType, setSalaryType] = useState<'hourly' | 'monthly'>('hourly')
 
   function handleSubmit(formData: FormData) {
     setError(null)
@@ -82,6 +83,8 @@ export default function NewEmployeeForm({ locations }: { locations: Location[] }
 
   return (
     <form action={handleSubmit} className="space-y-4 bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+      <input type="hidden" name="salaryType" value={salaryType} />
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
@@ -111,14 +114,42 @@ export default function NewEmployeeForm({ locations }: { locations: Location[] }
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Stundenlohn (€)</label>
-          <input type="number" name="hourlyRate" step="0.01" defaultValue="0" className={inputClass} />
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs font-medium text-gray-700">Vergütung</label>
+          <div className="flex gap-1 rounded-lg border border-gray-200 p-0.5 bg-gray-50">
+            <button
+              type="button"
+              onClick={() => setSalaryType('hourly')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${salaryType === 'hourly' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Stundenlohn
+            </button>
+            <button
+              type="button"
+              onClick={() => setSalaryType('monthly')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${salaryType === 'monthly' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Monatslohn
+            </button>
+          </div>
         </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Nebenkosten (%)</label>
-          <input type="number" name="overheadPercent" step="0.1" defaultValue="0" className={inputClass} />
+        <div className="grid grid-cols-2 gap-4">
+          {salaryType === 'hourly' ? (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Stundenlohn (€)</label>
+              <input type="number" name="hourlyRate" step="0.01" defaultValue="0" className={inputClass} />
+            </div>
+          ) : (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Monatslohn (€)</label>
+              <input type="number" name="monthlyRate" step="1" placeholder="z.B. 2200" className={inputClass} />
+            </div>
+          )}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Nebenkosten (%)</label>
+            <input type="number" name="overheadPercent" step="0.1" defaultValue="0" className={inputClass} />
+          </div>
         </div>
       </div>
 
@@ -130,6 +161,17 @@ export default function NewEmployeeForm({ locations }: { locations: Location[] }
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">Max. Std./Monat</label>
           <input type="number" name="maxHoursMonth" step="0.5" placeholder="z.B. 168" className={inputClass} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Eintrittsdatum</label>
+          <input type="date" name="startDate" className={inputClass} />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-700 mb-1">Austrittsdatum (optional)</label>
+          <input type="date" name="endDate" className={inputClass} />
         </div>
       </div>
 

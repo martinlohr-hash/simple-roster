@@ -15,7 +15,9 @@ export async function createEmployee(
 
   const name = formData.get('name') as string
   const email = formData.get('email') as string
-  const hourlyRate = parseFloat(formData.get('hourlyRate') as string) || 0
+  const salaryType = formData.get('salaryType') as string
+  const hourlyRate = salaryType === 'monthly' ? 0 : (parseFloat(formData.get('hourlyRate') as string) || 0)
+  const monthlyRate = salaryType === 'monthly' ? (parseFloat(formData.get('monthlyRate') as string) || 0) : null
   const overheadPercent = parseFloat(formData.get('overheadPercent') as string) || 0
   const maxHoursWeek = formData.get('maxHoursWeek')
     ? parseFloat(formData.get('maxHoursWeek') as string)
@@ -25,6 +27,8 @@ export async function createEmployee(
     : null
   const locationId = (formData.get('locationId') as string) || null
   const role = (formData.get('role') as 'ADMIN' | 'EMPLOYEE') || 'EMPLOYEE'
+  const startDate = formData.get('startDate') ? new Date(formData.get('startDate') as string) : null
+  const endDate = formData.get('endDate') ? new Date(formData.get('endDate') as string) : null
 
   const inviteToken = randomBytes(32).toString('hex')
   const inviteTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
@@ -39,9 +43,12 @@ export async function createEmployee(
         inviteToken,
         inviteTokenExpiry,
         hourlyRate,
+        monthlyRate,
         overheadPercent,
         maxHoursWeek,
         maxHoursMonth,
+        startDate,
+        endDate,
         primaryLocationId: locationId || undefined,
         role,
       },
@@ -74,10 +81,12 @@ export async function updateEmployee(id: string, formData: FormData) {
   const session = await getSession()
   if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
 
+  const salaryType = formData.get('salaryType') as string
   const data: Record<string, unknown> = {
     name: formData.get('name') as string,
     email: formData.get('email') as string,
-    hourlyRate: parseFloat(formData.get('hourlyRate') as string) || 0,
+    hourlyRate: salaryType === 'monthly' ? 0 : (parseFloat(formData.get('hourlyRate') as string) || 0),
+    monthlyRate: salaryType === 'monthly' ? (parseFloat(formData.get('monthlyRate') as string) || 0) : null,
     overheadPercent: parseFloat(formData.get('overheadPercent') as string) || 0,
     maxHoursWeek: formData.get('maxHoursWeek')
       ? parseFloat(formData.get('maxHoursWeek') as string)
@@ -85,6 +94,8 @@ export async function updateEmployee(id: string, formData: FormData) {
     maxHoursMonth: formData.get('maxHoursMonth')
       ? parseFloat(formData.get('maxHoursMonth') as string)
       : null,
+    startDate: formData.get('startDate') ? new Date(formData.get('startDate') as string) : null,
+    endDate: formData.get('endDate') ? new Date(formData.get('endDate') as string) : null,
     primaryLocationId: (formData.get('locationId') as string) || null,
     role: (formData.get('role') as 'ADMIN' | 'EMPLOYEE') || 'EMPLOYEE',
   }

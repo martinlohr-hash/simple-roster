@@ -35,6 +35,11 @@ const SettingsIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
   </svg>
 )
+const MyPlanIcon = () => (
+  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+  </svg>
+)
 const BugIcon = () => (
   <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -92,6 +97,7 @@ export default function AdminSidebar({ userName, userRole }: Props) {
 
       <nav className="flex-1 py-3 px-2 space-y-0.5">
         <NavLink href="/admin/schedule" icon={<CalendarIcon />} collapsed={collapsed}>Dienstplan</NavLink>
+        <NavLink href="/admin/my-schedule" icon={<MyPlanIcon />} collapsed={collapsed}>Mein Plan</NavLink>
         <NavLink href="/admin/templates" icon={<TemplateIcon />} collapsed={collapsed}>Vorlagen</NavLink>
         <NavLink href="/admin/employees" icon={<UsersIcon />} collapsed={collapsed}>Mitarbeiter</NavLink>
         <NavLink href="/admin/costs" icon={<ChartIcon />} collapsed={collapsed}>Lohnkosten</NavLink>

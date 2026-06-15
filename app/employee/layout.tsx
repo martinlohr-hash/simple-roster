@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import BugReportButton from '@/components/ui/BugReportButton'
 import BottomNav from '@/components/employee/BottomNav'
+import WelcomeModal from '@/components/employee/WelcomeModal'
 
 export default async function EmployeeLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession()
@@ -46,6 +47,7 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
       <main id="main-content" className="max-w-lg mx-auto px-4 py-6 pb-24">{children}</main>
       <BottomNav />
       <BugReportButton />
+      <WelcomeModal userId={session.userId} name={session.name} />
     </div>
   )
 }

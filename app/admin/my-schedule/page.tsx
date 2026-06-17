@@ -57,6 +57,7 @@ export default async function AdminMySchedulePage({ searchParams }: Props) {
 
     return {
       date: dateStr,
+      isVacation: false,
       shift: myShift
         ? {
             startTime: myShift.startTime,

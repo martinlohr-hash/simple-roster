@@ -19,7 +19,7 @@ export default async function SchedulePage({ searchParams }: Props) {
 
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 })
 
-  const [myShifts, allShifts] = await Promise.all([
+  const [myShifts, allShifts, myVacations] = await Promise.all([
     prisma.shift.findMany({
       where: {
         userId: session.userId,
@@ -36,11 +36,27 @@ export default async function SchedulePage({ searchParams }: Props) {
       include: { user: { select: { name: true } }, location: true },
       orderBy: { startTime: 'asc' },
     }),
+    prisma.vacationRequest.findMany({
+      where: {
+        userId: session.userId,
+        status: 'APPROVED',
+        startDate: { lte: weekEnd },
+        endDate: { gte: weekStart },
+      },
+    }),
   ])
 
   const days = eachDayOfInterval({ start: weekStart, end: weekEnd }).map((day) => {
     const dateStr = format(day, 'yyyy-MM-dd')
     const myShift = myShifts.find((s) => format(s.date, 'yyyy-MM-dd') === dateStr) ?? null
+
+    const isVacation = myVacations.some((v) => {
+      const start = new Date(v.startDate)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(v.endDate)
+      end.setHours(23, 59, 59, 999)
+      return day >= start && day <= end
+    })
 
     const colleagues = myShift
       ? allShifts
@@ -56,6 +72,7 @@ export default async function SchedulePage({ searchParams }: Props) {
 
     return {
       date: dateStr,
+      isVacation,
       shift: myShift
         ? {
             startTime: myShift.startTime,

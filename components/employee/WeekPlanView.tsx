@@ -8,6 +8,7 @@ type Colleague = { name: string }
 
 type DayData = {
   date: string
+  isVacation: boolean
   shift: {
     startTime: string
     endTime: string
@@ -110,6 +111,15 @@ function FreeDayCard() {
   )
 }
 
+function VacationCard() {
+  return (
+    <div className="flex-1 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-2.5 px-4 py-3">
+      <span className="text-lg leading-none">🏖</span>
+      <span className="text-sm text-emerald-700 font-semibold">Urlaub</span>
+    </div>
+  )
+}
+
 const DAY_SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
 
 export default function WeekPlanView({ weekStart, days, userName }: Props) {
@@ -128,12 +138,6 @@ export default function WeekPlanView({ weekStart, days, userName }: Props) {
       : `${format(start, 'd')}. ${startMonth} – ${format(end, 'd')}. ${endMonth} ${year}`
 
   const firstName = userName.split(' ')[0]
-  const initials = userName
-    .split(' ')
-    .filter(Boolean)
-    .map((p) => p[0].toUpperCase())
-    .slice(0, 2)
-    .join('')
 
   function navigate(direction: 'prev' | 'next') {
     const target = direction === 'prev' ? subWeeks(start, 1) : addWeeks(start, 1)
@@ -143,14 +147,9 @@ export default function WeekPlanView({ weekStart, days, userName }: Props) {
   return (
     <div className="space-y-3">
       {/* Name header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Mein Plan</h1>
-          <p className="text-sm text-gray-400">{firstName}</p>
-        </div>
-        <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center">
-          <span className="text-sm font-semibold text-indigo-700">{initials}</span>
-        </div>
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">Mein Plan</h1>
+        <p className="text-sm text-gray-400">{firstName}</p>
       </div>
 
       {/* Week navigator */}
@@ -193,7 +192,7 @@ export default function WeekPlanView({ weekStart, days, userName }: Props) {
               </div>
 
               {/* Card */}
-              {day.shift ? <ShiftCard shift={day.shift} /> : <FreeDayCard />}
+              {day.shift ? <ShiftCard shift={day.shift} /> : day.isVacation ? <VacationCard /> : <FreeDayCard />}
             </div>
           )
         })}

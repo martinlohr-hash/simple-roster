@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/app/actions/auth'
 import { prisma } from '@/lib/db'
-import { startOfWeek, addDays } from 'date-fns'
+import { startOfWeek, addDays, startOfDay } from 'date-fns'
 import OpenShiftsList from '@/components/employee/OpenShiftsList'
 
 export default async function OpenShiftsPage() {
@@ -24,9 +24,12 @@ export default async function OpenShiftsPage() {
     return { gte: monday, lt: addDays(monday, 7) }
   })
 
+  const today = startOfDay(new Date())
+
   const shifts = await prisma.shift.findMany({
     where: {
       userId: null,
+      date: { gte: today },
       OR: dateRanges.map((range) => ({ date: range })),
     },
     include: {

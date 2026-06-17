@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { format, parseISO } from 'date-fns'
 import DeleteEmployeeButton from './DeleteEmployeeButton'
 import ResendInviteButton from './ResendInviteButton'
 import EmployeeEditModal from './EmployeeEditModal'
@@ -74,7 +75,7 @@ export default function EmployeesTable({ users, locations, viewerRole }: Props) 
                 <td className="px-4 py-3 text-sm text-gray-600">{user.phone || '–'}</td>
                 <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate" title={user.address ?? undefined}>{user.address || '–'}</td>
                 <td className="px-4 py-3 text-sm text-gray-600">
-                  {user.startDate ? new Date(user.startDate).toLocaleDateString('de-DE') : '–'}
+                  {user.startDate ? format(parseISO(user.startDate), 'dd.MM.yyyy') : '–'}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600 text-right">
                   {user.maxHoursWeek != null ? `${user.maxHoursWeek} h` : '–'}

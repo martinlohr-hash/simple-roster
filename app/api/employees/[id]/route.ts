@@ -44,6 +44,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     maxHoursMonth: body.maxHoursMonth ? parseFloat(body.maxHoursMonth) : null,
     startDate: body.startDate ? new Date(body.startDate) : null,
     endDate: body.endDate ? new Date(body.endDate) : null,
+    birthday: body.birthday ? new Date(body.birthday) : null,
+    phone: body.phone || null,
+    address: body.address || null,
     primaryLocationId: body.locationId || null,
   }
 

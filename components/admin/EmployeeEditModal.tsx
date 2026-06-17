@@ -10,6 +10,7 @@ type User = {
   maxHoursWeek: number | null; maxHoursMonth: number | null
   primaryLocationId: string | null
   startDate: string | null; endDate: string | null
+  phone: string | null; address: string | null; birthday: string | null
 }
 
 type Props = {
@@ -198,6 +199,22 @@ export default function EmployeeEditModal({ userId, locations, onClose, onSaved 
                 <label className="block text-xs font-medium text-gray-700 mb-1">Austrittsdatum (optional)</label>
                 <input type="date" name="endDate" defaultValue={toDateInput(user.endDate)} className={inputClass} />
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Geburtstag</label>
+                <input type="date" name="birthday" defaultValue={toDateInput(user.birthday)} className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Handynummer</label>
+                <input type="text" name="phone" defaultValue={user.phone ?? ''} placeholder="z.B. 0176 12345678" className={inputClass} />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Adresse</label>
+              <input type="text" name="address" defaultValue={user.address ?? ''} placeholder="Straße, PLZ Ort" className={inputClass} />
             </div>
 
             {error && <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{error}</p>}

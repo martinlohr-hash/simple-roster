@@ -48,6 +48,7 @@ model User {
   endDate           DateTime?
   phone             String?
   address           String?
+  birthday          DateTime?
   primaryLocationId String?
   primaryLocation   Location?   @relation("PrimaryLocation", fields: [primaryLocationId], references: [id])
   shifts               Shift[]

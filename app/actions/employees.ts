@@ -29,6 +29,9 @@ export async function createEmployee(
   const role = (formData.get('role') as 'ADMIN' | 'EMPLOYEE') || 'EMPLOYEE'
   const startDate = formData.get('startDate') ? new Date(formData.get('startDate') as string) : null
   const endDate = formData.get('endDate') ? new Date(formData.get('endDate') as string) : null
+  const birthday = formData.get('birthday') ? new Date(formData.get('birthday') as string) : null
+  const phone = (formData.get('phone') as string) || null
+  const address = (formData.get('address') as string) || null
 
   const inviteToken = randomBytes(32).toString('hex')
   const inviteTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
@@ -49,6 +52,9 @@ export async function createEmployee(
         maxHoursMonth,
         startDate,
         endDate,
+        birthday,
+        phone,
+        address,
         primaryLocationId: locationId || undefined,
         role,
       },
@@ -96,6 +102,9 @@ export async function updateEmployee(id: string, formData: FormData) {
       : null,
     startDate: formData.get('startDate') ? new Date(formData.get('startDate') as string) : null,
     endDate: formData.get('endDate') ? new Date(formData.get('endDate') as string) : null,
+    birthday: formData.get('birthday') ? new Date(formData.get('birthday') as string) : null,
+    phone: (formData.get('phone') as string) || null,
+    address: (formData.get('address') as string) || null,
     primaryLocationId: (formData.get('locationId') as string) || null,
     role: (formData.get('role') as 'ADMIN' | 'EMPLOYEE') || 'EMPLOYEE',
   }

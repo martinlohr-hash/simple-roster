@@ -11,6 +11,7 @@ type Defaults = {
   maxHoursWeek?: number | null; maxHoursMonth?: number | null
   primaryLocationId?: string | null
   startDate?: Date | string | null; endDate?: Date | string | null
+  phone?: string | null; address?: string | null; birthday?: Date | string | null
 }
 
 type Props = {
@@ -135,6 +136,14 @@ export default function EmployeeForm({ action, locations, defaults }: Props) {
         <Field label="Austrittsdatum (optional)" name="endDate" type="date"
           defaultValue={toDateInput(defaults?.endDate)} />
       </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="Geburtstag" name="birthday" type="date"
+          defaultValue={toDateInput(defaults?.birthday)} />
+        <Field label="Handynummer" name="phone" defaultValue={defaults?.phone ?? ''} placeholder="z.B. 0176 12345678" />
+      </div>
+
+      <Field label="Adresse" name="address" defaultValue={defaults?.address ?? ''} placeholder="Straße, PLZ Ort" />
 
       <div className="flex gap-3 pt-2">
         <Link href="/admin/employees" className="flex-1 py-2 px-4 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 text-center transition active:scale-[0.97]">

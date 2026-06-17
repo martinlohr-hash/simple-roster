@@ -35,6 +35,10 @@ export default async function EmployeesPage() {
           maxHoursWeek: u.maxHoursWeek,
           maxHoursMonth: u.maxHoursMonth,
           primaryLocation: u.primaryLocation ? { name: u.primaryLocation.name } : null,
+          phone: u.phone,
+          address: u.address,
+          birthday: u.birthday ? u.birthday.toISOString() : null,
+          startDate: u.startDate ? u.startDate.toISOString() : null,
         }))}
         locations={locations.map((l) => ({ id: l.id, name: l.name, color: l.color }))}
       />

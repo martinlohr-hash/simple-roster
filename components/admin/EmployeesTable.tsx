@@ -14,6 +14,8 @@ type User = {
   hourlyRate: number; monthlyRate: number | null; overheadPercent: number
   maxHoursWeek: number | null; maxHoursMonth: number | null
   primaryLocation: { name: string } | null
+  phone: string | null; address: string | null; birthday: string | null
+  startDate: string | null
 }
 
 type Props = {
@@ -33,12 +35,10 @@ export default function EmployeesTable({ users, locations }: Props) {
             <tr>
               <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Name</th>
               <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">E-Mail</th>
-              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Status</th>
-              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Rolle</th>
-              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Standort</th>
-              <th scope="col" className="text-right text-xs font-medium text-gray-500 px-4 py-3">Vergütung</th>
-              <th scope="col" className="text-right text-xs font-medium text-gray-500 px-4 py-3">NK</th>
-              <th scope="col" className="text-right text-xs font-medium text-gray-500 px-4 py-3">Max Wo / Mo</th>
+              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Handy</th>
+              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Adresse</th>
+              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Geburtstag</th>
+              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Eintritt</th>
               <th scope="col" className="px-4 py-3" />
             </tr>
           </thead>
@@ -54,27 +54,13 @@ export default function EmployeesTable({ users, locations }: Props) {
                   </button>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600">{user.email}</td>
-                <td className="px-4 py-3">
-                  {user.status === 'PENDING' ? (
-                    <span className="inline-block px-2 py-0.5 text-xs rounded-full font-medium bg-amber-100 text-amber-700">Ausstehend</span>
-                  ) : (
-                    <span className="inline-block px-2 py-0.5 text-xs rounded-full font-medium bg-green-100 text-green-700">Aktiv</span>
-                  )}
+                <td className="px-4 py-3 text-sm text-gray-600">{user.phone || '–'}</td>
+                <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate" title={user.address ?? undefined}>{user.address || '–'}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">
+                  {user.birthday ? new Date(user.birthday).toLocaleDateString('de-DE') : '–'}
                 </td>
-                <td className="px-4 py-3">
-                  <span className={`inline-block px-2 py-0.5 text-xs rounded-full font-medium ${user.role === 'ADMIN' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}>
-                    {user.role === 'ADMIN' ? 'Admin' : 'Mitarbeiter'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600">{user.primaryLocation?.name || '–'}</td>
-                <td className="px-4 py-3 text-sm text-gray-900 text-right">
-                  {user.monthlyRate != null && user.monthlyRate > 0
-                    ? `${user.monthlyRate.toFixed(0)} €/Mo`
-                    : `${user.hourlyRate.toFixed(2)} €/Std`}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600 text-right">{user.overheadPercent}%</td>
-                <td className="px-4 py-3 text-sm text-gray-600 text-right">
-                  {user.maxHoursWeek ? `${user.maxHoursWeek}h` : '–'} / {user.maxHoursMonth ? `${user.maxHoursMonth}h` : '–'}
+                <td className="px-4 py-3 text-sm text-gray-600">
+                  {user.startDate ? new Date(user.startDate).toLocaleDateString('de-DE') : '–'}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3 justify-end">

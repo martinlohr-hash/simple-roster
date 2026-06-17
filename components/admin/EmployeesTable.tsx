@@ -86,7 +86,7 @@ export default function EmployeesTable({ users, locations, viewerRole }: Props) 
                   <div className="flex items-center gap-2 justify-end">
                     {user.status === 'PENDING' && <ResendInviteButton id={user.id} />}
                     {(viewerRole === 'SUPER_ADMIN' || user.role !== 'SUPER_ADMIN') && (
-                      <DeleteEmployeeButton id={user.id} name={user.name} />
+                      <DeleteEmployeeButton id={user.id} name={user.name} isSuperAdmin={viewerRole === 'SUPER_ADMIN'} />
                     )}
                   </div>
                 </td>

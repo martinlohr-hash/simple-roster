@@ -129,12 +129,16 @@ export async function updateEmployee(id: string, formData: FormData) {
 
 export async function deleteEmployee(id: string) {
   const session = await getSession()
-  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
-  if (!isSuperAdmin(session.role)) {
-    const target = await prisma.user.findUnique({ where: { id }, select: { role: true } })
-    if (target && isSuperAdmin(target.role)) throw new Error('Unauthorized')
-  }
+  if (!session || !isSuperAdmin(session.role)) throw new Error('Unauthorized')
 
   await prisma.user.delete({ where: { id } })
+  revalidatePath('/admin/employees')
+}
+
+export async function archiveEmployee(id: string) {
+  const session = await getSession()
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
+
+  await prisma.user.update({ where: { id }, data: { endDate: new Date() } })
   revalidatePath('/admin/employees')
 }

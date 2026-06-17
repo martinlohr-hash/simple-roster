@@ -53,9 +53,17 @@ export default function ShiftBlock({ shift, onDelete, onDuplicate, onEdit, previ
           {shift.startTime} –{' '}
           <span className={isResizing ? 'bg-black/10 rounded px-0.5' : ''}>{displayEndTime}</span>
         </div>
-        <div className={`text-[10px] truncate mt-0.5 ${isUnassigned ? 'text-amber-600' : 'text-white/70'}`}>
-          {isUnassigned ? '+ Mitarbeiter wählen' : shift.location.name}
-        </div>
+        {isUnassigned ? (
+          <>
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: shift.location.color }} />
+              <span className="text-[10px] text-amber-800 truncate font-medium">{shift.location.name}</span>
+            </div>
+            <div className="text-[10px] text-amber-500 mt-0.5">+ Mitarbeiter wählen</div>
+          </>
+        ) : (
+          <div className="text-[10px] truncate mt-0.5 text-white/70">{shift.location.name}</div>
+        )}
       </div>
 
       {isDone && (

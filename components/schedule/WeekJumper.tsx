@@ -35,7 +35,7 @@ export default function WeekJumper({ weekStart }: { weekStart: string }) {
   }
 
   return (
-    <div ref={ref} className="relative inline-block mt-1" onBlur={handleBlur}>
+    <div ref={ref} className="relative inline-block" onBlur={handleBlur}>
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 transition-colors select-none"

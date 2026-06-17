@@ -12,9 +12,9 @@ import {
   IconUser,
   IconBug,
   IconLogout,
-  IconCalendar,
   IconUmbrella,
 } from '@tabler/icons-react'
+import Image from 'next/image'
 
 function getInitials(name: string): string {
   return name.split(' ').filter(Boolean).map((w) => w[0].toUpperCase()).slice(0, 2).join('')
@@ -51,9 +51,7 @@ export default function AdminSidebar({ userName, userRole, openBugCount, pending
         title={collapsed ? 'Menü aufklappen' : 'Menü einklappen'}
         className="px-3 h-14 flex items-center gap-2.5 border-b border-gray-100 hover:bg-gray-50 transition w-full text-left"
       >
-        <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
-          <IconCalendar size={16} className="text-white" stroke={2} />
-        </div>
+        <Image src="/logo-s.png" alt="SimpleRoster" width={28} height={28} className="rounded-full shrink-0" />
         {!collapsed && (
           <span className="font-semibold text-gray-900 text-sm tracking-tight truncate">SimpleRoster</span>
         )}

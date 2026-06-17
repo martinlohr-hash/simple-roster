@@ -40,7 +40,10 @@ export default async function CostsPage({ searchParams }: Props) {
       },
       include: { user: true, location: true },
     }),
-    prisma.user.findMany({ orderBy: { name: 'asc' } }),
+    prisma.user.findMany({
+      where: { OR: [{ endDate: null }, { endDate: { gte: new Date() } }] },
+      orderBy: { name: 'asc' },
+    }),
     prisma.location.findMany({ orderBy: { sortOrder: 'asc' } }),
     showBudget
       ? prisma.budget.findUnique({

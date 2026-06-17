@@ -81,6 +81,7 @@ type Props = {
   isWeekReleased: boolean
   applications: ApplicationData[]
   vacations: VacationData[]
+  holidays: Record<string, string>
 }
 
 const DAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
@@ -94,7 +95,7 @@ function getInitials(name: string): string {
     .join('')
 }
 
-export default function WeekGrid({ shifts, users, locations, weekStart, weekStartStr, dayNotes, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations }: Props) {
+export default function WeekGrid({ shifts, users, locations, weekStart, weekStartStr, dayNotes, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays }: Props) {
   const router = useRouter()
   const [activeShift, setActiveShift] = useState<ShiftData | null>(null)
   const [resizingShift, setResizingShift] = useState<{ id: string; previewEndTime: string } | null>(null)
@@ -353,22 +354,29 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
                 <th scope="col" className="w-44 bg-gray-50/80 px-4 py-3 text-left">
                   <span className="text-xs font-semibold text-gray-400">KW {getISOWeek(weekStart)}</span>
                 </th>
-                {days.map((day, i) => (
-                  <th
-                    scope="col"
-                    key={i}
-                    className="text-center px-2 py-3 bg-gray-50/80 min-w-[120px]"
-                  >
-                    <div className={`text-xs font-medium ${isToday(day) ? 'text-indigo-500' : 'text-gray-400'}`}>
-                      {DAY_NAMES[i]}
-                    </div>
-                    <div
-                      className={`text-sm font-semibold mt-0.5 ${isToday(day) ? 'text-indigo-600' : 'text-gray-800'}`}
+                {days.map((day, i) => {
+                  const dateStr = format(day, 'yyyy-MM-dd')
+                  const holiday = holidays[dateStr]
+                  return (
+                    <th
+                      scope="col"
+                      key={i}
+                      className="text-center px-2 py-3 bg-gray-50/80 min-w-[120px]"
                     >
-                      {format(day, 'd. MMM', { locale: de })}
-                    </div>
-                  </th>
-                ))}
+                      <div className={`text-xs font-medium ${isToday(day) ? 'text-indigo-500' : 'text-gray-400'}`}>
+                        {DAY_NAMES[i]}
+                      </div>
+                      <div className={`text-sm font-semibold mt-0.5 ${isToday(day) ? 'text-indigo-600' : 'text-gray-800'}`}>
+                        {format(day, 'd. MMM', { locale: de })}
+                      </div>
+                      {holiday && (
+                        <div className="text-[10px] font-medium text-amber-600 mt-0.5 leading-tight">
+                          {holiday}
+                        </div>
+                      )}
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>

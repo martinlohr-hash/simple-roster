@@ -2,6 +2,7 @@ import { startOfWeek, addDays, format, getISOWeek, getYear } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { redirect } from 'next/navigation'
 import { getBudgetStatus } from '@/lib/calculations'
+import { getHamburgHolidays } from '@/lib/vacation'
 import { timeToMinutes } from '@/lib/timeUtils'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
@@ -116,6 +117,12 @@ export default async function SchedulePage({ searchParams }: Props) {
   const usersJson = users.map((u) => ({ id: u.id, name: u.name, maxHoursWeek: u.maxHoursWeek, maxHoursMonth: u.maxHoursMonth }))
   const locationsJson = locations.map((l) => ({ id: l.id, name: l.name, color: l.color }))
   const dayNotesMap = Object.fromEntries(dayNotes.map((n) => [n.date, n.content]))
+
+  const holidaysMap: Record<string, string> = {}
+  const years = [...new Set(weekDates.map((d) => new Date(d).getFullYear()))]
+  for (const y of years) {
+    for (const [key, name] of getHamburgHolidays(y)) holidaysMap[key] = name
+  }
   const coverageRulesJson = coverageRules.map((r) => ({
     id: r.id,
     dayOfWeek: r.dayOfWeek,
@@ -166,6 +173,7 @@ export default async function SchedulePage({ searchParams }: Props) {
           status: a.status as 'PENDING' | 'ASSIGNED' | 'REJECTED',
           user: a.user,
         }))}
+        holidays={holidaysMap}
         vacations={vacations.map((v) => ({
           id: v.id,
           userId: v.userId,

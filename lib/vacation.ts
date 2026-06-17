@@ -35,28 +35,28 @@ function toKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-// Gesetzliche Feiertage Hamburg
-function hamburgHolidays(year: number): Set<string> {
+// Gesetzliche Feiertage Hamburg: date-key → Name
+export function getHamburgHolidays(year: number): Map<string, string> {
   const easter = easterSunday(year)
-  return new Set([
-    toKey(new Date(year, 0, 1)),   // Neujahr
-    toKey(shift(easter, -2)),       // Karfreitag
-    toKey(shift(easter, 1)),        // Ostermontag
-    toKey(new Date(year, 4, 1)),   // Tag der Arbeit
-    toKey(shift(easter, 39)),       // Christi Himmelfahrt
-    toKey(shift(easter, 50)),       // Pfingstmontag
-    toKey(new Date(year, 9, 3)),   // Tag der Deutschen Einheit
-    toKey(new Date(year, 9, 31)),  // Reformationstag
-    toKey(new Date(year, 11, 25)), // 1. Weihnachtstag
-    toKey(new Date(year, 11, 26)), // 2. Weihnachtstag
+  return new Map([
+    [toKey(new Date(year, 0, 1)),    'Neujahr'],
+    [toKey(shift(easter, -2)),        'Karfreitag'],
+    [toKey(shift(easter, 1)),         'Ostermontag'],
+    [toKey(new Date(year, 4, 1)),    'Tag der Arbeit'],
+    [toKey(shift(easter, 39)),        'Christi Himmelfahrt'],
+    [toKey(shift(easter, 50)),        'Pfingstmontag'],
+    [toKey(new Date(year, 9, 3)),    'Tag der Deutschen Einheit'],
+    [toKey(new Date(year, 9, 31)),   'Reformationstag'],
+    [toKey(new Date(year, 11, 25)), '1. Weihnachtstag'],
+    [toKey(new Date(year, 11, 26)), '2. Weihnachtstag'],
   ])
 }
 
-const holidayCache = new Map<number, Set<string>>()
+const holidayCache = new Map<number, Map<string, string>>()
 
 function isHoliday(date: Date): boolean {
   const year = date.getFullYear()
-  if (!holidayCache.has(year)) holidayCache.set(year, hamburgHolidays(year))
+  if (!holidayCache.has(year)) holidayCache.set(year, getHamburgHolidays(year))
   return holidayCache.get(year)!.has(toKey(date))
 }
 

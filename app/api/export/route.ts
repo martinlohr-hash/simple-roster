@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { decrypt } from '@/lib/session'
+import { decrypt, isAdmin } from '@/lib/session'
 import { prisma } from '@/lib/db'
 import { calcHours, calcLaborCost } from '@/lib/calculations'
 import { format, parseISO, endOfDay, startOfDay } from 'date-fns'
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const cookieStore = await cookies()
   const token = cookieStore.get('session')?.value
   const session = token ? await decrypt(token) : null
-  if (!session || session.role !== 'ADMIN') {
+  if (!session || !isAdmin(session.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

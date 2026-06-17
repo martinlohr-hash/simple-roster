@@ -4,10 +4,11 @@ import { revalidatePath } from 'next/cache'
 import { addDays, format, startOfWeek } from 'date-fns'
 import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
+import { isAdmin } from '@/lib/session'
 
 export async function saveWeekAsTemplate(weekStart: string, name: string) {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
   const start = new Date(weekStart)
   const end = addDays(start, 7)
@@ -38,7 +39,7 @@ export async function saveWeekAsTemplate(weekStart: string, name: string) {
 
 export async function applyTemplate(templateId: string, weekStart: string) {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
   const template = await prisma.shiftTemplate.findUnique({
     where: { id: templateId },
@@ -64,7 +65,7 @@ export async function applyTemplate(templateId: string, weekStart: string) {
 
 export async function updateTemplateFromWeek(templateId: string, weekStart: string) {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
   const start = new Date(weekStart)
   const end = addDays(start, 7)
@@ -95,7 +96,7 @@ export async function updateTemplateFromWeek(templateId: string, weekStart: stri
 
 export async function deleteTemplate(id: string) {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
   await prisma.shiftTemplate.delete({ where: { id } })
   revalidatePath('/admin/templates')
@@ -104,7 +105,7 @@ export async function deleteTemplate(id: string) {
 
 export async function setDefaultTemplate(id: string) {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
   await prisma.$transaction([
     prisma.shiftTemplate.updateMany({ data: { isDefault: false } }),
@@ -117,7 +118,7 @@ export async function setDefaultTemplate(id: string) {
 
 export async function clearDefaultTemplate() {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
   await prisma.shiftTemplate.updateMany({ data: { isDefault: false } })
 
@@ -127,7 +128,7 @@ export async function clearDefaultTemplate() {
 
 export async function getTemplates() {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
   return prisma.shiftTemplate.findMany({
     orderBy: { createdAt: 'desc' },

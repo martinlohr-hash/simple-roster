@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { decrypt } from '@/lib/session'
+import { decrypt, isAdmin } from '@/lib/session'
 import { prisma } from '@/lib/db'
 
 async function getSession() {
@@ -11,7 +11,7 @@ async function getSession() {
 
 export async function GET() {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') {
+  if (!session || !isAdmin(session.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

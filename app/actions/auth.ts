@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
-import { encrypt, decrypt } from '@/lib/session'
+import { encrypt, decrypt, isAdmin } from '@/lib/session'
 
 export async function login(formData: FormData) {
   const email = formData.get('email') as string
@@ -34,7 +34,7 @@ export async function login(formData: FormData) {
     path: '/',
   })
 
-  redirect(user.role === 'ADMIN' ? '/admin/schedule' : '/employee/dashboard')
+  redirect(isAdmin(user.role) ? '/admin/schedule' : '/employee/dashboard')
 }
 
 export async function logout() {
@@ -52,5 +52,5 @@ export async function getSession() {
 
 export async function requireAdmin(): Promise<void> {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 }

@@ -2,8 +2,16 @@ import { SignJWT, jwtVerify } from 'jose'
 
 export type SessionPayload = {
   userId: string
-  role: 'ADMIN' | 'EMPLOYEE'
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'EMPLOYEE'
   name: string
+}
+
+export function isAdmin(role: string) {
+  return role === 'SUPER_ADMIN' || role === 'ADMIN'
+}
+
+export function isSuperAdmin(role: string) {
+  return role === 'SUPER_ADMIN'
 }
 
 const secretKey = process.env.SESSION_SECRET || 'fallback-dev-secret-32-characters!!'

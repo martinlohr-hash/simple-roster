@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
 import { redirect } from 'next/navigation'
+import { isAdmin } from '@/lib/session'
 import { startOfWeek, endOfWeek, eachDayOfInterval, format, parseISO } from 'date-fns'
 import WeekPlanView from '@/components/employee/WeekPlanView'
 
@@ -10,7 +11,7 @@ type Props = {
 
 export default async function AdminMySchedulePage({ searchParams }: Props) {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') redirect('/login')
+  if (!session || !isAdmin(session.role)) redirect('/login')
 
   const params = await searchParams
   const weekStart = params.week

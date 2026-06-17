@@ -21,13 +21,14 @@ function getInitials(name: string): string {
 
 type Props = {
   userName: string
-  userRole: 'ADMIN' | 'EMPLOYEE'
+  userRole: string
+  openBugCount?: number
 }
 
-export default function AdminSidebar({ userName, userRole }: Props) {
+export default function AdminSidebar({ userName, userRole, openBugCount }: Props) {
   const [collapsed, setCollapsed] = useState(false)
   const initials = getInitials(userName)
-  const roleLabel = userRole === 'ADMIN' ? 'Administrator' : 'Mitarbeiter'
+  const roleLabel = userRole === 'SUPER_ADMIN' ? 'Super-Admin' : userRole === 'ADMIN' ? 'Administrator' : 'Mitarbeiter'
 
   useEffect(() => {
     const stored = localStorage.getItem('sidebar-collapsed')
@@ -63,7 +64,7 @@ export default function AdminSidebar({ userName, userRole }: Props) {
         <NavLink href="/admin/costs" icon={<IconChartBar size={16} stroke={1.75} />} collapsed={collapsed}>Lohnkosten</NavLink>
         <NavLink href="/admin/export" icon={<IconDownload size={16} stroke={1.75} />} collapsed={collapsed}>Export</NavLink>
         <NavLink href="/admin/settings" icon={<IconSettings size={16} stroke={1.75} />} collapsed={collapsed}>Einstellungen</NavLink>
-        <NavLink href="/admin/bugs" icon={<IconBug size={16} stroke={1.75} />} collapsed={collapsed}>Fehlerberichte</NavLink>
+        <NavLink href="/admin/bugs" icon={<IconBug size={16} stroke={1.75} />} collapsed={collapsed} badge={openBugCount}>Fehlerberichte</NavLink>
       </nav>
 
       <div className="border-t border-gray-100 p-2 space-y-0.5">

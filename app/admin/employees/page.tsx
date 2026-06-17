@@ -1,8 +1,12 @@
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
+import { getSession } from '@/app/actions/auth'
 import EmployeesTable from '@/components/admin/EmployeesTable'
 
 export default async function EmployeesPage() {
+  const session = await getSession()
+  const viewerRole = session?.role ?? 'ADMIN'
+
   const [users, locations] = await Promise.all([
     prisma.user.findMany({
       orderBy: { name: 'asc' },
@@ -23,6 +27,7 @@ export default async function EmployeesPage() {
         </Link>
       </div>
       <EmployeesTable
+        viewerRole={viewerRole}
         users={users.map((u) => ({
           id: u.id,
           name: u.name,
@@ -35,6 +40,7 @@ export default async function EmployeesPage() {
           maxHoursWeek: u.maxHoursWeek,
           maxHoursMonth: u.maxHoursMonth,
           primaryLocation: u.primaryLocation ? { name: u.primaryLocation.name } : null,
+          role: u.role,
           phone: u.phone,
           address: u.address,
           birthday: u.birthday ? u.birthday.toISOString() : null,

@@ -6,12 +6,13 @@ import bcrypt from 'bcryptjs'
 import { randomBytes } from 'crypto'
 import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
+import { isAdmin, isSuperAdmin } from '@/lib/session'
 
 export async function createEmployee(
   formData: FormData,
 ): Promise<{ inviteToken?: string; error?: string }> {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
   const name = formData.get('name') as string
   const email = formData.get('email') as string
@@ -69,7 +70,7 @@ export async function createEmployee(
 
 export async function resendInvite(userId: string): Promise<{ inviteToken: string }> {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
   const inviteToken = randomBytes(32).toString('hex')
   const inviteTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
@@ -85,7 +86,11 @@ export async function resendInvite(userId: string): Promise<{ inviteToken: strin
 
 export async function updateEmployee(id: string, formData: FormData) {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
+  if (!isSuperAdmin(session.role)) {
+    const target = await prisma.user.findUnique({ where: { id }, select: { role: true } })
+    if (target && isSuperAdmin(target.role)) throw new Error('Unauthorized')
+  }
 
   const salaryType = formData.get('salaryType') as string
   const data: Record<string, unknown> = {
@@ -121,7 +126,11 @@ export async function updateEmployee(id: string, formData: FormData) {
 
 export async function deleteEmployee(id: string) {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
+  if (!isSuperAdmin(session.role)) {
+    const target = await prisma.user.findUnique({ where: { id }, select: { role: true } })
+    if (target && isSuperAdmin(target.role)) throw new Error('Unauthorized')
+  }
 
   await prisma.user.delete({ where: { id } })
   revalidatePath('/admin/employees')

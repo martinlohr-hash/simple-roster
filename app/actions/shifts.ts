@@ -12,7 +12,7 @@ export async function createShift(data: {
   endTime: string
 }) {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
   if (data.userId) {
     await checkOverlap({ userId: data.userId, date: data.date, startTime: data.startTime, endTime: data.endTime })
@@ -32,7 +32,7 @@ export async function createShift(data: {
 
 export async function updateShift(id: string, data: { userId?: string | null; date?: string; startTime?: string; endTime?: string; locationId?: string }) {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
   const existing = await prisma.shift.findUniqueOrThrow({ where: { id } })
   const effectiveUserId = data.userId !== undefined ? data.userId : existing.userId
@@ -67,7 +67,7 @@ export async function updateShift(id: string, data: { userId?: string | null; da
 
 export async function duplicateShift(id: string) {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
   const original = await prisma.shift.findUnique({ where: { id } })
   if (!original) throw new Error('Schicht nicht gefunden')
@@ -87,7 +87,7 @@ export async function duplicateShift(id: string) {
 
 export async function deleteShift(id: string) {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
   const shift = await prisma.shift.findUnique({ where: { id } })
   await prisma.shift.deleteMany({ where: { id } })

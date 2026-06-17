@@ -21,9 +21,10 @@ type User = {
 type Props = {
   users: User[]
   locations: Location[]
+  viewerRole: string
 }
 
-export default function EmployeesTable({ users, locations }: Props) {
+export default function EmployeesTable({ users, locations, viewerRole }: Props) {
   const router = useRouter()
   const [editId, setEditId] = useState<string | null>(null)
 
@@ -70,13 +71,17 @@ export default function EmployeesTable({ users, locations }: Props) {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3 justify-end">
                     {user.status === 'PENDING' && <ResendInviteButton id={user.id} />}
-                    <button
-                      onClick={() => setEditId(user.id)}
-                      className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-                    >
-                      Bearbeiten
-                    </button>
-                    <DeleteEmployeeButton id={user.id} name={user.name} />
+                    {(viewerRole === 'SUPER_ADMIN' || user.role !== 'SUPER_ADMIN') && (
+                      <>
+                        <button
+                          onClick={() => setEditId(user.id)}
+                          className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                        >
+                          Bearbeiten
+                        </button>
+                        <DeleteEmployeeButton id={user.id} name={user.name} />
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/app/actions/auth'
+import { isAdmin } from '@/lib/session'
 import { prisma } from '@/lib/db'
 
 function utcMonday(date: Date): Date {
@@ -12,7 +13,7 @@ function utcMonday(date: Date): Date {
 
 export async function revokeWeekRelease(weekStart: string): Promise<void> {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Keine Berechtigung')
+  if (!session || !isAdmin(session.role)) throw new Error('Keine Berechtigung')
 
   const monday = utcMonday(new Date(weekStart + 'T00:00:00.000Z'))
 
@@ -24,7 +25,7 @@ export async function revokeWeekRelease(weekStart: string): Promise<void> {
 
 export async function releaseWeek(weekStart: string): Promise<void> {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Keine Berechtigung')
+  if (!session || !isAdmin(session.role)) throw new Error('Keine Berechtigung')
 
   // Parse as UTC midnight to avoid local-timezone drift
   const monday = utcMonday(new Date(weekStart + 'T00:00:00.000Z'))
@@ -41,7 +42,7 @@ export async function releaseWeek(weekStart: string): Promise<void> {
 
 export async function assignShiftToApplicant(shiftId: string, applicantUserId: string): Promise<void> {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') throw new Error('Keine Berechtigung')
+  if (!session || !isAdmin(session.role)) throw new Error('Keine Berechtigung')
 
   await prisma.shift.update({ where: { id: shiftId }, data: { userId: applicantUserId } })
   await prisma.shiftApplication.updateMany({

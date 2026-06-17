@@ -1,11 +1,15 @@
 import { logout, getSession } from '@/app/actions/auth'
+import { isAdmin } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import BugReportButton from '@/components/ui/BugReportButton'
+import { prisma } from '@/lib/db'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession()
-  if (!session || session.role !== 'ADMIN') redirect('/login')
+  if (!session || !isAdmin(session.role)) redirect('/login')
+
+  const openBugCount = await prisma.bugReport.count({ where: { status: 'OPEN' } })
 
   return (
     <div className="flex min-h-screen bg-white">
@@ -15,7 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       >
         Zum Inhalt springen
       </a>
-      <AdminSidebar userName={session.name} userRole={session.role} />
+      <AdminSidebar userName={session.name} userRole={session.role} openBugCount={openBugCount} />
       <main id="main-content" className="flex-1 overflow-auto bg-white">{children}</main>
       <BugReportButton />
     </div>

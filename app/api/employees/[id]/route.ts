@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { decrypt } from '@/lib/session'
+import { decrypt, isAdmin, isSuperAdmin } from '@/lib/session'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 
@@ -31,6 +31,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
+  if (!isSuperAdmin(session.role)) {
+    const target = await prisma.user.findUnique({ where: { id }, select: { role: true } })
+    if (target && isSuperAdmin(target.role)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  }
+
   const body = await req.json()
 
   const data: Record<string, unknown> = {

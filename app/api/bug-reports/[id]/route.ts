@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { decrypt } from '@/lib/session'
+import { decrypt, isAdmin } from '@/lib/session'
 import { prisma } from '@/lib/db'
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const cookieStore = await cookies()
   const token = cookieStore.get('session')?.value
   const session = token ? await decrypt(token) : null
-  if (!session || session.role !== 'ADMIN') {
+  if (!session || !isAdmin(session.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

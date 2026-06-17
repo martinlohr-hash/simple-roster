@@ -21,6 +21,13 @@ export async function GET(request: NextRequest) {
   const locationId = sp.get('locationId') || undefined
   const userIds = sp.getAll('userId').filter((id) => id !== 'all')
 
+  const locationName = locationId
+    ? (await prisma.location.findUnique({ where: { id: locationId }, select: { name: true } }))?.name ?? 'Unbekannt'
+    : 'Alle Standorte'
+
+  const dateRange = `${format(from, 'dd.MM.yyyy')} – ${format(to, 'dd.MM.yyyy')}`
+  const title = `Simple Sandwich Hamburg GmbH - Stundenexport (${dateRange}) - ${locationName}`
+
   const entries = await prisma.timeEntry.findMany({
     where: {
       checkinAt: { gte: from, lte: to },
@@ -51,7 +58,8 @@ export async function GET(request: NextRequest) {
   })
 
   if (fmt === 'excel') {
-    const ws = XLSX.utils.json_to_sheet(rows)
+    const ws = XLSX.utils.aoa_to_sheet([[title]])
+    XLSX.utils.sheet_add_json(ws, rows, { origin: 'A2' })
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Stunden')
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
@@ -63,8 +71,10 @@ export async function GET(request: NextRequest) {
     })
   }
 
-  const headers = Object.keys(rows[0] || {})
+  const headers = Object.keys(rows[0] || { Name: '' })
+  const emptyCols = ';'.repeat(headers.length - 1)
   const csv = [
+    title + emptyCols,
     headers.join(';'),
     ...rows.map((r) => headers.map((h) => String((r as Record<string, unknown>)[h] ?? '')).join(';')),
   ].join('\n')

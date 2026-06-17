@@ -46,12 +46,17 @@ export default function EmployeesTable({ users, locations }: Props) {
             {users.map((user) => (
               <tr key={user.id} className="hover:bg-gray-50/50">
                 <td className="px-4 py-3">
-                  <button
-                    onClick={() => setEditId(user.id)}
-                    className="text-sm font-medium text-gray-900 hover:text-indigo-600 transition-colors text-left"
-                  >
-                    {user.name}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setEditId(user.id)}
+                      className="text-sm font-medium text-gray-900 hover:text-indigo-600 transition-colors text-left"
+                    >
+                      {user.name}
+                    </button>
+                    {user.status === 'PENDING' && (
+                      <span className="inline-block px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">Einladung offen</span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600">{user.email}</td>
                 <td className="px-4 py-3 text-sm text-gray-600">{user.phone || '–'}</td>

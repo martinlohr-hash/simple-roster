@@ -43,7 +43,7 @@ export default function ResendInviteButton({ id }: { id: string }) {
       disabled={isPending}
       className="text-xs text-amber-600 hover:text-amber-700 font-medium disabled:opacity-50"
     >
-      {isPending ? '...' : 'Link senden'}
+      {isPending ? '...' : 'Einladungslink'}
     </button>
   )
 }

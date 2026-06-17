@@ -99,6 +99,7 @@ export default function EmployeesTable({ users, locations, viewerRole }: Props) 
           locations={locations}
           onClose={() => setEditId(null)}
           onSaved={() => { setEditId(null); router.refresh() }}
+          isSuperAdmin={viewerRole === 'SUPER_ADMIN'}
         />
       )}
     </>

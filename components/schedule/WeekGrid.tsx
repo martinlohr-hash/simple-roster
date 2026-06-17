@@ -82,6 +82,7 @@ type Props = {
   applications: ApplicationData[]
   vacations: VacationData[]
   holidays: Record<string, string>
+  isSuperAdmin?: boolean
 }
 
 const DAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
@@ -95,7 +96,7 @@ function getInitials(name: string): string {
     .join('')
 }
 
-export default function WeekGrid({ shifts, users, locations, weekStart, weekStartStr, dayNotes, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays }: Props) {
+export default function WeekGrid({ shifts, users, locations, weekStart, weekStartStr, dayNotes, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays, isSuperAdmin }: Props) {
   const router = useRouter()
   const [activeShift, setActiveShift] = useState<ShiftData | null>(null)
   const [resizingShift, setResizingShift] = useState<{ id: string; previewEndTime: string } | null>(null)
@@ -580,6 +581,7 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
           locations={locations}
           onClose={() => setEditEmployeeId(null)}
           onSaved={() => { setEditEmployeeId(null); router.refresh() }}
+          isSuperAdmin={isSuperAdmin}
         />
       )}
     </>

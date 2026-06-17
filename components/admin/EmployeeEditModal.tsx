@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
 
 type Location = { id: string; name: string }
@@ -19,6 +19,7 @@ type Props = {
   locations: Location[]
   onClose: () => void
   onSaved: () => void
+  isSuperAdmin?: boolean
 }
 
 function toDateInput(val: string | null): string {
@@ -29,13 +30,19 @@ function toDateInput(val: string | null): string {
 const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
 const selectClass = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white'
 
-export default function EmployeeEditModal({ userId, locations, onClose, onSaved }: Props) {
+function generatePassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+  return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+}
+
+export default function EmployeeEditModal({ userId, locations, onClose, onSaved, isSuperAdmin }: Props) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [salaryType, setSalaryType] = useState<'hourly' | 'monthly'>('hourly')
+  const passwordRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetch(`/api/employees/${userId}`)
@@ -101,9 +108,28 @@ export default function EmployeeEditModal({ userId, locations, onClose, onSaved 
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Neues Passwort (leer = unverändert)</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-gray-700">Neues Passwort (leer = unverändert)</label>
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const pw = generatePassword()
+                      if (passwordRef.current) {
+                        passwordRef.current.value = pw
+                        passwordRef.current.type = 'text'
+                        setShowPassword(true)
+                      }
+                    }}
+                    className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800 transition"
+                  >
+                    Generieren
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <input
+                  ref={passwordRef}
                   type={showPassword ? 'text' : 'password'}
                   name="password"
                   placeholder="••••••••"

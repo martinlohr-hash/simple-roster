@@ -3,6 +3,8 @@ import { de } from 'date-fns/locale'
 import { redirect } from 'next/navigation'
 import { getBudgetStatus } from '@/lib/calculations'
 import { getHamburgHolidays } from '@/lib/vacation'
+import { getSession } from '@/app/actions/auth'
+import { isSuperAdmin } from '@/lib/session'
 import { timeToMinutes } from '@/lib/timeUtils'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
@@ -14,7 +16,8 @@ type Props = {
 }
 
 export default async function SchedulePage({ searchParams }: Props) {
-  const { week } = await searchParams
+  const [{ week }, session] = await Promise.all([searchParams, getSession()])
+  const viewerIsSuperAdmin = isSuperAdmin(session?.role ?? '')
 
   const weekStart = week
     ? new Date(week)
@@ -174,6 +177,7 @@ export default async function SchedulePage({ searchParams }: Props) {
           user: a.user,
         }))}
         holidays={holidaysMap}
+        isSuperAdmin={viewerIsSuperAdmin}
         vacations={vacations.map((v) => ({
           id: v.id,
           userId: v.userId,

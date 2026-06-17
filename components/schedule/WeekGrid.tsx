@@ -61,6 +61,13 @@ export type ApplicationData = {
   user: { id: string; name: string }
 }
 
+export type VacationData = {
+  id: string
+  userId: string
+  startDate: string
+  endDate: string
+}
+
 type Props = {
   shifts: ShiftData[]
   users: UserData[]
@@ -73,6 +80,7 @@ type Props = {
   nextWeekHref: string
   isWeekReleased: boolean
   applications: ApplicationData[]
+  vacations: VacationData[]
 }
 
 const DAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
@@ -86,7 +94,7 @@ function getInitials(name: string): string {
     .join('')
 }
 
-export default function WeekGrid({ shifts, users, locations, weekStart, weekStartStr, dayNotes, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications }: Props) {
+export default function WeekGrid({ shifts, users, locations, weekStart, weekStartStr, dayNotes, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations }: Props) {
   const router = useRouter()
   const [activeShift, setActiveShift] = useState<ShiftData | null>(null)
   const [resizingShift, setResizingShift] = useState<{ id: string; previewEndTime: string } | null>(null)
@@ -107,6 +115,18 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
     : shifts
 
   const unassignedShifts = filteredShifts.filter((s) => !s.userId)
+
+  function isOnVacation(userId: string, date: Date): boolean {
+    const d = date.getTime()
+    return vacations.some((v) => {
+      if (v.userId !== userId) return false
+      const start = new Date(v.startDate)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(v.endDate)
+      end.setHours(23, 59, 59, 999)
+      return d >= start.getTime() && d <= end.getTime()
+    })
+  }
 
   function getShiftsForCell(userId: string, date: Date) {
     const dateStr = format(date, 'yyyy-MM-dd')
@@ -468,10 +488,16 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
                     {days.map((day, di) => {
                       const cellShifts = getShiftsForCell(user.id, day)
                       const dateStr = format(day, 'yyyy-MM-dd')
+                      const onVacation = isOnVacation(user.id, day)
                       return (
                         <td key={di} className="p-0 align-top">
                           <DropCell id={`${user.id}__${dateStr}`}>
                             <div className="flex flex-col gap-1 p-1.5 min-h-[56px]">
+                              {onVacation && (
+                                <div className="px-2.5 py-2 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-semibold text-center select-none">
+                                  🏖 URLAUB
+                                </div>
+                              )}
                               {cellShifts.map((shift) => (
                                 <ShiftBlock
                                   key={shift.id}
@@ -483,13 +509,15 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
                                   applicationCount={applications.filter((a) => a.shiftId === shift.id && a.status === 'PENDING').length}
                                 />
                               ))}
-                              <button
-                                onPointerDown={(e) => e.stopPropagation()}
-                                onClick={() => setModalCell({ userId: user.id, date: dateStr })}
-                                className="w-full rounded border border-dashed border-gray-200 text-gray-300 hover:border-indigo-300 hover:text-indigo-400 transition text-xs py-1 flex items-center justify-center opacity-0 group-hover:opacity-100"
-                              >
-                                + Schicht
-                              </button>
+                              {!onVacation && (
+                                <button
+                                  onPointerDown={(e) => e.stopPropagation()}
+                                  onClick={() => setModalCell({ userId: user.id, date: dateStr })}
+                                  className="w-full rounded border border-dashed border-gray-200 text-gray-300 hover:border-indigo-300 hover:text-indigo-400 transition text-xs py-1 flex items-center justify-center opacity-0 group-hover:opacity-100"
+                                >
+                                  + Schicht
+                                </button>
+                              )}
                             </div>
                           </DropCell>
                         </td>

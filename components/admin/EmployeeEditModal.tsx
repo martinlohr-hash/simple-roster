@@ -8,6 +8,7 @@ type User = {
   id: string; name: string; email: string; role: string
   hourlyRate: number; monthlyRate: number | null; overheadPercent: number
   maxHoursWeek: number | null; maxHoursMonth: number | null
+  vacationDaysPerYear: number
   primaryLocationId: string | null
   startDate: string | null; endDate: string | null
   phone: string | null; address: string | null; birthday: string | null
@@ -179,7 +180,7 @@ export default function EmployeeEditModal({ userId, locations, onClose, onSaved 
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Max. Std./Woche</label>
                 <input type="number" name="maxHoursWeek" step="0.5" defaultValue={user.maxHoursWeek ?? ''} placeholder="z.B. 40" className={inputClass} />
@@ -187,6 +188,10 @@ export default function EmployeeEditModal({ userId, locations, onClose, onSaved 
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Max. Std./Monat</label>
                 <input type="number" name="maxHoursMonth" step="0.5" defaultValue={user.maxHoursMonth ?? ''} placeholder="z.B. 168" className={inputClass} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Urlaubstage/Jahr</label>
+                <input type="number" name="vacationDaysPerYear" step="1" defaultValue={user.vacationDaysPerYear} placeholder="z.B. 24" className={inputClass} />
               </div>
             </div>
 

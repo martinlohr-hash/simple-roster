@@ -9,6 +9,7 @@ type Defaults = {
   name?: string; email?: string; role?: string
   hourlyRate?: number; monthlyRate?: number | null; overheadPercent?: number
   maxHoursWeek?: number | null; maxHoursMonth?: number | null
+  vacationDaysPerYear?: number
   primaryLocationId?: string | null
   startDate?: Date | string | null; endDate?: Date | string | null
   phone?: string | null; address?: string | null; birthday?: Date | string | null
@@ -121,13 +122,16 @@ export default function EmployeeForm({ action, locations, defaults }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <Field label="Max. Std./Woche" name="maxHoursWeek" type="number" step="0.5"
           defaultValue={defaults?.maxHoursWeek != null ? String(defaults.maxHoursWeek) : ''}
           placeholder="z.B. 40" />
         <Field label="Max. Std./Monat" name="maxHoursMonth" type="number" step="0.5"
           defaultValue={defaults?.maxHoursMonth != null ? String(defaults.maxHoursMonth) : ''}
           placeholder="z.B. 168" />
+        <Field label="Urlaubstage/Jahr" name="vacationDaysPerYear" type="number" step="1"
+          defaultValue={String(defaults?.vacationDaysPerYear ?? 0)}
+          placeholder="z.B. 24" />
       </div>
 
       <div className="grid grid-cols-2 gap-4">

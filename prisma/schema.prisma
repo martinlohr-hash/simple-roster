@@ -50,6 +50,7 @@ model User {
   phone             String?
   address           String?
   birthday          DateTime?
+  vacationDaysPerYear Int       @default(0)
   primaryLocationId String?
   primaryLocation   Location?   @relation("PrimaryLocation", fields: [primaryLocationId], references: [id])
   shifts               Shift[]
@@ -57,6 +58,8 @@ model User {
   shiftTemplateEntries ShiftTemplateEntry[]
   weekReleases         WeekRelease[]
   shiftApplications    ShiftApplication[]
+  vacationRequests     VacationRequest[]    @relation("VacationEmployee")
+  reviewedVacations    VacationRequest[]    @relation("VacationReviewer")
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 }
@@ -194,4 +197,25 @@ model BugReport {
   status      BugReportStatus @default(OPEN)
   reportedBy  String?
   createdAt   DateTime        @default(now())
+}
+
+enum VacationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model VacationRequest {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation("VacationEmployee", fields: [userId], references: [id], onDelete: Cascade)
+  startDate   DateTime
+  endDate     DateTime
+  workdays    Int
+  status      VacationStatus @default(PENDING)
+  note        String?
+  reviewedBy  String?
+  reviewer    User?          @relation("VacationReviewer", fields: [reviewedBy], references: [id])
+  reviewedAt  DateTime?
+  createdAt   DateTime       @default(now())
 }

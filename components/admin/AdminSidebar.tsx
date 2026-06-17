@@ -13,6 +13,7 @@ import {
   IconBug,
   IconLogout,
   IconCalendar,
+  IconUmbrella,
 } from '@tabler/icons-react'
 
 function getInitials(name: string): string {
@@ -62,6 +63,7 @@ export default function AdminSidebar({ userName, userRole, openBugCount }: Props
         <NavLink href="/admin/my-schedule" icon={<IconUser size={16} stroke={1.75} />} collapsed={collapsed}>Mein Plan</NavLink>
         <NavLink href="/admin/employees" icon={<IconUsers size={16} stroke={1.75} />} collapsed={collapsed}>Mitarbeiter</NavLink>
         <NavLink href="/admin/costs" icon={<IconChartBar size={16} stroke={1.75} />} collapsed={collapsed}>Lohnkosten</NavLink>
+        <NavLink href="/admin/vacations" icon={<IconUmbrella size={16} stroke={1.75} />} collapsed={collapsed}>Urlaub</NavLink>
         <NavLink href="/admin/export" icon={<IconDownload size={16} stroke={1.75} />} collapsed={collapsed}>Export</NavLink>
         <NavLink href="/admin/settings" icon={<IconSettings size={16} stroke={1.75} />} collapsed={collapsed}>Einstellungen</NavLink>
         <NavLink href="/admin/bugs" icon={<IconBug size={16} stroke={1.75} />} collapsed={collapsed} badge={openBugCount}>Fehlerberichte</NavLink>

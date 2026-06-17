@@ -8,7 +8,7 @@ async function getAdminSession() {
   const cookieStore = await cookies()
   const token = cookieStore.get('session')?.value
   const session = token ? await decrypt(token) : null
-  if (!session || session.role !== 'ADMIN') return null
+  if (!session || !isAdmin(session.role)) return null
   return session
 }
 
@@ -47,6 +47,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     overheadPercent: parseFloat(body.overheadPercent) || 0,
     maxHoursWeek: body.maxHoursWeek ? parseFloat(body.maxHoursWeek) : null,
     maxHoursMonth: body.maxHoursMonth ? parseFloat(body.maxHoursMonth) : null,
+    vacationDaysPerYear: parseInt(body.vacationDaysPerYear) || 0,
     startDate: body.startDate ? new Date(body.startDate) : null,
     endDate: body.endDate ? new Date(body.endDate) : null,
     birthday: body.birthday ? new Date(body.birthday) : null,

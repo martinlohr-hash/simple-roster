@@ -26,6 +26,7 @@ export async function createEmployee(
   const maxHoursMonth = formData.get('maxHoursMonth')
     ? parseFloat(formData.get('maxHoursMonth') as string)
     : null
+  const vacationDaysPerYear = parseInt(formData.get('vacationDaysPerYear') as string) || 0
   const locationId = (formData.get('locationId') as string) || null
   const role = (formData.get('role') as 'ADMIN' | 'EMPLOYEE') || 'EMPLOYEE'
   const startDate = formData.get('startDate') ? new Date(formData.get('startDate') as string) : null
@@ -51,6 +52,7 @@ export async function createEmployee(
         overheadPercent,
         maxHoursWeek,
         maxHoursMonth,
+        vacationDaysPerYear,
         startDate,
         endDate,
         birthday,
@@ -105,6 +107,7 @@ export async function updateEmployee(id: string, formData: FormData) {
     maxHoursMonth: formData.get('maxHoursMonth')
       ? parseFloat(formData.get('maxHoursMonth') as string)
       : null,
+    vacationDaysPerYear: parseInt(formData.get('vacationDaysPerYear') as string) || 0,
     startDate: formData.get('startDate') ? new Date(formData.get('startDate') as string) : null,
     endDate: formData.get('endDate') ? new Date(formData.get('endDate') as string) : null,
     birthday: formData.get('birthday') ? new Date(formData.get('birthday') as string) : null,

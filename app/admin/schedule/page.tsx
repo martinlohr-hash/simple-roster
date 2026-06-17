@@ -31,7 +31,7 @@ export default async function SchedulePage({ searchParams }: Props) {
   const weekYear = getYear(weekStart)
   const weekNumber = getISOWeek(weekStart)
 
-  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications] = await Promise.all([
+  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations] = await Promise.all([
     prisma.shift.findMany({
       where: { date: { gte: weekStart, lt: weekEnd } },
       include: { user: true, location: true, timeEntry: true },
@@ -52,6 +52,10 @@ export default async function SchedulePage({ searchParams }: Props) {
     prisma.shiftApplication.findMany({
       where: { shift: { date: { gte: weekStart, lt: weekEnd } } },
       select: { id: true, shiftId: true, userId: true, status: true, user: { select: { id: true, name: true } } },
+    }),
+    prisma.vacationRequest.findMany({
+      where: { status: 'APPROVED', startDate: { lte: weekEnd }, endDate: { gte: weekStart } },
+      select: { id: true, userId: true, startDate: true, endDate: true },
     }),
   ])
 
@@ -161,6 +165,12 @@ export default async function SchedulePage({ searchParams }: Props) {
           userId: a.userId,
           status: a.status as 'PENDING' | 'ASSIGNED' | 'REJECTED',
           user: a.user,
+        }))}
+        vacations={vacations.map((v) => ({
+          id: v.id,
+          userId: v.userId,
+          startDate: v.startDate.toISOString(),
+          endDate: v.endDate.toISOString(),
         }))}
       />
     </div>

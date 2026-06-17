@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
+import { isAdmin } from '@/lib/session'
 
 export async function createShift(data: {
   userId: string | null

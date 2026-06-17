@@ -40,7 +40,6 @@ export default async function EmployeesPage() {
           maxHoursWeek: u.maxHoursWeek,
           maxHoursMonth: u.maxHoursMonth,
           primaryLocation: u.primaryLocation ? { name: u.primaryLocation.name } : null,
-          role: u.role,
           phone: u.phone,
           address: u.address,
           birthday: u.birthday ? u.birthday.toISOString() : null,

@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
   const fmt = sp.get('format') || 'csv'
   const locationId = sp.get('locationId') || undefined
   const userIds = sp.getAll('userId').filter((id) => id !== 'all')
+  const tips = parseFloat(sp.get('tips') || '0') || 0
 
   const locationName = locationId
     ? (await prisma.location.findUnique({ where: { id: locationId }, select: { name: true } }))?.name ?? 'Unbekannt'
@@ -39,10 +40,17 @@ export async function GET(request: NextRequest) {
     orderBy: [{ user: { name: 'asc' } }, { checkinAt: 'asc' }],
   })
 
+  const totalHours = tips > 0
+    ? entries.reduce((sum, e) => sum + calcHours(e.checkinAt, e.checkoutAt!), 0)
+    : 0
+
   const rows = entries.map((e) => {
     const hours = calcHours(e.checkinAt, e.checkoutAt!)
     const cost = calcLaborCost(hours, e.user.hourlyRate, e.user.overheadPercent)
-    return {
+    const tipShare = tips > 0 && totalHours > 0
+      ? parseFloat(((hours / totalHours) * tips).toFixed(2))
+      : null
+    const row: Record<string, unknown> = {
       Name: e.user.name,
       Datum: format(e.checkinAt, 'dd.MM.yyyy'),
       'Geplant Von': e.shift?.startTime || '',
@@ -55,6 +63,8 @@ export async function GET(request: NextRequest) {
       'NK-Quote (%)': e.user.overheadPercent,
       'Lohnkosten (€)': parseFloat(cost.toFixed(2)),
     }
+    if (tips > 0) row['Trinkgeld (€)'] = tipShare
+    return row
   })
 
   if (fmt === 'excel') {

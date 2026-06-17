@@ -9,7 +9,6 @@ export default async function VacationsPage() {
       orderBy: { createdAt: 'desc' },
     }),
     prisma.user.findMany({
-      where: { role: { in: ['EMPLOYEE', 'ADMIN'] } },
       orderBy: { name: 'asc' },
       select: { id: true, name: true },
     }),

@@ -9,7 +9,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const session = await getSession()
   if (!session || !isAdmin(session.role)) redirect('/login')
 
-  const openBugCount = await prisma.bugReport.count({ where: { status: 'OPEN' } })
+  const [openBugCount, pendingVacationCount] = await Promise.all([
+    prisma.bugReport.count({ where: { status: 'OPEN' } }),
+    prisma.vacationRequest.count({ where: { status: 'PENDING' } }),
+  ])
 
   return (
     <div className="flex min-h-screen bg-white">
@@ -19,7 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       >
         Zum Inhalt springen
       </a>
-      <AdminSidebar userName={session.name} userRole={session.role} openBugCount={openBugCount} />
+      <AdminSidebar userName={session.name} userRole={session.role} openBugCount={openBugCount} pendingVacationCount={pendingVacationCount} />
       <main id="main-content" className="flex-1 overflow-auto bg-white">{children}</main>
       <BugReportButton />
     </div>

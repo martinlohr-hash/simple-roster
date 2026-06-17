@@ -31,7 +31,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  if (!isSuperAdmin(session.role)) {
+  if (!isSuperAdmin(session.role) && session.userId !== id) {
     const target = await prisma.user.findUnique({ where: { id }, select: { role: true } })
     if (target && isSuperAdmin(target.role)) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
   }

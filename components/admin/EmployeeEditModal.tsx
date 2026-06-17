@@ -110,22 +110,20 @@ export default function EmployeeEditModal({ userId, locations, onClose, onSaved,
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-medium text-gray-700">Neues Passwort (leer = unverändert)</label>
-                {isSuperAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const pw = generatePassword()
-                      if (passwordRef.current) {
-                        passwordRef.current.value = pw
-                        passwordRef.current.type = 'text'
-                        setShowPassword(true)
-                      }
-                    }}
-                    className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800 transition"
-                  >
-                    Generieren
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const pw = generatePassword()
+                    if (passwordRef.current) {
+                      passwordRef.current.value = pw
+                      passwordRef.current.type = 'text'
+                      setShowPassword(true)
+                    }
+                  }}
+                  className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800 transition"
+                >
+                  Generieren
+                </button>
               </div>
               <div className="relative">
                 <input
@@ -160,6 +158,7 @@ export default function EmployeeEditModal({ userId, locations, onClose, onSaved,
               <select name="role" defaultValue={user.role} className={selectClass}>
                 <option value="EMPLOYEE">Mitarbeiter</option>
                 <option value="ADMIN">Admin</option>
+                {user.role === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">Super-Admin</option>}
               </select>
             </div>
 

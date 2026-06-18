@@ -3,9 +3,19 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateProfile } from '@/app/actions/profile'
+import AvailabilityFields from '@/components/admin/AvailabilityFields'
 
 type Props = {
-  user: { name: string; email: string; phone: string | null; address: string | null }
+  user: {
+    name: string
+    email: string
+    phone: string | null
+    address: string | null
+    unavailableDays: number[]
+    preferredDays: number[]
+    earliestStart: string | null
+    latestEnd: string | null
+  }
 }
 
 export default function ProfileForm({ user }: Props) {
@@ -24,12 +34,26 @@ export default function ProfileForm({ user }: Props) {
     .toUpperCase()
     .slice(0, 2)
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
     setSaved(false)
+    // Verfügbarkeit aus den (benannten) Feldern der AvailabilityFields-Komponente lesen.
+    const fd = new FormData(e.currentTarget)
+    const unavailableDays = fd.getAll('unavailableDays').map(Number)
+    const preferredDays = fd.getAll('preferredDays').map(Number)
+    const earliestStart = (fd.get('earliestStart') as string) || null
+    const latestEnd = (fd.get('latestEnd') as string) || null
     startTransition(async () => {
-      const result = await updateProfile({ email, phone, address })
+      const result = await updateProfile({
+        email,
+        phone,
+        address,
+        unavailableDays,
+        preferredDays,
+        earliestStart,
+        latestEnd,
+      })
       if (result.error) {
         setError(result.error)
       } else {
@@ -96,6 +120,13 @@ export default function ProfileForm({ user }: Props) {
             className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
           />
         </div>
+
+        <AvailabilityFields
+          unavailableDays={user.unavailableDays}
+          preferredDays={user.preferredDays}
+          earliestStart={user.earliestStart}
+          latestEnd={user.latestEnd}
+        />
 
         {error && <p className="text-sm text-red-500">{error}</p>}
         {saved && <p className="text-sm text-green-600">Gespeichert ✓</p>}

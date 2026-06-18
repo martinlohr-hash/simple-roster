@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
+import AvailabilityFields from './AvailabilityFields'
 
 type Location = { id: string; name: string }
 type User = {
@@ -12,6 +13,8 @@ type User = {
   primaryLocationId: string | null
   startDate: string | null; endDate: string | null
   phone: string | null; address: string | null; birthday: string | null
+  unavailableDays: number[]; preferredDays: number[]
+  earliestStart: string | null; latestEnd: string | null
 }
 
 type Props = {
@@ -59,7 +62,10 @@ export default function EmployeeEditModal({ userId, locations, onClose, onSaved,
     setSaving(true)
     setError('')
     const fd = new FormData(e.currentTarget)
-    const body = Object.fromEntries(fd.entries())
+    const body: Record<string, unknown> = Object.fromEntries(fd.entries())
+    // Mehrfach-Felder (Wochentage) separat einsammeln, da fromEntries nur den letzten Wert behält.
+    body.unavailableDays = fd.getAll('unavailableDays').map(Number)
+    body.preferredDays = fd.getAll('preferredDays').map(Number)
     const res = await fetch(`/api/employees/${userId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -246,6 +252,13 @@ export default function EmployeeEditModal({ userId, locations, onClose, onSaved,
               <label className="block text-xs font-medium text-gray-700 mb-1">Adresse</label>
               <input type="text" name="address" defaultValue={user.address ?? ''} placeholder="Straße, PLZ Ort" className={inputClass} />
             </div>
+
+            <AvailabilityFields
+              unavailableDays={user.unavailableDays}
+              preferredDays={user.preferredDays}
+              earliestStart={user.earliestStart}
+              latestEnd={user.latestEnd}
+            />
 
             {error && <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
 

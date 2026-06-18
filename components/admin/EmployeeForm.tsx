@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
+import AvailabilityFields from './AvailabilityFields'
 
 type Location = { id: string; name: string }
 type Defaults = {
@@ -13,6 +14,8 @@ type Defaults = {
   primaryLocationId?: string | null
   startDate?: Date | string | null; endDate?: Date | string | null
   phone?: string | null; address?: string | null; birthday?: Date | string | null
+  unavailableDays?: number[]; preferredDays?: number[]
+  earliestStart?: string | null; latestEnd?: string | null
 }
 
 type Props = {
@@ -148,6 +151,13 @@ export default function EmployeeForm({ action, locations, defaults }: Props) {
       </div>
 
       <Field label="Adresse" name="address" defaultValue={defaults?.address ?? ''} placeholder="Straße, PLZ Ort" />
+
+      <AvailabilityFields
+        unavailableDays={defaults?.unavailableDays}
+        preferredDays={defaults?.preferredDays}
+        earliestStart={defaults?.earliestStart}
+        latestEnd={defaults?.latestEnd}
+      />
 
       <div className="flex gap-3 pt-2">
         <Link href="/admin/employees" className="flex-1 py-2 px-4 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 text-center transition active:scale-[0.97]">

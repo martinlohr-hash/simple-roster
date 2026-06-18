@@ -10,6 +10,8 @@ import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import WeekGrid from '@/components/schedule/WeekGrid'
 import WeekJumper from '@/components/schedule/WeekJumper'
+import SuggestionsPanel from '@/components/schedule/SuggestionsPanel'
+import { computeSuggestions } from '@/lib/suggestions'
 
 type Props = {
   searchParams: Promise<{ week?: string }>
@@ -139,6 +141,36 @@ export default async function SchedulePage({ searchParams }: Props) {
     label: r.label,
   }))
 
+  const suggestions = computeSuggestions({
+    shifts: shifts.map((s) => ({
+      id: s.id,
+      userId: s.userId ?? null,
+      locationId: s.locationId,
+      date: s.date.toISOString(),
+      startTime: s.startTime,
+      endTime: s.endTime,
+      status: s.status,
+    })),
+    users: users.map((u) => ({
+      id: u.id,
+      name: u.name,
+      maxHoursWeek: u.maxHoursWeek,
+      primaryLocationId: u.primaryLocationId,
+      unavailableDays: u.unavailableDays,
+      preferredDays: u.preferredDays,
+      earliestStart: u.earliestStart,
+      latestEnd: u.latestEnd,
+    })),
+    vacations: vacations.map((v) => ({
+      userId: v.userId,
+      startDate: v.startDate.toISOString(),
+      endDate: v.endDate.toISOString(),
+    })),
+    coverageRules: coverageRulesJson,
+    locations: locationsJson,
+    weekDates,
+  })
+
   return (
     <div className="md:p-6 md:max-w-[1400px]">
       <div className="hidden md:flex items-baseline gap-3 mb-6">
@@ -160,6 +192,8 @@ export default async function SchedulePage({ searchParams }: Props) {
           {weekBudget.type === 'HOURS' ? `${weekBudget.amount} h` : `${weekBudget.amount.toFixed(2)} €`})
         </div>
       )}
+
+      <SuggestionsPanel suggestions={suggestions} />
 
       <WeekGrid
         shifts={shiftsJson}

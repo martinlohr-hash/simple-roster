@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { createEmployee } from '@/app/actions/employees'
+import AvailabilityFields from './AvailabilityFields'
 
 type Location = { id: string; name: string }
 
@@ -174,6 +175,8 @@ export default function NewEmployeeForm({ locations }: { locations: Location[] }
           <input type="date" name="endDate" className={inputClass} />
         </div>
       </div>
+
+      <AvailabilityFields />
 
       {error && (
         <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>

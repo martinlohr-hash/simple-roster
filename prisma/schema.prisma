@@ -51,6 +51,10 @@ model User {
   address           String?
   birthday          DateTime?
   vacationDaysPerYear Int       @default(0)
+  unavailableDays   Int[]       @default([])  // Wochentage 0=Mo..6=So, an denen nie eingeplant werden soll
+  preferredDays     Int[]       @default([])  // Wochentage, die in der Regel gut passen (Wunschtage)
+  earliestStart     String?     // "HH:MM" – kann i.d.R. erst ab dieser Uhrzeit
+  latestEnd         String?     // "HH:MM" – kann i.d.R. nur bis dieser Uhrzeit
   primaryLocationId String?
   primaryLocation   Location?   @relation("PrimaryLocation", fields: [primaryLocationId], references: [id])
   shifts               Shift[]

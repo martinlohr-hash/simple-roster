@@ -8,6 +8,12 @@ import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
 import { isAdmin, isSuperAdmin } from '@/lib/session'
 
+function parseDays(values: FormDataEntryValue[]): number[] {
+  return values
+    .map((v) => parseInt(v as string, 10))
+    .filter((n) => !Number.isNaN(n) && n >= 0 && n <= 6)
+}
+
 export async function createEmployee(
   formData: FormData,
 ): Promise<{ inviteToken?: string; error?: string }> {
@@ -34,6 +40,10 @@ export async function createEmployee(
   const birthday = formData.get('birthday') ? new Date(formData.get('birthday') as string) : null
   const phone = (formData.get('phone') as string) || null
   const address = (formData.get('address') as string) || null
+  const unavailableDays = parseDays(formData.getAll('unavailableDays'))
+  const preferredDays = parseDays(formData.getAll('preferredDays'))
+  const earliestStart = (formData.get('earliestStart') as string) || null
+  const latestEnd = (formData.get('latestEnd') as string) || null
 
   const inviteToken = randomBytes(32).toString('hex')
   const inviteTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
@@ -58,6 +68,10 @@ export async function createEmployee(
         birthday,
         phone,
         address,
+        unavailableDays,
+        preferredDays,
+        earliestStart,
+        latestEnd,
         primaryLocationId: locationId || undefined,
         role,
       },
@@ -113,6 +127,10 @@ export async function updateEmployee(id: string, formData: FormData) {
     birthday: formData.get('birthday') ? new Date(formData.get('birthday') as string) : null,
     phone: (formData.get('phone') as string) || null,
     address: (formData.get('address') as string) || null,
+    unavailableDays: parseDays(formData.getAll('unavailableDays')),
+    preferredDays: parseDays(formData.getAll('preferredDays')),
+    earliestStart: (formData.get('earliestStart') as string) || null,
+    latestEnd: (formData.get('latestEnd') as string) || null,
     primaryLocationId: (formData.get('locationId') as string) || null,
     role: (formData.get('role') as 'ADMIN' | 'EMPLOYEE') || 'EMPLOYEE',
   }

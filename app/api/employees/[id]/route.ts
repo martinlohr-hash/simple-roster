@@ -53,6 +53,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     birthday: body.birthday ? new Date(body.birthday) : null,
     phone: body.phone || null,
     address: body.address || null,
+    unavailableDays: Array.isArray(body.unavailableDays)
+      ? body.unavailableDays.map(Number).filter((n: number) => !Number.isNaN(n) && n >= 0 && n <= 6)
+      : [],
+    preferredDays: Array.isArray(body.preferredDays)
+      ? body.preferredDays.map(Number).filter((n: number) => !Number.isNaN(n) && n >= 0 && n <= 6)
+      : [],
+    earliestStart: body.earliestStart || null,
+    latestEnd: body.latestEnd || null,
     primaryLocationId: body.locationId || null,
   }
 

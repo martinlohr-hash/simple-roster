@@ -140,8 +140,8 @@ export default async function SchedulePage({ searchParams }: Props) {
   }))
 
   return (
-    <div className="p-6 max-w-[1400px]">
-      <div className="flex items-baseline gap-3 mb-6">
+    <div className="md:p-6 md:max-w-[1400px]">
+      <div className="hidden md:flex items-baseline gap-3 mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Dienstplan</h1>
         <WeekJumper weekStart={format(weekStart, 'yyyy-MM-dd')} />
       </div>

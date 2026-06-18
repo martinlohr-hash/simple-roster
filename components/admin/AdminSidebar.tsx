@@ -45,7 +45,7 @@ export default function AdminSidebar({ userName, userRole, openBugCount, pending
   }
 
   return (
-    <aside className={`bg-white border-r border-gray-200 flex flex-col shrink-0 transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}>
+    <aside className={`bg-white border-r border-gray-200 hidden md:flex flex-col shrink-0 transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}>
       <button
         onClick={toggle}
         title={collapsed ? 'Menü aufklappen' : 'Menü einklappen'}

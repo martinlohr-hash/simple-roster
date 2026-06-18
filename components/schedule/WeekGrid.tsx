@@ -270,6 +270,249 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
 
   return (
     <>
+      {/* ─── MOBILE VIEW ──────────────────────────────────────────── */}
+      <div className="md:hidden flex flex-col bg-white">
+        {/* Header */}
+        <div className="px-4 pt-4 pb-2 flex items-start justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Dienstplan</h1>
+            <div className="text-xs text-gray-400 mt-0.5">
+              KW {getISOWeek(weekStart)} · {format(weekStart, 'd. MMM', { locale: de })} – {format(days[6], 'd. MMM yyyy', { locale: de })}
+            </div>
+          </div>
+          <div className="mt-1 shrink-0">
+            {isWeekReleased ? (
+              <button
+                onClick={handleRevoke}
+                disabled={revoking}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-lg border border-green-100 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition disabled:opacity-50"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+                {revoking ? '…' : 'Freigegeben'}
+              </button>
+            ) : (
+              <button
+                onClick={handleRelease}
+                disabled={releasing}
+                className="px-2.5 py-1 bg-white border border-gray-200 text-xs font-medium text-gray-600 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+              >
+                {releasing ? '…' : 'Freigeben'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Location filter + week navigation */}
+        <div className="px-4 pb-3 flex items-center gap-2">
+          <div className="flex-1 flex gap-1.5 overflow-x-auto">
+            <button
+              onClick={() => setFilterLocationId(null)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition shrink-0 ${
+                filterLocationId === null ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              Alle
+            </button>
+            {locations.map((loc) => (
+              <button
+                key={loc.id}
+                onClick={() => setFilterLocationId(loc.id === filterLocationId ? null : loc.id)}
+                className="px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition shrink-0"
+                style={
+                  filterLocationId === loc.id
+                    ? { backgroundColor: loc.color, color: '#fff' }
+                    : { backgroundColor: '#f3f4f6', color: '#4b5563' }
+                }
+              >
+                {loc.name}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center shrink-0 rounded-xl border border-gray-200 overflow-hidden">
+            <Link
+              href={prevWeekHref}
+              className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 transition border-r border-gray-200"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
+            <Link
+              href="/admin/schedule"
+              className="px-3 h-9 flex items-center text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
+            >
+              Heute
+            </Link>
+            <Link
+              href={nextWeekHref}
+              className="w-9 h-9 flex items-center justify-center text-gray-400 hover:bg-gray-50 transition border-l border-gray-200"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+
+        {/* Scrollable grid */}
+        <div className="px-3 pb-3">
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-x-auto">
+            <table className="border-collapse" style={{ minWidth: '472px', width: '100%' }}>
+              <thead>
+                {/* Offene Schichten row */}
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="sticky left-0 z-10 bg-gray-50 px-2 py-2 text-left border-r border-gray-100 w-[108px]">
+                    <div className="flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span className="text-[9px] font-semibold text-gray-500 leading-tight">Offene Schichten</span>
+                    </div>
+                  </th>
+                  {days.map((day, i) => {
+                    const count = getUnassignedForDay(day).length
+                    return (
+                      <th key={i} className="text-center px-1 py-2 min-w-[52px]">
+                        <div className="h-4 flex items-center justify-center">
+                          {count === 0 ? (
+                            <svg className="w-3.5 h-3.5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          ) : (
+                            <span className="text-xs font-bold text-red-500">{count}</span>
+                          )}
+                        </div>
+                      </th>
+                    )
+                  })}
+                </tr>
+                {/* Day headers */}
+                <tr className="border-b border-gray-200">
+                  <th className="sticky left-0 z-10 bg-white px-3 py-2 text-left border-r border-gray-100 w-[108px]">
+                    <span className="text-[10px] font-semibold text-gray-400">Mitarbeiter</span>
+                  </th>
+                  {days.map((day, i) => {
+                    const today = isToday(day)
+                    return (
+                      <th key={i} className="text-center px-1 py-2 min-w-[52px]">
+                        <div className={`text-[10px] font-medium ${today ? 'text-indigo-500' : 'text-gray-400'}`}>
+                          {DAY_NAMES[i]}
+                        </div>
+                        <div className={`text-sm font-bold ${today ? 'text-indigo-600' : 'text-gray-800'}`}>
+                          {format(day, 'd')}
+                        </div>
+                      </th>
+                    )
+                  })}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {users.map((user) => {
+                  const weekHours = getWeekHours(user.id)
+                  const light = getLight(weekHours, user.maxHoursWeek)
+                  const dotColor =
+                    weekHours === 0
+                      ? 'bg-gray-300'
+                      : light === 'red'
+                        ? 'bg-red-500'
+                        : light === 'yellow'
+                          ? 'bg-yellow-500'
+                          : 'bg-green-500'
+                  return (
+                    <tr key={user.id}>
+                      <td className="sticky left-0 z-10 bg-white border-r border-gray-100 px-2 py-2 align-top w-[108px]">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setEditEmployeeId(user.id)}
+                            className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-semibold text-gray-600 shrink-0 hover:bg-gray-300 transition"
+                          >
+                            {getInitials(user.name)}
+                          </button>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[11px] font-medium text-gray-900 leading-tight break-words">
+                              {user.name}
+                            </div>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />
+                              <span className="text-[10px] text-gray-400">
+                                {weekHours === 0
+                                  ? '0h'
+                                  : weekHours % 1 === 0
+                                    ? `${weekHours.toFixed(0)}h`
+                                    : `${weekHours.toFixed(1)}h`}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      {days.map((day, di) => {
+                        const cellShifts = getShiftsForCell(user.id, day)
+                        const onVacation = isOnVacation(user.id, day)
+                        const dateStr = format(day, 'yyyy-MM-dd')
+                        return (
+                          <td key={di} className="p-1 align-middle text-center min-w-[52px]">
+                            {onVacation ? (
+                              <span className="text-[9px] font-semibold text-emerald-600 uppercase tracking-tight">
+                                Urlaub
+                              </span>
+                            ) : cellShifts.length > 0 ? (
+                              <div className="flex flex-col gap-0.5">
+                                {cellShifts.map((shift) => (
+                                  <button
+                                    key={shift.id}
+                                    onClick={() => setEditShift(shift)}
+                                    className="rounded-md px-0.5 py-1.5 text-white font-semibold text-center w-full transition active:scale-95"
+                                    style={{ backgroundColor: shift.location.color, fontSize: '10px', lineHeight: '1.2' }}
+                                  >
+                                    {formatMobileTime(shift.startTime)}–{formatMobileTime(shift.endTime)}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setModalCell({ userId: user.id, date: dateStr })}
+                                className="text-gray-300 hover:text-indigo-400 transition w-full h-9 flex items-center justify-center text-sm"
+                              >
+                                –
+                              </button>
+                            )}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div className="px-4 pb-6 flex flex-wrap gap-x-4 gap-y-1.5 border-t border-gray-100 pt-3">
+          {locations.map((loc) => (
+            <div key={loc.id} className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: loc.color }} />
+              <span className="text-xs text-gray-600">{loc.name}</span>
+            </div>
+          ))}
+          <div className="flex items-center gap-1.5">
+            <span className="text-gray-300 text-base leading-none">–</span>
+            <span className="text-xs text-gray-600">Frei</span>
+          </div>
+        </div>
+
+        {/* FAB */}
+        <button
+          onClick={() => setModalCell({ userId: null, date: format(new Date(), 'yyyy-MM-dd') })}
+          className="fixed bottom-[84px] right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center text-2xl font-light hover:bg-indigo-700 transition active:scale-95 z-20"
+          aria-label="Neue Schicht erstellen"
+        >
+          +
+        </button>
+      </div>
+
+      {/* ─── DESKTOP VIEW ─────────────────────────────────────────── */}
+      <div className="hidden md:block">
       {dragError && (
         <div className="mb-3 px-4 py-2.5 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
           {dragError}
@@ -551,6 +794,7 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
           )}
         </DragOverlay>
       </DndContext>
+      </div>
 
       {modalCell && (
         <CreateShiftModal
@@ -603,4 +847,9 @@ function getLight(actual: number, max: number | null | undefined): 'green' | 'ye
   if (pct >= 1) return 'red'
   if (pct >= 0.8) return 'yellow'
   return 'green'
+}
+
+function formatMobileTime(time: string): string {
+  const [h, m] = time.split(':').map(Number)
+  return m === 0 ? String(h) : `${h}:${String(m).padStart(2, '0')}`
 }

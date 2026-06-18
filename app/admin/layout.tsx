@@ -2,6 +2,7 @@ import { logout, getSession } from '@/app/actions/auth'
 import { isAdmin } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import AdminSidebar from '@/components/admin/AdminSidebar'
+import AdminBottomNav from '@/components/admin/AdminBottomNav'
 import BugReportButton from '@/components/ui/BugReportButton'
 import { prisma } from '@/lib/db'
 
@@ -23,7 +24,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         Zum Inhalt springen
       </a>
       <AdminSidebar userName={session.name} userRole={session.role} openBugCount={openBugCount} pendingVacationCount={pendingVacationCount} />
-      <main id="main-content" className="flex-1 overflow-auto bg-white">{children}</main>
+      <main id="main-content" className="flex-1 overflow-auto bg-white pb-16 md:pb-0">{children}</main>
+      <AdminBottomNav pendingVacationCount={pendingVacationCount} />
       <BugReportButton />
     </div>
   )

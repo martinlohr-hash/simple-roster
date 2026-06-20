@@ -60,6 +60,13 @@ Ab dann werden jede Nacht die Stunden des Vortages eingetragen.
 |---|---|
 | `SHEET_NAME` | Leer = Tab automatisch finden (Tabs mit „Bolle" werden ignoriert). Sonst exakter Tab-Name. |
 | `OVERWRITE` | `false` = nur leere Zellen füllen (Handeinträge bleiben). `true` = immer überschreiben. |
+| `START_DATE` | **Harte Untergrenze** (`yyyy-MM-dd`). Tage davor werden NIE geschrieben – egal was die API liefert oder wie `OVERWRITE` steht. Schützt die historischen Daten aus der Zeit vor SimpleRoster. Aktuell `2026-06-20` (ab da rechnet SimpleRoster verlässlich). |
+
+> **Wichtig zum Schutz der Altdaten:** Vor SimpleRoster wurde eine andere App genutzt;
+> die echten Stunden bis einschließlich 19.06.2026 stehen bereits korrekt im Sheet.
+> `START_DATE` verhindert, dass `syncRange` (oder ein versehentlich in SimpleRoster
+> freigegebener Testtag) diese Werte überschreibt. `OVERWRITE` allein reicht nicht,
+> weil es leere Zellen trotzdem befüllen würde.
 
 ## Nachträge
 

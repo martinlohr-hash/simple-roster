@@ -13,16 +13,20 @@
 
 var CONFIG = {
   // Basis-URL deiner SimpleRoster-Installation (ohne Slash am Ende):
-  API_URL: 'https://DEINE-DOMAIN.vercel.app',
+  API_URL: 'https://simple-roster.vercel.app',
   // Muss SHEET_SYNC_TOKEN (oder DASHBOARD_API_KEY) in SimpleRoster entsprechen:
   TOKEN: 'HIER-TOKEN-EINSETZEN',
 
   TZ: 'Europe/Berlin',
-  // Tab-Name fest vorgeben. Leer ("") = automatisch den Tab finden, der den
-  // gesuchten Tag in der "Datum"-Spalte enthält (Tabs mit "Bolle" werden ignoriert).
-  SHEET_NAME: '',
+  // Tab-Name. "All Data" ist immer das erste Blatt – dorthin schreibt auch das
+  // Lightspeed-Umsatz-Script (getSheets()[0]), beide treffen also dieselbe Zeile.
+  SHEET_NAME: 'All Data',
   // Bereits gefüllte Zellen überschreiben?  false = nur leere Zellen füllen.
   OVERWRITE: false,
+  // HARTE Untergrenze: Tage VOR diesem Datum werden NIE geschrieben – egal was
+  // die API liefert oder wie OVERWRITE steht. Schützt die historischen Daten aus
+  // der Zeit vor SimpleRoster. SimpleRoster zählt erst ab hier verlässlich.
+  START_DATE: '2026-06-20',
 };
 
 /** Täglich per Auslöser: trägt die Stunden von GESTERN ein. */
@@ -43,6 +47,21 @@ function syncRange() {
   var data = fetchHours(from, to);
   Object.keys(data.days || {}).forEach(function (day) {
     writeHours(day, data.days[day].hours);
+  });
+}
+
+/**
+ * Wird vom Lightspeed-Umsatz-Script am Ende aufgerufen (Verkettung).
+ * Bekommt die gerade importierten Tage als deutsche Datumsstrings ("DD.MM.YYYY")
+ * und trägt für jeden die Stunden nach – direkt nachdem die Umsatz-Zeile erzeugt
+ * wurde. START_DATE + Freigabe-Gate greifen wie immer.
+ */
+function syncImportedDates(germanDates) {
+  (germanDates || []).forEach(function (g) {
+    var m = String(g).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+    if (!m) return;
+    var ymd = m[3] + '-' + pad(m[2]) + '-' + pad(m[1]);
+    try { syncDate(ymd); } catch (e) { Logger.log('Stunden-Sync ' + ymd + ': ' + e); }
   });
 }
 
@@ -68,6 +87,11 @@ function fetchHours(from, to) {
 
 /** Schreibt `hours` in die Gesamtstunden-Zelle der Zeile mit `dateStr`. */
 function writeHours(dateStr, hours) {
+  // Schutzschild: niemals historische Tage (vor START_DATE) anfassen.
+  if (CONFIG.START_DATE && dateStr < CONFIG.START_DATE) {
+    Logger.log('🛡 ' + dateStr + ' liegt vor START_DATE (' + CONFIG.START_DATE + ') – übersprungen.');
+    return false;
+  }
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheets = CONFIG.SHEET_NAME
     ? [ss.getSheetByName(CONFIG.SHEET_NAME)].filter(Boolean)

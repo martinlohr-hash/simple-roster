@@ -12,6 +12,7 @@ import {
 
 type Props = {
   pendingVacationCount?: number
+  unconfirmedDaysCount?: number
 }
 
 const tabs = [
@@ -19,6 +20,7 @@ const tabs = [
     href: '/admin/schedule',
     label: 'Dienstplan',
     icon: <IconCalendarEvent size={24} stroke={1.8} />,
+    badgeKey: 'unconfirmed' as const,
   },
   {
     href: '/admin/employees',
@@ -43,7 +45,7 @@ const tabs = [
   },
 ]
 
-export default function AdminBottomNav({ pendingVacationCount }: Props) {
+export default function AdminBottomNav({ pendingVacationCount, unconfirmedDaysCount }: Props) {
   const pathname = usePathname()
 
   return (
@@ -51,7 +53,12 @@ export default function AdminBottomNav({ pendingVacationCount }: Props) {
       <div className="flex">
         {tabs.map((tab) => {
           const active = pathname.startsWith(tab.href)
-          const badge = tab.badgeKey === 'vacation' && pendingVacationCount ? pendingVacationCount : 0
+          const badge =
+            tab.badgeKey === 'vacation'
+              ? pendingVacationCount || 0
+              : tab.badgeKey === 'unconfirmed'
+                ? unconfirmedDaysCount || 0
+                : 0
           return (
             <Link
               key={tab.href}

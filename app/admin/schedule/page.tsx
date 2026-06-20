@@ -1,4 +1,4 @@
-import { startOfWeek, addDays, format, getISOWeek, getYear } from 'date-fns'
+import { startOfWeek, addDays, format, getISOWeek, getYear, parseISO } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { redirect } from 'next/navigation'
 import { getBudgetStatus } from '@/lib/calculations'
@@ -6,6 +6,7 @@ import { getHamburgHolidays } from '@/lib/vacation'
 import { getSession } from '@/app/actions/auth'
 import { isSuperAdmin } from '@/lib/session'
 import { timeToMinutes } from '@/lib/timeUtils'
+import { computeDaysHours, getUnconfirmedDays, berlinDay } from '@/lib/dayHours'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import WeekGrid from '@/components/schedule/WeekGrid'
@@ -37,7 +38,7 @@ export default async function SchedulePage({ searchParams }: Props) {
   const weekYear = getYear(weekStart)
   const weekNumber = getISOWeek(weekStart)
 
-  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations] = await Promise.all([
+  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations, timesheetReleases, dayActuals, unplannedTimeEntries] = await Promise.all([
     prisma.shift.findMany({
       where: { date: { gte: weekStart, lt: weekEnd } },
       include: { user: true, location: true, timeEntry: true },
@@ -65,6 +66,13 @@ export default async function SchedulePage({ searchParams }: Props) {
     prisma.vacationRequest.findMany({
       where: { status: 'APPROVED', startDate: { lte: weekEnd }, endDate: { gte: weekStart } },
       select: { id: true, userId: true, startDate: true, endDate: true },
+    }),
+    prisma.timesheetRelease.findMany({ where: { day: { in: weekDates } } }),
+    computeDaysHours(weekDates),
+    prisma.timeEntry.findMany({
+      where: { shiftId: null, checkinAt: { gte: weekStart, lt: weekEnd } },
+      include: { location: true, user: true },
+      orderBy: { checkinAt: 'asc' },
     }),
   ])
 
@@ -118,13 +126,61 @@ export default async function SchedulePage({ searchParams }: Props) {
       : null,
     location: { id: s.location.id, name: s.location.name, color: s.location.color },
     timeEntry: s.timeEntry
-      ? { checkinAt: s.timeEntry.checkinAt.toISOString(), checkoutAt: s.timeEntry.checkoutAt?.toISOString() ?? null }
+      ? { id: s.timeEntry.id, checkinAt: s.timeEntry.checkinAt.toISOString(), checkoutAt: s.timeEntry.checkoutAt?.toISOString() ?? null }
       : null,
   }))
 
-  const usersJson = users.map((u) => ({ id: u.id, name: u.name, maxHoursWeek: u.maxHoursWeek, maxHoursMonth: u.maxHoursMonth }))
+  // Auch MA, die diese Woche ungeplant gestempelt haben aber NICHT (mehr) in der
+  // aktiven Liste sind (z. B. ehemalige), bekommen eine Zeile – sonst wäre ihr
+  // Stempel im Grid unsichtbar, obwohl die Ist-Summe ihn zählt.
+  const knownUserIds = new Set(users.map((u) => u.id))
+  const extraUsers: typeof users = []
+  const seenExtra = new Set<string>()
+  for (const e of unplannedTimeEntries) {
+    if (!knownUserIds.has(e.userId) && !seenExtra.has(e.userId)) {
+      seenExtra.add(e.userId)
+      extraUsers.push(e.user)
+    }
+  }
+  const displayUsers = [...users, ...extraUsers]
+  const usersJson = displayUsers.map((u) => ({ id: u.id, name: u.name, maxHoursWeek: u.maxHoursWeek, maxHoursMonth: u.maxHoursMonth }))
   const locationsJson = locations.map((l) => ({ id: l.id, name: l.name, color: l.color }))
   const dayNotesMap = Object.fromEntries(dayNotes.map((n) => [n.date, n.content]))
+
+  // Pro Tag: geplante Stunden (aus Schichten) für den Vergleich in der Fußzeile
+  const plannedPerDay: Record<string, number> = {}
+  for (const d of weekDates) plannedPerDay[d] = 0
+  for (const s of shifts) {
+    const day = s.date.toISOString().slice(0, 10)
+    if (plannedPerDay[day] != null) {
+      plannedPerDay[day] += (timeToMinutes(s.endTime) - timeToMinutes(s.startTime)) / 60
+    }
+  }
+  // Unbestätigte vergangene Tage – für Banner-Hinweis + Sprung zur ältesten offenen Woche
+  const unconfirmedDays = await getUnconfirmedDays()
+  const unconfirmedThisWeek = unconfirmedDays.filter((d) => weekDates.includes(d))
+  const oldestUnconfirmed = unconfirmedDays[0]
+  const oldestWeekMonday = oldestUnconfirmed
+    ? format(startOfWeek(parseISO(oldestUnconfirmed), { weekStartsOn: 1 }), 'yyyy-MM-dd')
+    : null
+  const oldestInView = oldestUnconfirmed ? weekDates.includes(oldestUnconfirmed) : false
+
+  const dayStats = Object.fromEntries(
+    weekDates.map((d) => {
+      const rel = timesheetReleases.find((r) => r.day === d)
+      const act = dayActuals[d] ?? { actual: 0, open: 0 }
+      return [
+        d,
+        {
+          actual: act.actual,
+          open: act.open,
+          planned: Math.round((plannedPerDay[d] ?? 0) * 100) / 100,
+          releasedHours: rel ? rel.hours : null,
+          releasedAt: rel ? rel.releasedAt.toISOString() : null,
+        },
+      ]
+    }),
+  )
 
   const holidaysMap: Record<string, string> = {}
   const years = [...new Set(weekDates.map((d) => new Date(d).getFullYear()))]
@@ -139,6 +195,17 @@ export default async function SchedulePage({ searchParams }: Props) {
     minStaff: r.minStaff,
     locationId: r.locationId,
     label: r.label,
+  }))
+
+  const unplannedEntries = unplannedTimeEntries.map((e) => ({
+    id: e.id,
+    userId: e.userId,
+    locationId: e.locationId,
+    locationName: e.location.name,
+    locationColor: e.location.color,
+    date: berlinDay(e.checkinAt),
+    checkinAt: e.checkinAt.toISOString(),
+    checkoutAt: e.checkoutAt?.toISOString() ?? null,
   }))
 
   const suggestions = computeSuggestions({
@@ -193,6 +260,27 @@ export default async function SchedulePage({ searchParams }: Props) {
         </div>
       )}
 
+      {unconfirmedDays.length > 0 && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full bg-amber-500 text-white text-xs font-bold">
+            {unconfirmedDays.length}
+          </span>
+          <span className="font-medium">
+            {unconfirmedDays.length === 1 ? 'vergangener Tag noch nicht bestätigt' : 'vergangene Tage noch nicht bestätigt'}
+          </span>
+          {unconfirmedThisWeek.length > 0 && (
+            <span className="text-amber-700">
+              · Diese Woche: {unconfirmedThisWeek.map((d) => format(parseISO(d), 'EE d.', { locale: de })).join(', ')} — unten mit ✓ bestätigen
+            </span>
+          )}
+          {oldestWeekMonday && !oldestInView && (
+            <Link href={`/admin/schedule?week=${oldestWeekMonday}`} className="underline font-medium hover:text-amber-900">
+              → {unconfirmedThisWeek.length > 0 ? 'ältere offene Woche' : 'Zur ältesten offenen Woche'} ({format(parseISO(oldestUnconfirmed), 'd. MMM', { locale: de })})
+            </Link>
+          )}
+        </div>
+      )}
+
       <SuggestionsPanel suggestions={suggestions} />
 
       <WeekGrid
@@ -206,6 +294,8 @@ export default async function SchedulePage({ searchParams }: Props) {
         nextWeekHref={`/admin/schedule?week=${format(nextWeek, 'yyyy-MM-dd')}`}
         isWeekReleased={!!weekRelease}
         weekStartStr={format(weekStart, 'yyyy-MM-dd')}
+        dayStats={dayStats}
+        unplannedEntries={unplannedEntries}
         applications={applications.map((a) => ({
           id: a.id,
           shiftId: a.shiftId,

@@ -25,9 +25,10 @@ type Props = {
   userRole: string
   openBugCount?: number
   pendingVacationCount?: number
+  unconfirmedDaysCount?: number
 }
 
-export default function AdminSidebar({ userName, userRole, openBugCount, pendingVacationCount }: Props) {
+export default function AdminSidebar({ userName, userRole, openBugCount, pendingVacationCount, unconfirmedDaysCount }: Props) {
   const [collapsed, setCollapsed] = useState(false)
   const initials = getInitials(userName)
   const roleLabel = userRole === 'SUPER_ADMIN' ? 'Super-Admin' : userRole === 'ADMIN' ? 'Administrator' : 'Mitarbeiter'
@@ -58,7 +59,7 @@ export default function AdminSidebar({ userName, userRole, openBugCount, pending
       </button>
 
       <nav className="flex-1 py-3 px-2 space-y-0.5">
-        <NavLink href="/admin/schedule" icon={<IconCalendarEvent size={16} stroke={1.75} />} collapsed={collapsed}>Dienstplan</NavLink>
+        <NavLink href="/admin/schedule" icon={<IconCalendarEvent size={16} stroke={1.75} />} collapsed={collapsed} badge={unconfirmedDaysCount}>Dienstplan</NavLink>
         <NavLink href="/admin/my-schedule" icon={<IconUser size={16} stroke={1.75} />} collapsed={collapsed}>Mein Plan</NavLink>
         <NavLink href="/admin/employees" icon={<IconUsers size={16} stroke={1.75} />} collapsed={collapsed}>Mitarbeiter</NavLink>
         <NavLink href="/admin/costs" icon={<IconChartBar size={16} stroke={1.75} />} collapsed={collapsed}>Lohnkosten</NavLink>

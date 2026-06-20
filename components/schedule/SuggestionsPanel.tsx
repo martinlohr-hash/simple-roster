@@ -13,7 +13,7 @@ function fmtHours(h: number): string {
 
 export default function SuggestionsPanel({ suggestions }: { suggestions: Suggestion[] }) {
   const router = useRouter()
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const [pending, setPending] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)

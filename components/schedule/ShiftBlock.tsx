@@ -23,6 +23,8 @@ export default function ShiftBlock({ shift, onDelete, onDuplicate, onEdit, previ
   })
 
   const isUnassigned = !shift.userId
+  const fmtTime = (iso: string) =>
+    new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })
   const isActive = shift.status === 'ACTIVE' || (!!shift.timeEntry && !shift.timeEntry.checkoutAt)
   const isDone = shift.status === 'DONE' || !!shift.timeEntry?.checkoutAt
   const bgColor = isUnassigned ? '#d97706' : isActive ? '#22c55e' : shift.location.color
@@ -63,6 +65,12 @@ export default function ShiftBlock({ shift, onDelete, onDuplicate, onEdit, previ
           </>
         ) : (
           <div className="text-[10px] truncate mt-0.5 text-white/70">{shift.location.name}</div>
+        )}
+        {!isUnassigned && shift.timeEntry && (
+          <div className="mt-1 inline-flex items-center rounded bg-black/20 px-1 py-0.5 text-[10px] font-semibold leading-none text-white">
+            Ist {fmtTime(shift.timeEntry.checkinAt)}
+            {shift.timeEntry.checkoutAt ? `–${fmtTime(shift.timeEntry.checkoutAt)}` : '– läuft'}
+          </div>
         )}
       </div>
 

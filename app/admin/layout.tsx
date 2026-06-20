@@ -5,14 +5,16 @@ import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminBottomNav from '@/components/admin/AdminBottomNav'
 import BugReportButton from '@/components/ui/BugReportButton'
 import { prisma } from '@/lib/db'
+import { countUnconfirmedDays } from '@/lib/dayHours'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession()
   if (!session || !isAdmin(session.role)) redirect('/login')
 
-  const [openBugCount, pendingVacationCount] = await Promise.all([
+  const [openBugCount, pendingVacationCount, unconfirmedDaysCount] = await Promise.all([
     prisma.bugReport.count({ where: { status: 'OPEN' } }),
     prisma.vacationRequest.count({ where: { status: 'PENDING' } }),
+    countUnconfirmedDays(),
   ])
 
   return (
@@ -23,9 +25,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       >
         Zum Inhalt springen
       </a>
-      <AdminSidebar userName={session.name} userRole={session.role} openBugCount={openBugCount} pendingVacationCount={pendingVacationCount} />
+      <AdminSidebar userName={session.name} userRole={session.role} openBugCount={openBugCount} pendingVacationCount={pendingVacationCount} unconfirmedDaysCount={unconfirmedDaysCount} />
       <main id="main-content" className="flex-1 overflow-auto bg-white pb-16 md:pb-0">{children}</main>
-      <AdminBottomNav pendingVacationCount={pendingVacationCount} />
+      <AdminBottomNav pendingVacationCount={pendingVacationCount} unconfirmedDaysCount={unconfirmedDaysCount} />
       <BugReportButton />
     </div>
   )

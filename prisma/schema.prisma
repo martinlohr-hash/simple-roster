@@ -177,6 +177,17 @@ model WeekRelease {
   releasedByUser User     @relation(fields: [releasedBy], references: [id])
 }
 
+// Freigabe der echten Tagesstunden für den Sync in die Auswertungs-Tabelle.
+// Nur freigegebene Tage werden synchronisiert; `hours` ist der eingefrorene
+// Snapshot zum Zeitpunkt der Freigabe (entkoppelt von späteren Korrekturen).
+model TimesheetRelease {
+  day        String   @id // "yyyy-MM-dd" Berliner Kalendertag
+  hours      Float    @default(0)
+  entries    Int      @default(0)
+  releasedAt DateTime @default(now())
+  releasedBy String?
+}
+
 model ShiftApplication {
   id        String            @id @default(cuid())
   shiftId   String

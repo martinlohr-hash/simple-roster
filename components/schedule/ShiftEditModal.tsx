@@ -1,9 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { format, parseISO } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { ShiftData, LocationData, UserData, ApplicationData } from './WeekGrid'
+import { adminUpdateTimeEntry } from '@/app/actions/timesheets'
+
+function isoToTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })
+}
 
 type Props = {
   shift: ShiftData
@@ -25,6 +31,40 @@ export default function ShiftEditModal({ shift, locations, users, onClose, onSav
   const [locationId, setLocationId] = useState(shift.locationId)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const router = useRouter()
+  const dateStr = format(parseISO(shift.date), 'yyyy-MM-dd')
+  const [istVon, setIstVon] = useState(shift.timeEntry ? isoToTime(shift.timeEntry.checkinAt) : '')
+  const [istBis, setIstBis] = useState(shift.timeEntry?.checkoutAt ? isoToTime(shift.timeEntry.checkoutAt) : '')
+  const [savingIst, setSavingIst] = useState(false)
+  const [istError, setIstError] = useState<string | null>(null)
+  const [istSaved, setIstSaved] = useState(false)
+
+  async function saveIstZeiten() {
+    if (!shift.timeEntry) return
+    setIstError(null)
+    setIstSaved(false)
+    if (!istVon) {
+      setIstError('Beginn fehlt')
+      return
+    }
+    setSavingIst(true)
+    try {
+      await adminUpdateTimeEntry({
+        id: shift.timeEntry.id,
+        date: dateStr,
+        checkin: istVon,
+        checkout: istBis || undefined,
+        locationId,
+      })
+      setIstSaved(true)
+      router.refresh()
+    } catch (err) {
+      setIstError(err instanceof Error ? err.message : 'Fehler')
+    } finally {
+      setSavingIst(false)
+    }
+  }
 
   const formattedDate = format(parseISO(shift.date), 'EEEE, d. MMMM yyyy', { locale: de })
 
@@ -120,6 +160,44 @@ export default function ShiftEditModal({ shift, locations, users, onClose, onSav
           </div>
           {error && (
             <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+          )}
+
+          {shift.timeEntry && (
+            <div className="border-t border-gray-100 pt-3 mt-1">
+              <p className="text-xs font-medium text-gray-700 mb-1.5 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Ist-Zeiten (gestempelt)
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Von</label>
+                  <input
+                    type="time"
+                    value={istVon}
+                    onChange={(e) => { setIstVon(e.target.value); setIstSaved(false) }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Bis</label>
+                  <input
+                    type="time"
+                    value={istBis}
+                    onChange={(e) => { setIstBis(e.target.value); setIstSaved(false) }}
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 ${istBis ? 'border-gray-300' : 'border-amber-300 bg-amber-50'}`}
+                  />
+                </div>
+              </div>
+              {!istBis && <p className="text-[11px] text-amber-600 mt-1">Kein Ende gestempelt – bitte nachtragen, sonst zählt die Schicht nicht.</p>}
+              {istError && <p className="text-xs text-red-600 mt-1.5">{istError}</p>}
+              <button
+                type="button"
+                onClick={saveIstZeiten}
+                disabled={savingIst}
+                className="mt-2 w-full px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 transition active:scale-[0.98]"
+              >
+                {savingIst ? 'Speichern…' : istSaved ? '✓ Ist-Zeiten gespeichert' : 'Ist-Zeiten speichern'}
+              </button>
+            </div>
           )}
 
           {isUnassigned && isWeekReleased && (

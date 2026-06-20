@@ -19,9 +19,12 @@ import DropCell from './DropCell'
 import CreateShiftModal from './CreateShiftModal'
 import ShiftEditModal from './ShiftEditModal'
 import DayNoteCell from './DayNoteCell'
+import UnplannedBlock, { type UnplannedEntryData } from './UnplannedBlock'
+import TimeEntryEditModal from './TimeEntryEditModal'
 import Link from 'next/link'
 import { updateShift, deleteShift, createShift, duplicateShift } from '@/app/actions/shifts'
 import { releaseWeek, revokeWeekRelease, assignShiftToApplicant } from '@/app/actions/bidding'
+import { releaseDay, unreleaseDay } from '@/app/actions/timesheets'
 import { addMinutesToTime } from '@/lib/timeUtils'
 import CoverageWarningsBar from './CoverageWarningsBar'
 import { computeCoverageWarnings, type CoverageRuleData } from '@/lib/coverage'
@@ -37,7 +40,7 @@ export type ShiftData = {
   status: string
   user: { id: string; name: string; maxHoursWeek: number | null; maxHoursMonth: number | null } | null
   location: { id: string; name: string; color: string }
-  timeEntry: { checkinAt: string; checkoutAt: string | null } | null
+  timeEntry: { id: string; checkinAt: string; checkoutAt: string | null } | null
 }
 
 export type UserData = {
@@ -83,9 +86,27 @@ type Props = {
   vacations: VacationData[]
   holidays: Record<string, string>
   isSuperAdmin?: boolean
+  dayStats: Record<string, DayStat>
+  unplannedEntries: UnplannedEntryData[]
+}
+
+export type DayStat = {
+  actual: number
+  open: number
+  planned: number
+  releasedHours: number | null
+  releasedAt: string | null
 }
 
 const DAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
+
+function fmtH(h: number): string {
+  return h.toFixed(2).replace('.', ',')
+}
+
+function isoToHHmm(iso: string): string {
+  return new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })
+}
 
 function getInitials(name: string): string {
   return name
@@ -96,7 +117,7 @@ function getInitials(name: string): string {
     .join('')
 }
 
-export default function WeekGrid({ shifts, users, locations, weekStart, weekStartStr, dayNotes, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays, isSuperAdmin }: Props) {
+export default function WeekGrid({ shifts, users, locations, weekStart, weekStartStr, dayNotes, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays, isSuperAdmin, dayStats, unplannedEntries }: Props) {
   const router = useRouter()
   const [activeShift, setActiveShift] = useState<ShiftData | null>(null)
   const [resizingShift, setResizingShift] = useState<{ id: string; previewEndTime: string } | null>(null)
@@ -107,8 +128,93 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
   const [releasing, setReleasing] = useState(false)
   const [revoking, setRevoking] = useState(false)
   const [editEmployeeId, setEditEmployeeId] = useState<string | null>(null)
+  const [busyDay, setBusyDay] = useState<string | null>(null)
+  const [editEntry, setEditEntry] = useState<UnplannedEntryData | null>(null)
+
+  function getUnplannedForCell(userId: string, dateStr: string) {
+    return unplannedEntries.filter((e) => e.userId === userId && e.date === dateStr)
+  }
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
+  async function toggleDayRelease(dateStr: string, released: boolean) {
+    setBusyDay(dateStr)
+    try {
+      if (released) await unreleaseDay(dateStr)
+      else await releaseDay(dateStr)
+      router.refresh()
+    } catch (e) {
+      setDragError(e instanceof Error ? e.message : 'Freigabe fehlgeschlagen')
+    } finally {
+      setBusyDay(null)
+    }
+  }
+
+  // Ein Tag gilt als bestätigt, sobald er freigegeben ist → wird ausgegraut
+  const isConfirmed = (dateStr: string) => dayStats[dateStr]?.releasedHours != null
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Berlin' })
+
+  // Fußzeilen-Zelle: Ist-Stunden (vs. geplant) + Freigabe-Haken für den ganzen Tag
+  function renderDayRelease(dateStr: string) {
+    const stat = dayStats[dateStr]
+    if (!stat) return null
+    const released = stat.releasedHours != null
+    const future = dateStr > todayStr
+    const needsAction = dateStr < todayStr && !released // vergangener Tag, noch nicht bestätigt
+    const changed = released && Math.abs((stat.releasedHours ?? 0) - stat.actual) > 0.005
+    const busy = busyDay === dateStr
+
+    // Zukünftige Tage: noch nichts zu bestätigen – nur Planstunden andeuten
+    if (future) {
+      return (
+        <div className="px-2 py-2 text-center">
+          <div className="text-[10px] text-gray-300">{stat.planned > 0 ? `Plan ${fmtH(stat.planned)}` : '–'}</div>
+        </div>
+      )
+    }
+
+    return (
+      <div className={`px-2 py-2 text-center space-y-1 ${needsAction ? 'rounded-md bg-amber-50 ring-1 ring-inset ring-amber-200' : ''}`}>
+        <div className="leading-tight">
+          <div className="text-sm font-semibold text-gray-800 tabular-nums">
+            {fmtH(stat.actual)} h
+            <span className="ml-1 text-[9px] font-medium text-gray-400 uppercase tracking-wide">Ist</span>
+          </div>
+          {stat.planned > 0 && (
+            <span className="block text-[10px] text-gray-400">Plan {fmtH(stat.planned)}</span>
+          )}
+        </div>
+        {stat.open > 0 ? (
+          <div className="text-[10px] font-medium text-amber-600">{stat.open} ohne Ende</div>
+        ) : (
+          <label className="inline-flex items-center gap-1 cursor-pointer select-none" title={released ? 'Bestätigung aufheben' : 'Tag bestätigen → Stunden gehen in die Tabelle'}>
+            <input
+              type="checkbox"
+              checked={released}
+              disabled={busy}
+              onChange={() => toggleDayRelease(dateStr, released)}
+              className={`w-3.5 h-3.5 rounded text-green-600 focus:ring-green-500 disabled:opacity-50 cursor-pointer ${needsAction ? 'border-amber-400 ring-1 ring-amber-300' : 'border-gray-300'}`}
+              aria-label={`${dateStr} bestätigen`}
+            />
+            <span className={`text-[11px] ${released ? 'text-green-700 font-medium' : needsAction ? 'text-amber-700 font-medium' : 'text-gray-500'}`}>
+              {busy ? '…' : released ? 'ok' : 'offen'}
+            </span>
+          </label>
+        )}
+        {changed && (
+          <button
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => toggleDayRelease(dateStr, false)}
+            disabled={busy}
+            className="block mx-auto text-[10px] font-medium text-amber-700 hover:text-amber-800 disabled:opacity-50"
+            title={`Stunden seit Bestätigung geändert (jetzt ${fmtH(stat.actual)} h). Klicken, um den neuen Wert zu übernehmen.`}
+          >
+            ↻ aktualisieren
+          </button>
+        )}
+      </div>
+    )
+  }
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
@@ -450,12 +556,12 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
                         const onVacation = isOnVacation(user.id, day)
                         const dateStr = format(day, 'yyyy-MM-dd')
                         return (
-                          <td key={di} className="p-1 align-middle text-center min-w-[52px]">
+                          <td key={di} className={`p-1 align-middle text-center min-w-[52px] ${isConfirmed(dateStr) ? 'bg-gray-100/70 opacity-60' : ''}`}>
                             {onVacation ? (
                               <span className="text-[9px] font-semibold text-emerald-600 uppercase tracking-tight">
                                 Urlaub
                               </span>
-                            ) : cellShifts.length > 0 ? (
+                            ) : cellShifts.length > 0 || getUnplannedForCell(user.id, dateStr).length > 0 ? (
                               <div className="flex flex-col gap-0.5">
                                 {cellShifts.map((shift) => (
                                   <button
@@ -465,6 +571,17 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
                                     style={{ backgroundColor: shift.location.color, fontSize: '10px', lineHeight: '1.2' }}
                                   >
                                     {formatMobileTime(shift.startTime)}–{formatMobileTime(shift.endTime)}
+                                  </button>
+                                ))}
+                                {getUnplannedForCell(user.id, dateStr).map((entry) => (
+                                  <button
+                                    key={entry.id}
+                                    onClick={() => setEditEntry(entry)}
+                                    className="rounded-md px-0.5 py-1.5 border-2 border-dashed bg-white text-gray-700 font-semibold text-center w-full transition active:scale-95"
+                                    style={{ borderColor: entry.locationColor, fontSize: '10px', lineHeight: '1.2' }}
+                                    title="Ungeplanter Einsatz"
+                                  >
+                                    {formatMobileTime(isoToHHmm(entry.checkinAt))}–{entry.checkoutAt ? formatMobileTime(isoToHHmm(entry.checkoutAt)) : '…'}
                                   </button>
                                 ))}
                               </div>
@@ -483,6 +600,22 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
                   )
                 })}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-gray-200 bg-gray-50/60">
+                  <td className="sticky left-0 z-10 bg-gray-50 px-2 py-2 border-r border-gray-100 align-middle">
+                    <div className="text-[11px] font-semibold text-gray-600 leading-tight">Ist-Std.</div>
+                    <div className="text-[9px] text-gray-400">Haken = bestätigt</div>
+                  </td>
+                  {days.map((day, i) => {
+                    const dateStr = format(day, 'yyyy-MM-dd')
+                    return (
+                      <td key={i} className="border-l border-gray-100 align-middle">
+                        {renderDayRelease(dateStr)}
+                      </td>
+                    )
+                  })}
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>
@@ -605,13 +738,14 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
                     <th
                       scope="col"
                       key={i}
-                      className="text-center px-2 py-3 bg-gray-50/80 min-w-[120px]"
+                      className={`text-center px-2 py-3 min-w-[120px] ${isConfirmed(dateStr) ? 'bg-gray-100' : 'bg-gray-50/80'}`}
                     >
-                      <div className={`text-xs font-medium ${isToday(day) ? 'text-indigo-500' : 'text-gray-400'}`}>
+                      <div className={`text-xs font-medium ${isConfirmed(dateStr) ? 'text-gray-400' : isToday(day) ? 'text-indigo-500' : 'text-gray-400'}`}>
                         {DAY_NAMES[i]}
                       </div>
-                      <div className={`text-sm font-semibold mt-0.5 ${isToday(day) ? 'text-indigo-600' : 'text-gray-800'}`}>
+                      <div className={`text-sm font-semibold mt-0.5 inline-flex items-center gap-1 ${isConfirmed(dateStr) ? 'text-gray-400' : isToday(day) ? 'text-indigo-600' : 'text-gray-800'}`}>
                         {format(day, 'd. MMM', { locale: de })}
+                        {isConfirmed(dateStr) && <span className="text-green-600" title="Bestätigt">✓</span>}
                       </div>
                       {holiday && (
                         <div className="text-[10px] font-medium text-amber-600 mt-0.5 leading-tight">
@@ -677,9 +811,9 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
                     const dayShifts = getUnassignedForDay(day)
                     const dateStr = format(day, 'yyyy-MM-dd')
                     return (
-                      <td key={di} className="p-0 align-top">
+                      <td key={di} className={`p-0 align-top ${isConfirmed(dateStr) ? 'bg-gray-100/70' : ''}`}>
                         <DropCell id={`unassigned__${dateStr}`}>
-                          <div className="flex flex-col gap-1 p-1.5 min-h-[56px]">
+                          <div className={`flex flex-col gap-1 p-1.5 min-h-[56px] ${isConfirmed(dateStr) ? 'opacity-60' : ''}`}>
                             {dayShifts.map((shift) => (
                               <ShiftBlock
                                 key={shift.id}
@@ -742,9 +876,9 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
                       const dateStr = format(day, 'yyyy-MM-dd')
                       const onVacation = isOnVacation(user.id, day)
                       return (
-                        <td key={di} className="p-0 align-top">
+                        <td key={di} className={`p-0 align-top ${isConfirmed(dateStr) ? 'bg-gray-100/70' : ''}`}>
                           <DropCell id={`${user.id}__${dateStr}`}>
-                            <div className="flex flex-col gap-1 p-1.5 min-h-[56px]">
+                            <div className={`flex flex-col gap-1 p-1.5 min-h-[56px] ${isConfirmed(dateStr) ? 'opacity-60' : ''}`}>
                               {onVacation && (
                                 <div className="px-2.5 py-2 rounded-lg bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-semibold text-center select-none">
                                   🏖 URLAUB
@@ -760,6 +894,9 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
                                   previewEndTime={resizingShift?.id === shift.id ? resizingShift.previewEndTime : undefined}
                                   applicationCount={applications.filter((a) => a.shiftId === shift.id && a.status === 'PENDING').length}
                                 />
+                              ))}
+                              {getUnplannedForCell(user.id, dateStr).map((entry) => (
+                                <UnplannedBlock key={entry.id} entry={entry} onEdit={setEditEntry} />
                               ))}
                               {!onVacation && (
                                 <button
@@ -779,6 +916,22 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
                 )
               })}
             </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-gray-200 bg-gray-50/60">
+                <td className="px-3 py-2 align-middle bg-gray-50">
+                  <div className="text-sm font-semibold text-gray-700">Ist-Stunden</div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">Haken = Tag bestätigt</div>
+                </td>
+                {days.map((day, i) => {
+                  const dateStr = format(day, 'yyyy-MM-dd')
+                  return (
+                    <td key={i} className="align-middle border-l border-gray-100 first:border-l-0">
+                      {renderDayRelease(dateStr)}
+                    </td>
+                  )
+                })}
+              </tr>
+            </tfoot>
           </table>
         </div>
 
@@ -826,6 +979,13 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
           onClose={() => setEditEmployeeId(null)}
           onSaved={() => { setEditEmployeeId(null); router.refresh() }}
           isSuperAdmin={isSuperAdmin}
+        />
+      )}
+      {editEntry && (
+        <TimeEntryEditModal
+          entry={editEntry}
+          locations={locations}
+          onClose={() => setEditEntry(null)}
         />
       )}
     </>

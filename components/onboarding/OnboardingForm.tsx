@@ -8,9 +8,9 @@ const SAMMIE_IMAGES = ['/sammie-1.png','/sammie-2.png','/sammie-3.png','/sammie-
 const inputClass =
   'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
 
-type Props = { token: string; defaultName: string }
+type Props = { token: string; defaultName: string; email: string }
 
-export default function OnboardingForm({ token, defaultName }: Props) {
+export default function OnboardingForm({ token, defaultName, email }: Props) {
   const [sammie, setSammie] = useState<string | null>(null)
   useEffect(() => {
     setSammie(SAMMIE_IMAGES[Math.floor(Math.random() * SAMMIE_IMAGES.length)])
@@ -36,12 +36,26 @@ export default function OnboardingForm({ token, defaultName }: Props) {
     <form action={formAction} className="space-y-4">
       <div>
         <label className="block text-xs font-medium text-gray-700 mb-1">
+          E-Mail (dein Login)
+        </label>
+        <input
+          name="email"
+          type="email"
+          value={email}
+          readOnly
+          autoComplete="username"
+          className={`${inputClass} bg-gray-50 text-gray-500 cursor-default`}
+        />
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-gray-700 mb-1">
           Name
         </label>
         <input
           name="name"
           type="text"
           defaultValue={defaultName}
+          autoComplete="name"
           className={inputClass}
         />
       </div>
@@ -54,6 +68,7 @@ export default function OnboardingForm({ token, defaultName }: Props) {
           type="password"
           required
           minLength={8}
+          autoComplete="new-password"
           placeholder="Mindestens 8 Zeichen"
           className={inputClass}
         />
@@ -66,6 +81,7 @@ export default function OnboardingForm({ token, defaultName }: Props) {
           name="confirmPassword"
           type="password"
           required
+          autoComplete="new-password"
           className={inputClass}
         />
       </div>

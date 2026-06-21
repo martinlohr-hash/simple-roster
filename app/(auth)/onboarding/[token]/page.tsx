@@ -21,7 +21,7 @@ export default async function OnboardingPage({ params }: Props) {
             Lege dein Passwort fest, um dein Konto zu aktivieren.
           </p>
         </div>
-        <OnboardingForm token={token} defaultName={user.name} />
+        <OnboardingForm token={token} defaultName={user.name} email={user.email} />
       </div>
     </div>
   )

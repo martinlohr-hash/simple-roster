@@ -3,6 +3,7 @@ import { isAdmin } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import AdminBottomNav from '@/components/admin/AdminBottomNav'
+import AdminMobileHeader from '@/components/admin/AdminMobileHeader'
 import BugReportButton from '@/components/ui/BugReportButton'
 import { prisma } from '@/lib/db'
 import { countUnconfirmedDays } from '@/lib/dayHours'
@@ -26,7 +27,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         Zum Inhalt springen
       </a>
       <AdminSidebar userName={session.name} userRole={session.role} openBugCount={openBugCount} pendingVacationCount={pendingVacationCount} unconfirmedDaysCount={unconfirmedDaysCount} />
-      <main id="main-content" className="flex-1 overflow-auto bg-white pb-16 md:pb-0">{children}</main>
+      <AdminMobileHeader userName={session.name} userRole={session.role} />
+      <main id="main-content" className="flex-1 overflow-auto bg-white pt-12 md:pt-0 pb-16 md:pb-0">{children}</main>
       <AdminBottomNav pendingVacationCount={pendingVacationCount} unconfirmedDaysCount={unconfirmedDaysCount} />
       <BugReportButton />
     </div>

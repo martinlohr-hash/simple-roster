@@ -37,9 +37,14 @@ export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams
   const fmt = sp.get('format') || 'csv'
   const scope = sp.get('scope') || 'active' // active = ohne ausgetretene MA
+  const userId = sp.get('userId') // gesetzt = Einzel-Export nur dieses MA
 
   const users = await prisma.user.findMany({
-    where: scope === 'active' ? { exitDate: null, endDate: null } : {},
+    where: userId
+      ? { id: userId }
+      : scope === 'active'
+        ? { exitDate: null, endDate: null }
+        : {},
     orderBy: [{ lastName: 'asc' }, { name: 'asc' }],
   })
 
@@ -81,7 +86,14 @@ export async function GET(request: NextRequest) {
     Status: u.onboardingCompletedAt ? 'ausgefüllt' : 'offen',
   }))
 
-  const fileBase = `personalboegen_${format(new Date(), 'yyyy-MM-dd')}`
+  // Dateiname: bei Einzel-Export Name des MA, sonst Sammel-Export.
+  const slug = (s: string) =>
+    s.normalize('NFKD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase()
+  const single = userId && users[0]
+  const fileBase = single
+    ? `personalbogen_${slug([users[0].lastName, users[0].firstName].filter(Boolean).join('-') || users[0].name)}_${format(new Date(), 'yyyy-MM-dd')}`
+    : `personalboegen_${format(new Date(), 'yyyy-MM-dd')}`
 
   if (fmt === 'excel') {
     const XLSX = await import('xlsx')

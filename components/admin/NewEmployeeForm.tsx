@@ -14,6 +14,8 @@ const selectClass =
 
 export default function NewEmployeeForm({ locations }: { locations: Location[] }) {
   const [inviteLink, setInviteLink] = useState<string | null>(null)
+  const [emailSent, setEmailSent] = useState(false)
+  const [emailError, setEmailError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [isPending, startTransition] = useTransition()
@@ -27,6 +29,8 @@ export default function NewEmployeeForm({ locations }: { locations: Location[] }
         setError(result.error)
       } else if (result.inviteToken) {
         setInviteLink(`${window.location.origin}/onboarding/${result.inviteToken}`)
+        setEmailSent(Boolean(result.emailSent))
+        setEmailError(result.emailError ?? null)
       }
     })
   }
@@ -42,9 +46,24 @@ export default function NewEmployeeForm({ locations }: { locations: Location[] }
           </div>
           <span className="text-sm font-medium text-gray-900">Mitarbeiter wurde angelegt.</span>
         </div>
+        {emailSent ? (
+          <p className="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2">
+            ✓ Einladungs-E-Mail wurde verschickt. Der Mitarbeiter erhält den Zugang per Mail.
+          </p>
+        ) : emailError ? (
+          <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+            {emailError} Schicke den Link unten bitte manuell.
+          </p>
+        ) : (
+          <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+            E-Mail-Versand ist nicht konfiguriert. Schicke den Link unten manuell.
+          </p>
+        )}
         <div>
           <p className="text-xs text-gray-500 mb-2">
-            Schicke diesen Einladungslink an den Mitarbeiter. Der Link ist 7 Tage gültig.
+            {emailSent
+              ? 'Einladungslink zum Kopieren (z. B. als Backup). Gültig für 7 Tage.'
+              : 'Schicke diesen Einladungslink an den Mitarbeiter. Der Link ist 7 Tage gültig.'}
           </p>
           <div className="flex gap-2">
             <input

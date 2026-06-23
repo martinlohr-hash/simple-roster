@@ -7,6 +7,7 @@ import { randomBytes } from 'crypto'
 import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
 import { isAdmin, isSuperAdmin } from '@/lib/session'
+import { sendInviteEmail } from '@/lib/email/invite'
 
 function parseDays(values: FormDataEntryValue[]): number[] {
   return values
@@ -14,9 +15,26 @@ function parseDays(values: FormDataEntryValue[]): number[] {
     .filter((n) => !Number.isNaN(n) && n >= 0 && n <= 6)
 }
 
+// Verschickt die Einladung und meldet zurück, ob sie raus ging.
+// Mail-Fehler dürfen die MA-Anlage NICHT abbrechen → der Admin kann den Link
+// als Fallback weiterhin kopieren/erneut senden.
+async function tryInvite(
+  to: string,
+  name: string,
+  inviteToken: string,
+): Promise<{ emailSent: boolean; emailError?: string }> {
+  try {
+    const sent = await sendInviteEmail({ to, name, inviteToken })
+    return { emailSent: sent }
+  } catch (e) {
+    console.error('Einladungsmail fehlgeschlagen:', e)
+    return { emailSent: false, emailError: 'E-Mail konnte nicht versendet werden.' }
+  }
+}
+
 export async function createEmployee(
   formData: FormData,
-): Promise<{ inviteToken?: string; error?: string }> {
+): Promise<{ inviteToken?: string; emailSent?: boolean; emailError?: string; error?: string }> {
   const session = await getSession()
   if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
@@ -80,24 +98,31 @@ export async function createEmployee(
     return { error: 'Diese E-Mail-Adresse ist bereits vergeben.' }
   }
 
+  const { emailSent, emailError } = await tryInvite(email, name, inviteToken)
+
   revalidatePath('/admin/employees')
-  return { inviteToken }
+  return { inviteToken, emailSent, emailError }
 }
 
-export async function resendInvite(userId: string): Promise<{ inviteToken: string }> {
+export async function resendInvite(
+  userId: string,
+): Promise<{ inviteToken: string; emailSent?: boolean; emailError?: string }> {
   const session = await getSession()
   if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
   const inviteToken = randomBytes(32).toString('hex')
   const inviteTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
-  await prisma.user.update({
+  const user = await prisma.user.update({
     where: { id: userId },
     data: { inviteToken, inviteTokenExpiry, status: 'PENDING' },
+    select: { email: true, name: true },
   })
 
+  const { emailSent, emailError } = await tryInvite(user.email, user.name, inviteToken)
+
   revalidatePath('/admin/employees')
-  return { inviteToken }
+  return { inviteToken, emailSent, emailError }
 }
 
 export async function updateEmployee(id: string, formData: FormData) {

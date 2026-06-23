@@ -7,43 +7,65 @@ import { isAdmin } from '@/lib/session'
 import { COMPANY_NAME } from '@/lib/company'
 import PrintButton from '@/components/admin/PrintButton'
 
-export const metadata = { title: 'Personalbogen (Druck)' }
-
-const GENDER_LABELS: Record<string, string> = { MALE: 'männlich', FEMALE: 'weiblich', DIVERSE: 'divers' }
-const PAYROLL_LABELS: Record<string, string> = {
-  SV_PFLICHTIG: 'Sozialversicherungspflichtig',
-  AUSZUBILDENDER: 'Auszubildender',
-  MINIJOBBER: 'Minijobber',
-  WERKSTUDENT: 'Werkstudent',
-  KURZFRISTIG: 'Kurzfristige Beschäftigung',
-  PFLICHTPRAKTIKUM: 'Pflichtpraktikum',
-  GESCHAEFTSFUEHRER: 'Geschäftsführer',
-  SONSTIGES: 'Sonstiges',
-}
-const OTHER_LABELS: Record<string, string> = {
-  NEIN: 'Nein',
-  JA_SV_PFLICHTIG: 'Ja, Sv-Pflichtig',
-  JA_MINIJOB: 'Ja, Minijob',
-  JA_KURZFRISTIG: 'Ja, kurzfristige Beschäftigung',
-  JA_SELBSTSTAENDIG: 'Ja, Selbstständigkeit',
-}
+export const metadata = { title: 'Einstellungsbogen (Druck)' }
 
 const d = (v: Date | null) => (v ? format(v, 'dd.MM.yyyy') : '')
+const has = (s: string | null | undefined, needle: string) =>
+  !!s && s.toLowerCase().includes(needle.toLowerCase())
 
-// Ein einzelnes Formularfeld: Label oben, Wert auf einer Unterlinie (auch leer ausdruckbar).
-function Field({ label, value, wide }: { label: string; value?: string | number | null; wide?: boolean }) {
+// Ankreuzkästchen (gefüllt = automatisch aus den gespeicherten Daten gesetzt).
+function Box({ checked, children }: { checked?: boolean; children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 mr-4 align-top">
+      <span className="inline-flex items-center justify-center w-3.5 h-3.5 border border-black text-[10px] leading-none shrink-0">
+        {checked ? '✕' : ''}
+      </span>
+      <span className="text-[11px] text-gray-900">{children}</span>
+    </span>
+  )
+}
+
+// Formularzeile: Label-Spalte links, Wert/Ankreuzfeld rechts.
+function Row({
+  label,
+  hint,
+  value,
+  children,
+  minH = 22,
+}: {
+  label: string
+  hint?: string
+  value?: string | number | null
+  children?: React.ReactNode
+  minH?: number
+}) {
   const v = value === 0 ? '0' : value ? String(value) : ''
   return (
-    <div className={wide ? 'col-span-2' : ''}>
-      <div className="text-[9px] uppercase tracking-wide text-gray-500">{label}</div>
-      <div className="min-h-[18px] border-b border-gray-300 text-[12px] text-gray-900 pb-0.5">{v || ' '}</div>
-    </div>
+    <tr className="break-inside-avoid">
+      <td className="border border-black align-top px-2 py-1 w-[38%]">
+        <div className="text-[12px] text-gray-900 leading-snug">{label}</div>
+        {hint && <div className="text-[9px] text-gray-500 leading-tight">{hint}</div>}
+      </td>
+      <td className="border border-black align-top px-2 py-1" style={{ minHeight: minH }}>
+        {children ?? <span className="text-[12px] text-gray-900">{v}</span>}
+      </td>
+    </tr>
+  )
+}
+
+function SectionRow({ title }: { title: string }) {
+  return (
+    <tr className="break-inside-avoid">
+      <td colSpan={2} className="border border-black bg-gray-200 px-2 py-1">
+        <span className="text-[12px] font-bold underline text-gray-900">{title}</span>
+      </td>
+    </tr>
   )
 }
 
 type Props = { params: Promise<{ id: string }> }
 
-export default async function PersonalbogenPrintPage({ params }: Props) {
+export default async function EinstellungsbogenPrintPage({ params }: Props) {
   const session = await getSession()
   if (!session || !isAdmin(session.role)) redirect('/login')
 
@@ -51,21 +73,25 @@ export default async function PersonalbogenPrintPage({ params }: Props) {
   const u = await prisma.user.findUnique({ where: { id } })
   if (!u) notFound()
 
+  const plzOrt = [u.postalCode, u.city].filter(Boolean).join(' ')
+  const p = u.payrollType
+  const o = u.otherEmployment
+
   return (
     <div className="min-h-screen bg-gray-100 print:bg-white">
-      {/* Druckspezifische Regeln: A4, Seitenrand, Bildschirm-Chrome im Druck ausblenden */}
       <style>{`
-        @page { size: A4; margin: 12mm; }
+        @page { size: A4 portrait; margin: 10mm; }
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         @media print {
           .no-print { display: none !important; }
-          .sheet { box-shadow: none !important; margin: 0 !important; }
+          .sheet { box-shadow: none !important; margin: 0 !important; width: auto !important; max-width: none !important; }
           html, body { background: #fff !important; }
         }
       `}</style>
 
-      {/* Aktionsleiste – wird nicht mitgedruckt */}
+      {/* Aktionsleiste – nicht im Druck */}
       <div className="no-print sticky top-0 z-10 bg-white border-b border-gray-200">
-        <div className="max-w-[820px] mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-[840px] mx-auto px-4 py-3 flex items-center justify-between">
           <Link href={`/admin/employees/${u.id}/personalbogen`} className="text-sm text-gray-500 hover:text-gray-900">
             ← Zurück zum Bogen
           </Link>
@@ -73,70 +99,125 @@ export default async function PersonalbogenPrintPage({ params }: Props) {
         </div>
       </div>
 
-      {/* A4-Blatt */}
-      <div className="sheet bg-white max-w-[820px] mx-auto my-6 p-10 shadow-sm print:my-0 print:p-0 print:shadow-none">
-        {/* Kopf */}
-        <div className="flex items-start justify-between border-b-2 border-gray-800 pb-3 mb-5">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Personalbogen</h1>
-            <p className="text-[11px] text-gray-500 mt-0.5">Stammdaten für die Lohnabrechnung</p>
-          </div>
-          <div className="text-right">
-            <div className="text-sm font-semibold text-gray-900">{COMPANY_NAME}</div>
-            <div className="text-[10px] text-gray-500 mt-0.5">Erstellt am {format(new Date(), 'dd.MM.yyyy')}</div>
-          </div>
+      <div className="sheet bg-white max-w-[840px] mx-auto my-6 p-8 shadow-sm print:my-0 print:p-0 print:shadow-none">
+        <div className="text-center mb-4">
+          <h1 className="text-lg font-bold underline text-gray-900">Mitarbeiter-Einstellungsbogen</h1>
+          <p className="text-[12px] font-bold text-gray-800">(Bitte leserlich ausfüllen!)</p>
         </div>
 
-        {/* Angaben zum Mitarbeiter */}
-        <h2 className="text-[11px] font-bold uppercase tracking-wide text-white bg-gray-800 px-2 py-1 rounded-sm mb-3 print:bg-gray-800">
-          Angaben zum Mitarbeiter
-        </h2>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 mb-6">
-          <Field label="Name" value={u.lastName || u.name} />
-          <Field label="Vorname" value={u.firstName} />
-          <Field label="Straße und Hausnummer" value={u.street} wide />
-          <Field label="PLZ" value={u.postalCode} />
-          <Field label="Ort" value={u.city} />
-          <Field label="Geburtsdatum" value={d(u.birthday)} />
-          <Field label="Geburtsname" value={u.birthName} />
-          <Field label="Geburtsort und Land" value={u.birthPlace} />
-          <Field label="Staatsangehörigkeit" value={u.nationality} />
-          <Field label="Geschlecht" value={u.gender ? GENDER_LABELS[u.gender] : ''} />
-          <Field label="Steuer-ID" value={u.taxId} />
-          <Field label="Sozialversicherungs-Nr." value={u.socialSecurityNo} />
-          <Field label="Bankverbindung / IBAN" value={u.iban} wide />
-          <Field label="Krankenkasse" value={u.healthInsurance} />
-          <Field label="Telefon" value={u.phone} />
-          <Field label="E-Mail" value={u.email} wide />
-        </div>
+        <table className="w-full border-collapse">
+          <tbody>
+            {/* Firmenname */}
+            <Row label="Firmenname" value={COMPANY_NAME} />
 
-        {/* Angaben zur Beschäftigung */}
-        <h2 className="text-[11px] font-bold uppercase tracking-wide text-white bg-gray-800 px-2 py-1 rounded-sm mb-3 print:bg-gray-800">
-          Angaben zur Beschäftigung
-        </h2>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2.5">
-          <Field label="Personalnummer" value={u.personnelNumber} />
-          <Field label="Tätigkeitsbezeichnung" value={u.jobTitle} />
-          <Field label="Eintrittsdatum" value={d(u.entryDate)} />
-          <Field label="Austrittsdatum" value={d(u.exitDate)} />
-          <Field label="Wochenarbeitszeit" value={u.weeklyWorkTime} />
-          <Field label="Brutto-Verdienst" value={u.grossSalary} />
-          <Field label="Sonstige Gehaltsbestandteile" value={u.additionalSalaryComponents} />
-          <Field label="Vertragliche Sonderzahlungen" value={u.specialPayments} />
-          <Field label="Abrechnungs-Art" value={u.payrollType ? PAYROLL_LABELS[u.payrollType] : ''} />
-          <Field label="Kurzfristig-Grenze" value={u.shortTermLimit} />
-          <Field label="Freiwilliges Praktikum" value={u.voluntaryInternship ? 'Ja' : 'Nein'} />
-          <Field label="Gesellschaftsanteile (%)" value={u.shareholderPercent} />
-          <Field label="Weitere Beschäftigungen" value={u.otherEmployment ? OTHER_LABELS[u.otherEmployment] : ''} wide />
-          <Field label="Urlaub jährlich (Tage)" value={u.vacationDaysAnnual} />
-          <Field label="Urlaub lfd. Jahr (Tage)" value={u.vacationDaysProRata} />
-        </div>
+            {/* Angaben zum Mitarbeiter */}
+            <SectionRow title="Angaben zum Mitarbeiter" />
+            <Row label="Name" value={u.lastName || u.name} />
+            <Row label="Vorname" value={u.firstName} />
+            <Row label="Strasse und Hausnummer" value={u.street} />
+            <Row label="Plz, Ort" value={plzOrt} />
+            <Row label="Staatsangehörigkeit" value={u.nationality} />
+            <Row label="Geburtsdatum" value={d(u.birthday)} />
+            <Row label="Geburtsname (falls abweichend)" value={u.birthName} />
+            <Row label="Geburtsort und Land" value={u.birthPlace} />
+            <Row label="Geschlecht (bitte ankreuzen)">
+              <Box checked={u.gender === 'MALE'}>männlich</Box>
+              <Box checked={u.gender === 'FEMALE'}>weiblich</Box>
+              <Box checked={u.gender === 'DIVERSE'}>divers</Box>
+            </Row>
+            <Row label="persönliche Steuer-Identifikationsnummer (11-stellig)" value={u.taxId} />
+            <Row label="Sozialversicherungs-Nr. (12-stellig)" value={u.socialSecurityNo} />
+            <Row label="Bankverbindung / IBAN" value={u.iban} />
+            <Row label="Krankenkasse" value={u.healthInsurance} />
 
-        {/* Unterschriften */}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-10">
-          <div className="border-t border-gray-400 pt-1 text-[10px] text-gray-500">Ort, Datum · Unterschrift Mitarbeiter</div>
-          <div className="border-t border-gray-400 pt-1 text-[10px] text-gray-500">Ort, Datum · Unterschrift Arbeitgeber</div>
-        </div>
+            {/* Angaben zur Beschäftigung */}
+            <SectionRow title="Angaben zur Beschäftigung" />
+            <Row label="Personalnummer" value={u.personnelNumber} />
+            <Row label="Eintritt" value={d(u.entryDate)} />
+            <Row label="Austritt (falls bekannt)" value={d(u.exitDate)} />
+            <Row label="genaue Tätigkeitsbezeichnung" value={u.jobTitle} />
+            <Row label="Wochenarbeitszeit in Stunden und Tagen" value={u.weeklyWorkTime} />
+            <Row label="Brutto-Verdienst" hint="(Lohn/Gehalt oder Stundenlohn)" value={u.grossSalary} />
+            <Row label="Sonstige Gehaltsbestandteile" hint="(VWL/Firmenwagen etc.)" value={u.additionalSalaryComponents} />
+            <Row label="Vertraglich festgelegte Sonderzahlungen" hint="(Weihnachtsgeld / Urlaubsgeld / Boni)" value={u.specialPayments} />
+            <Row label="Abrechnungs-Art (bitte ankreuzen)" minH={90}>
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap items-start">
+                  <span className="inline-flex w-[34%] min-w-[150px]"><Box checked={p === 'SV_PFLICHTIG'}>Sozialversicherungspflichtig</Box></span>
+                  <span className="inline-flex w-[32%] min-w-[140px]"><Box checked={p === 'KURZFRISTIG'}>Kurzfristige Beschäftigung</Box></span>
+                  <span className="inline-flex">
+                    <Box checked={p === 'KURZFRISTIG' && has(u.shortTermLimit, '3')}>3 Monate</Box>
+                    <Box checked={p === 'KURZFRISTIG' && has(u.shortTermLimit, '70')}>70 Tage</Box>
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-start">
+                  <span className="inline-flex w-[34%] min-w-[150px]"><Box checked={p === 'AUSZUBILDENDER'}>Auszubildender</Box></span>
+                  <span className="inline-flex w-[32%] min-w-[140px]"><Box checked={p === 'PFLICHTPRAKTIKUM'}>Pflichtpraktikum</Box></span>
+                  <span className="inline-flex"><Box checked={u.voluntaryInternship}>freiwilliges Praktikum</Box></span>
+                </div>
+                <div className="flex flex-wrap items-start">
+                  <span className="inline-flex w-[34%] min-w-[150px]"><Box checked={p === 'MINIJOBBER'}>Minijobber</Box></span>
+                  <span className="inline-flex w-[32%] min-w-[140px]"><Box checked={p === 'GESCHAEFTSFUEHRER'}>Geschäftsführer</Box></span>
+                  <span className="inline-flex items-center text-[11px] text-gray-900">
+                    Gesellschaftsanteile in %:&nbsp;<span className="border-b border-black min-w-[60px] inline-block">{u.shareholderPercent || ''}</span>
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-start">
+                  <span className="inline-flex w-[34%] min-w-[150px]"><Box checked={p === 'WERKSTUDENT'}>Werkstudent</Box></span>
+                  <span className="inline-flex w-[32%] min-w-[140px]"><Box checked={p === 'SONSTIGES'}>Sonstiges</Box></span>
+                </div>
+              </div>
+            </Row>
+            <Row label="Werden weitere Beschäftigungen ausgeübt?" hint="(bitte ankreuzen)" minH={40}>
+              <div className="flex flex-wrap">
+                <Box checked={o === 'NEIN'}>Nein</Box>
+                <Box checked={o === 'JA_SV_PFLICHTIG'}>Ja, Sv-Pflichtig</Box>
+                <Box checked={o === 'JA_MINIJOB'}>Ja, Minijob</Box>
+                <Box checked={o === 'JA_KURZFRISTIG'}>Ja, kurzfristige Beschäftigung</Box>
+                <Box checked={o === 'JA_SELBSTSTAENDIG'}>Ja, Selbstständigkeit</Box>
+              </div>
+            </Row>
+            <Row
+              label="Urlaubsanspruch in Tagen: Jährlich / lfd. Jahr (anteilig)"
+              value={[u.vacationDaysAnnual, u.vacationDaysProRata].some((x) => x != null)
+                ? `${u.vacationDaysAnnual ?? '–'} / ${u.vacationDaysProRata ?? '–'}`
+                : ''}
+            />
+
+            {/* Besonderheiten in der Sozialversicherung (im System nicht erfasst → leer zum Ausfüllen) */}
+            <SectionRow title="Besonderheiten in der Sozialversicherung" />
+            <Row label="Haben Sie Kinder?" hint='Wenn ja, bitte das Formular "Nachweis Elternschaft" ausfüllen'>
+              <Box>Ja</Box><Box>Nein</Box>
+            </Row>
+            <Row label="Übergangsbereich für Sv-pflichtige Beschäftigungen">
+              <Box>Ja</Box><Box>Nein</Box>
+            </Row>
+            <Row label="RV-Befreiung für geringfügig Beschäftigt (Minijobber)">
+              <Box>Ja, der Mitarbeiter möchte befreit werden (Antrag ausfüllen)</Box>
+              <Box>Nein, Mitarbeiter zahlt RV-Beiträge</Box>
+            </Row>
+            <Row label="Status Feststellungsverfahren" minH={40}>
+              <div className="flex flex-col gap-1">
+                <Box>keine Abhängigkeit zwischen Arbeitgeber und Arbeitnehmer</Box>
+                <Box>Ehegatte / Lebenspartner / Abkömmling</Box>
+                <Box>Geschäftsführender GmbH-Gesellschafter</Box>
+              </div>
+            </Row>
+
+            {/* Lohnsteuermerkmale (im System nicht erfasst → leer zum Ausfüllen) */}
+            <SectionRow title="Lohnsteuermerkmale oder Pauschalversteuerung" />
+            <Row label="Steuerklasse" />
+            <Row label="Kinderfreibeträge" />
+            <Row label="Konfession" />
+            <Row label="Pauschalversteuerung (für Minijobber)">
+              <Box>2% - Kosten trägt AG</Box><Box>2% - Kosten trägt AN</Box>
+            </Row>
+            <Row label="Pauschalversteuerung (für Kurzfristige Beschäftigungen)">
+              <Box>25% - Kosten trägt AG</Box><Box>25% - Kosten trägt AN</Box>
+            </Row>
+            <Row label="Bemerkungen" minH={70} />
+          </tbody>
+        </table>
       </div>
     </div>
   )

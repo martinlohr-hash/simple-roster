@@ -113,7 +113,7 @@ model User {
   shortTermLimit            String?           // bei kurzfristiger Beschäftigung: "3 Monate" | "70 Tage"
   voluntaryInternship       Boolean           @default(false) // freiwilliges Praktikum
   shareholderPercent        String?           // Gesellschaftsanteile in % (bei Geschäftsführer)
-  otherEmployment           OtherEmployment?  // Werden weitere Beschäftigungen ausgeübt?
+  otherEmployment           OtherEmployment[] @default([]) // Werden weitere Beschäftigungen ausgeübt? (mehrere möglich)
   vacationDaysAnnual        Float?            // Urlaubsanspruch jährlich
   vacationDaysProRata       Float?            // Urlaubsanspruch lfd. Jahr (anteilig)
 

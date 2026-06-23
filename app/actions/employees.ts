@@ -247,7 +247,8 @@ export async function updatePersonalbogen(id: string, formData: FormData): Promi
         shortTermLimit: str(formData.get('shortTermLimit')),
         voluntaryInternship: formData.get('voluntaryInternship') === 'on',
         shareholderPercent: str(formData.get('shareholderPercent')),
-        otherEmployment: pickEnum(OTHER_EMPLOYMENTS, formData.get('otherEmployment') as string | null),
+        otherEmployment: { set: (formData.getAll('otherEmployment') as string[])
+          .filter((v): v is (typeof OTHER_EMPLOYMENTS)[number] => (OTHER_EMPLOYMENTS as readonly string[]).includes(v)) },
         vacationDaysAnnual: num(formData.get('vacationDaysAnnual') as string | null),
         vacationDaysProRata: num(formData.get('vacationDaysProRata') as string | null),
       },

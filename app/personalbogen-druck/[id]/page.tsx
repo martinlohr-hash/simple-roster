@@ -170,11 +170,11 @@ export default async function EinstellungsbogenPrintPage({ params }: Props) {
             </Row>
             <Row label="Werden weitere Beschäftigungen ausgeübt?" hint="(bitte ankreuzen)" minH={40}>
               <div className="flex flex-wrap">
-                <Box checked={o === 'NEIN'}>Nein</Box>
-                <Box checked={o === 'JA_SV_PFLICHTIG'}>Ja, Sv-Pflichtig</Box>
-                <Box checked={o === 'JA_MINIJOB'}>Ja, Minijob</Box>
-                <Box checked={o === 'JA_KURZFRISTIG'}>Ja, kurzfristige Beschäftigung</Box>
-                <Box checked={o === 'JA_SELBSTSTAENDIG'}>Ja, Selbstständigkeit</Box>
+                <Box checked={o.includes('NEIN')}>Nein</Box>
+                <Box checked={o.includes('JA_SV_PFLICHTIG')}>Ja, Sv-Pflichtig</Box>
+                <Box checked={o.includes('JA_MINIJOB')}>Ja, Minijob</Box>
+                <Box checked={o.includes('JA_KURZFRISTIG')}>Ja, kurzfristige Beschäftigung</Box>
+                <Box checked={o.includes('JA_SELBSTSTAENDIG')}>Ja, Selbstständigkeit</Box>
               </div>
             </Row>
             <Row

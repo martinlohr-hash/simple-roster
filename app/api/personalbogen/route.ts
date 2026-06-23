@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     'Kurzfristig-Grenze': u.shortTermLimit || '',
     'Freiwilliges Praktikum': u.voluntaryInternship ? 'Ja' : '',
     'Gesellschaftsanteile (%)': u.shareholderPercent || '',
-    'Weitere Beschäftigungen': u.otherEmployment ? OTHER_LABELS[u.otherEmployment] : '',
+    'Weitere Beschäftigungen': u.otherEmployment.map((e) => OTHER_LABELS[e] ?? e).join(', '),
     'Urlaub jährlich (Tage)': u.vacationDaysAnnual ?? '',
     'Urlaub lfd. Jahr (Tage)': u.vacationDaysProRata ?? '',
     Status: u.onboardingCompletedAt ? 'ausgefüllt' : 'offen',

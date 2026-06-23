@@ -34,7 +34,7 @@ export type PersonalbogenUser = {
   shortTermLimit: string | null
   voluntaryInternship: boolean
   shareholderPercent: string | null
-  otherEmployment: string | null
+  otherEmployment: string[]
   vacationDaysAnnual: number | null
   vacationDaysProRata: number | null
 }
@@ -65,6 +65,25 @@ function Sel({ label, name, def, options }: {
         <option value="">– keine Angabe –</option>
         {options.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
       </select>
+    </div>
+  )
+}
+
+function MultiSel({ label, name, def, options }: {
+  label: string; name: string; def: string[]; options: { v: string; l: string }[]
+}) {
+  return (
+    <div className="sm:col-span-2">
+      <span className={labelClass}>{label}</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {options.map((o) => (
+          <label key={o.v} className="flex items-center gap-2.5 text-sm text-gray-700">
+            <input type="checkbox" name={name} value={o.v} defaultChecked={def.includes(o.v)}
+              className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+            {o.l}
+          </label>
+        ))}
+      </div>
     </div>
   )
 }
@@ -145,7 +164,7 @@ export default function PersonalbogenForm({ user }: { user: PersonalbogenUser })
           { v: '3 Monate', l: '3 Monate' }, { v: '70 Tage', l: '70 Tage' },
         ]} />
         <Txt label="Gesellschaftsanteile in % (bei Geschäftsführer)" name="shareholderPercent" def={user.shareholderPercent} />
-        <Sel label="Werden weitere Beschäftigungen ausgeübt?" name="otherEmployment" def={user.otherEmployment} options={OTHER_OPTIONS} />
+        <MultiSel label="Werden weitere Beschäftigungen ausgeübt? (Mehrfachauswahl)" name="otherEmployment" def={user.otherEmployment} options={OTHER_OPTIONS} />
         <Txt label="Urlaubsanspruch jährlich (Tage)" name="vacationDaysAnnual" def={user.vacationDaysAnnual?.toString() ?? ''} type="number" />
         <Txt label="Urlaubsanspruch lfd. Jahr / anteilig (Tage)" name="vacationDaysProRata" def={user.vacationDaysProRata?.toString() ?? ''} type="number" />
         <label className="sm:col-span-2 flex items-center gap-2.5 text-sm text-gray-700">

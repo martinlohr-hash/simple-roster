@@ -31,18 +31,18 @@ export default function EmployeesTable({ users, locations, viewerRole }: Props) 
 
   return (
     <>
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <table className="w-full">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+        <table className="w-full min-w-[640px]">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Name</th>
               <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Rolle</th>
               <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">E-Mail</th>
-              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Handy</th>
-              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Adresse</th>
-              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3">Eintritt</th>
-              <th scope="col" className="text-right text-xs font-medium text-gray-500 px-4 py-3">Std/Wo</th>
-              <th scope="col" className="text-right text-xs font-medium text-gray-500 px-4 py-3">Stundenlohn</th>
+              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3 hidden xl:table-cell">Handy</th>
+              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3 hidden lg:table-cell">Adresse</th>
+              <th scope="col" className="text-left text-xs font-medium text-gray-500 px-4 py-3 hidden md:table-cell">Eintritt</th>
+              <th scope="col" className="text-right text-xs font-medium text-gray-500 px-4 py-3 hidden sm:table-cell">Std/Wo</th>
+              <th scope="col" className="text-right text-xs font-medium text-gray-500 px-4 py-3 hidden xl:table-cell">Stundenlohn</th>
               <th scope="col" className="px-4 py-3" />
             </tr>
           </thead>
@@ -72,15 +72,15 @@ export default function EmployeesTable({ users, locations, viewerRole }: Props) 
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600">{user.email}</td>
-                <td className="px-4 py-3 text-sm text-gray-600">{user.phone || '–'}</td>
-                <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate" title={user.address ?? undefined}>{user.address || '–'}</td>
-                <td className="px-4 py-3 text-sm text-gray-600">
+                <td className="px-4 py-3 text-sm text-gray-600 hidden xl:table-cell">{user.phone || '–'}</td>
+                <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate hidden lg:table-cell" title={user.address ?? undefined}>{user.address || '–'}</td>
+                <td className="px-4 py-3 text-sm text-gray-600 hidden md:table-cell">
                   {user.startDate ? format(parseISO(user.startDate), 'dd.MM.yyyy') : '–'}
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-600 text-right">
+                <td className="px-4 py-3 text-sm text-gray-600 text-right hidden sm:table-cell">
                   {user.maxHoursWeek != null ? `${user.maxHoursWeek} h` : '–'}
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-600 text-right">
+                <td className="px-4 py-3 text-sm text-gray-600 text-right hidden xl:table-cell">
                   {user.hourlyRate > 0 ? `${user.hourlyRate.toFixed(2)} €` : '–'}
                 </td>
                 <td className="px-4 py-3">

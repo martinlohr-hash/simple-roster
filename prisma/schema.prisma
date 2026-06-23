@@ -31,6 +31,31 @@ enum ApplicationStatus {
   REJECTED
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  DIVERSE
+}
+
+enum PayrollType {
+  SV_PFLICHTIG
+  AUSZUBILDENDER
+  MINIJOBBER
+  WERKSTUDENT
+  KURZFRISTIG
+  PFLICHTPRAKTIKUM
+  GESCHAEFTSFUEHRER
+  SONSTIGES
+}
+
+enum OtherEmployment {
+  NEIN
+  JA_SV_PFLICHTIG
+  JA_MINIJOB
+  JA_KURZFRISTIG
+  JA_SELBSTSTAENDIG
+}
+
 model User {
   id                String      @id @default(cuid())
   name              String
@@ -55,6 +80,43 @@ model User {
   preferredDays     Int[]       @default([])  // Wochentage, die in der Regel gut passen (Wunschtage)
   earliestStart     String?     // "HH:MM" – kann i.d.R. erst ab dieser Uhrzeit
   latestEnd         String?     // "HH:MM" – kann i.d.R. nur bis dieser Uhrzeit
+
+  // ---- Personalbogen / Einstellungsbogen ----
+  // Gate: null = Stammdaten beim ersten Login noch nicht ausgefüllt → /willkommen erzwingen
+  onboardingCompletedAt DateTime?
+
+  // Angaben zum Mitarbeiter (vom MA selbst eingetragen; Geburtsdatum = birthday)
+  firstName         String?
+  lastName          String?
+  street            String?     // Strasse und Hausnummer
+  postalCode        String?     // PLZ
+  city              String?     // Ort
+  nationality       String?     // Staatsangehörigkeit
+  birthName         String?     // Geburtsname (falls abweichend)
+  birthPlace        String?     // Geburtsort und Land
+  gender            Gender?
+  taxId             String?     // persönliche Steuer-Identifikationsnummer (11-stellig)
+  socialSecurityNo  String?     // Sozialversicherungs-Nr. (12-stellig)
+  iban              String?     // Bankverbindung / IBAN
+  healthInsurance   String?     // Krankenkasse
+
+  // Angaben zur Beschäftigung (vom Arbeitgeber eingetragen)
+  personnelNumber           String?           // Personalnummer
+  entryDate                 DateTime?         // Eintritt
+  exitDate                  DateTime?         // Austritt (falls bekannt)
+  jobTitle                  String?           // genaue Tätigkeitsbezeichnung
+  weeklyWorkTime            String?           // Wochenarbeitszeit in Stunden und Tagen (Freitext)
+  grossSalary               String?           // Brutto-Verdienst (Lohn/Gehalt oder Stundenlohn, Freitext)
+  additionalSalaryComponents String?          // Sonstige Gehaltsbestandteile (VWL/Firmenwagen etc.)
+  specialPayments           String?           // Vertraglich festgelegte Sonderzahlungen
+  payrollType               PayrollType?      // Abrechnungs-Art
+  shortTermLimit            String?           // bei kurzfristiger Beschäftigung: "3 Monate" | "70 Tage"
+  voluntaryInternship       Boolean           @default(false) // freiwilliges Praktikum
+  shareholderPercent        String?           // Gesellschaftsanteile in % (bei Geschäftsführer)
+  otherEmployment           OtherEmployment?  // Werden weitere Beschäftigungen ausgeübt?
+  vacationDaysAnnual        Float?            // Urlaubsanspruch jährlich
+  vacationDaysProRata       Float?            // Urlaubsanspruch lfd. Jahr (anteilig)
+
   primaryLocationId String?
   primaryLocation   Location?   @relation("PrimaryLocation", fields: [primaryLocationId], references: [id])
   shifts               Shift[]

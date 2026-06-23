@@ -85,6 +85,13 @@ export default function EmployeesTable({ users, locations, viewerRole }: Props) 
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2 justify-end">
+                    <Link
+                      href={`/admin/employees/${user.id}/personalbogen`}
+                      className="text-xs font-medium text-gray-500 hover:text-indigo-600 whitespace-nowrap"
+                      title="Personalbogen / Stammdaten"
+                    >
+                      Personalbogen
+                    </Link>
                     {user.status === 'PENDING' && <ResendInviteButton id={user.id} />}
                     {(viewerRole === 'SUPER_ADMIN' || user.role !== 'SUPER_ADMIN') && (
                       <DeleteEmployeeButton id={user.id} name={user.name} isSuperAdmin={viewerRole === 'SUPER_ADMIN'} />

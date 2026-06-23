@@ -1,8 +1,91 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getSession } from '@/app/actions/auth'
+import { redirect } from 'next/navigation'
+import { getSession, setSessionCookie } from '@/app/actions/auth'
 import { prisma } from '@/lib/db'
+
+type Gender = 'MALE' | 'FEMALE' | 'DIVERSE'
+
+function parseGender(v: string | null | undefined): Gender | null {
+  return v === 'MALE' || v === 'FEMALE' || v === 'DIVERSE' ? v : null
+}
+
+// Schließt den Personalbogen (oberer Teil – „Angaben zum Mitarbeiter“) beim ersten
+// Login ab, markiert den MA als fertig und aktualisiert das Session-Cookie, damit
+// das /willkommen-Gate nicht mehr greift.
+export async function completeMyProfile(data: {
+  firstName: string
+  lastName: string
+  street: string
+  postalCode: string
+  city: string
+  nationality: string
+  birthday: string | null
+  birthName: string
+  birthPlace: string
+  gender: string
+  taxId: string
+  socialSecurityNo: string
+  iban: string
+  healthInsurance: string
+  phone: string
+}): Promise<{ error?: string }> {
+  const session = await getSession()
+  if (!session) return { error: 'Nicht angemeldet' }
+
+  const firstName = data.firstName.trim()
+  const lastName = data.lastName.trim()
+  if (!firstName || !lastName) return { error: 'Vor- und Nachname sind erforderlich.' }
+
+  const taxId = data.taxId.replace(/\s/g, '')
+  if (taxId && !/^\d{11}$/.test(taxId)) {
+    return { error: 'Die Steuer-Identifikationsnummer muss 11-stellig sein.' }
+  }
+  const socialSecurityNo = data.socialSecurityNo.replace(/\s/g, '')
+  if (socialSecurityNo && socialSecurityNo.length !== 12) {
+    return { error: 'Die Sozialversicherungs-Nummer muss 12-stellig sein.' }
+  }
+
+  const fullName = `${firstName} ${lastName}`.trim()
+  const address = [data.street.trim(), `${data.postalCode.trim()} ${data.city.trim()}`.trim()]
+    .filter(Boolean)
+    .join(', ')
+
+  await prisma.user.update({
+    where: { id: session.userId },
+    data: {
+      firstName,
+      lastName,
+      name: fullName,
+      street: data.street.trim() || null,
+      postalCode: data.postalCode.trim() || null,
+      city: data.city.trim() || null,
+      address: address || null,
+      nationality: data.nationality.trim() || null,
+      birthday: data.birthday ? new Date(data.birthday) : null,
+      birthName: data.birthName.trim() || null,
+      birthPlace: data.birthPlace.trim() || null,
+      gender: parseGender(data.gender),
+      taxId: taxId || null,
+      socialSecurityNo: socialSecurityNo || null,
+      iban: data.iban.replace(/\s/g, '') || null,
+      healthInsurance: data.healthInsurance.trim() || null,
+      phone: data.phone.trim() || null,
+      onboardingCompletedAt: new Date(),
+    },
+  })
+
+  // Cookie auffrischen, damit das Gate (onboardingDone) sofort entfällt.
+  await setSessionCookie({
+    userId: session.userId,
+    role: session.role,
+    name: fullName,
+    onboardingDone: true,
+  })
+
+  redirect('/employee/dashboard')
+}
 
 function sanitizeDays(days: number[] | undefined): number[] {
   if (!Array.isArray(days)) return []

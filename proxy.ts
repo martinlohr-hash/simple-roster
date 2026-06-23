@@ -15,8 +15,21 @@ export async function proxy(request: NextRequest) {
   const sessionCookie = request.cookies.get('session')?.value
   const session = sessionCookie ? await decrypt(sessionCookie) : null
 
+  const isWelcome = pathname === '/willkommen'
+
   if (!session && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  // Neue MA müssen zuerst den Personalbogen ausfüllen (Gate greift nur bei === false,
+  // alte Cookies ohne das Feld bleiben unberührt).
+  const needsOnboarding = !!session && session.role === 'EMPLOYEE' && session.onboardingDone === false
+  if (needsOnboarding && !isWelcome) {
+    return NextResponse.redirect(new URL('/willkommen', request.url))
+  }
+  if (session && !needsOnboarding && isWelcome) {
+    const dest = session.role === 'SUPER_ADMIN' || session.role === 'ADMIN' ? '/admin/schedule' : '/employee/dashboard'
+    return NextResponse.redirect(new URL(dest, request.url))
   }
 
   if (session && isPublic) {

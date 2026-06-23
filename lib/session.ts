@@ -4,6 +4,9 @@ export type SessionPayload = {
   userId: string
   role: 'SUPER_ADMIN' | 'ADMIN' | 'EMPLOYEE'
   name: string
+  // false = MA muss vor der Nutzung erst den Personalbogen (/willkommen) ausfüllen.
+  // Optional, damit alte Cookies ohne Feld nicht versehentlich gegatet werden.
+  onboardingDone?: boolean
 }
 
 export function isAdmin(role: string) {

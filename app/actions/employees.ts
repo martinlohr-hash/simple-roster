@@ -145,6 +145,98 @@ export async function updateEmployee(id: string, formData: FormData) {
   redirect('/admin/employees')
 }
 
+const PAYROLL_TYPES = [
+  'SV_PFLICHTIG', 'AUSZUBILDENDER', 'MINIJOBBER', 'WERKSTUDENT',
+  'KURZFRISTIG', 'PFLICHTPRAKTIKUM', 'GESCHAEFTSFUEHRER', 'SONSTIGES',
+] as const
+const OTHER_EMPLOYMENTS = [
+  'NEIN', 'JA_SV_PFLICHTIG', 'JA_MINIJOB', 'JA_KURZFRISTIG', 'JA_SELBSTSTAENDIG',
+] as const
+const GENDERS = ['MALE', 'FEMALE', 'DIVERSE'] as const
+
+function pickEnum<T extends readonly string[]>(allowed: T, v: string | null): T[number] | null {
+  return v && (allowed as readonly string[]).includes(v) ? (v as T[number]) : null
+}
+function num(v: string | null): number | null {
+  if (v == null || v.trim() === '') return null
+  const n = parseFloat(v.replace(',', '.'))
+  return Number.isNaN(n) ? null : n
+}
+function str(v: FormDataEntryValue | null): string | null {
+  const s = (v as string | null)?.trim()
+  return s || null
+}
+function date(v: FormDataEntryValue | null): Date | null {
+  const s = (v as string | null) || ''
+  return s ? new Date(s) : null
+}
+
+// Speichert den kompletten Personalbogen (MA-Teil + Beschäftigungs-Teil) durch den Admin.
+export async function updatePersonalbogen(id: string, formData: FormData): Promise<{ error?: string }> {
+  const session = await getSession()
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
+
+  const firstName = str(formData.get('firstName'))
+  const lastName = str(formData.get('lastName'))
+  const fullName = [firstName, lastName].filter(Boolean).join(' ') || undefined
+  const street = str(formData.get('street'))
+  const postalCode = str(formData.get('postalCode'))
+  const city = str(formData.get('city'))
+  const address = [street, [postalCode, city].filter(Boolean).join(' ').trim()]
+    .filter(Boolean)
+    .join(', ') || null
+
+  try {
+    await prisma.user.update({
+      where: { id },
+      data: {
+        // Angaben zum Mitarbeiter
+        firstName,
+        lastName,
+        ...(fullName ? { name: fullName } : {}),
+        email: str(formData.get('email')) ?? undefined,
+        street,
+        postalCode,
+        city,
+        address,
+        nationality: str(formData.get('nationality')),
+        birthday: date(formData.get('birthday')),
+        birthName: str(formData.get('birthName')),
+        birthPlace: str(formData.get('birthPlace')),
+        gender: pickEnum(GENDERS, formData.get('gender') as string | null),
+        taxId: (str(formData.get('taxId')) || '').replace(/\s/g, '') || null,
+        socialSecurityNo: (str(formData.get('socialSecurityNo')) || '').replace(/\s/g, '') || null,
+        iban: (str(formData.get('iban')) || '').replace(/\s/g, '') || null,
+        healthInsurance: str(formData.get('healthInsurance')),
+        phone: str(formData.get('phone')),
+        // Angaben zur Beschäftigung
+        personnelNumber: str(formData.get('personnelNumber')),
+        entryDate: date(formData.get('entryDate')),
+        exitDate: date(formData.get('exitDate')),
+        jobTitle: str(formData.get('jobTitle')),
+        weeklyWorkTime: str(formData.get('weeklyWorkTime')),
+        grossSalary: str(formData.get('grossSalary')),
+        additionalSalaryComponents: str(formData.get('additionalSalaryComponents')),
+        specialPayments: str(formData.get('specialPayments')),
+        payrollType: pickEnum(PAYROLL_TYPES, formData.get('payrollType') as string | null),
+        shortTermLimit: str(formData.get('shortTermLimit')),
+        voluntaryInternship: formData.get('voluntaryInternship') === 'on',
+        shareholderPercent: str(formData.get('shareholderPercent')),
+        otherEmployment: pickEnum(OTHER_EMPLOYMENTS, formData.get('otherEmployment') as string | null),
+        vacationDaysAnnual: num(formData.get('vacationDaysAnnual') as string | null),
+        vacationDaysProRata: num(formData.get('vacationDaysProRata') as string | null),
+      },
+    })
+  } catch {
+    return { error: 'Speichern fehlgeschlagen (E-Mail evtl. bereits vergeben).' }
+  }
+
+  revalidatePath(`/admin/employees/${id}/personalbogen`)
+  revalidatePath('/admin/personalbogen')
+  revalidatePath('/admin/employees')
+  return {}
+}
+
 export async function deleteEmployee(id: string) {
   const session = await getSession()
   if (!session || !isSuperAdmin(session.role)) throw new Error('Unauthorized')

@@ -4,7 +4,21 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
-import { encrypt, decrypt, isAdmin } from '@/lib/session'
+import { encrypt, decrypt, isAdmin, type SessionPayload } from '@/lib/session'
+
+// Setzt das Session-Cookie (7 Tage). Wird beim Login und nach Abschluss des
+// Personalbogens (zum Aktualisieren von onboardingDone) verwendet.
+export async function setSessionCookie(payload: SessionPayload) {
+  const token = await encrypt(payload)
+  const cookieStore = await cookies()
+  cookieStore.set('session', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    sameSite: 'lax',
+    path: '/',
+  })
+}
 
 export async function login(formData: FormData) {
   const email = formData.get('email') as string
@@ -24,16 +38,11 @@ export async function login(formData: FormData) {
   const valid = await bcrypt.compare(password, user.passwordHash)
   if (!valid) return { error: 'E-Mail oder Passwort falsch.' }
 
-  const token = await encrypt({ userId: user.id, role: user.role, name: user.name })
-  const cookieStore = await cookies()
-  cookieStore.set('session', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    sameSite: 'lax',
-    path: '/',
-  })
+  // Nur EMPLOYEEs ohne abgeschlossenen Personalbogen werden auf /willkommen geleitet.
+  const onboardingDone = user.role !== 'EMPLOYEE' || user.onboardingCompletedAt != null
+  await setSessionCookie({ userId: user.id, role: user.role, name: user.name, onboardingDone })
 
+  if (!onboardingDone) redirect('/willkommen')
   redirect(isAdmin(user.role) ? '/admin/schedule' : '/employee/dashboard')
 }
 

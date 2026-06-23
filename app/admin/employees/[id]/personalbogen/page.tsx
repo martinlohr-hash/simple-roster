@@ -60,12 +60,18 @@ export default async function EmployeePersonalbogenPage({ params }: Props) {
                 : 'Der Mitarbeiter hat seine Daten noch nicht ausgefüllt. Du kannst sie hier vorab eintragen.'}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2 shrink-0">
-            <a
-              href={`/api/personalbogen?format=excel&userId=${user.id}`}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <Link
+              href={`/personalbogen-druck/${user.id}`}
               className="px-3 py-2 text-sm font-medium rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition whitespace-nowrap"
             >
-              Diesen Bogen als Excel
+              Druckansicht (A4 / PDF)
+            </Link>
+            <a
+              href={`/api/personalbogen?format=excel&userId=${user.id}`}
+              className="px-3 py-2 text-sm font-medium rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition whitespace-nowrap"
+            >
+              Excel
             </a>
             <a
               href={`/api/personalbogen?format=csv&userId=${user.id}`}

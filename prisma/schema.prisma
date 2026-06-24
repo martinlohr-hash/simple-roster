@@ -56,6 +56,16 @@ enum OtherEmployment {
   JA_SELBSTSTAENDIG
 }
 
+// Merrill-Reid-Persönlichkeitstyp (siehe "Know Your Team", Unreasonable Hospitality).
+// Achsen: extro-/introvertiert × aufgaben-/menschenorientiert.
+enum PersonalityType {
+  DRIVER      // Extrovertiert + Aufgabenorientiert
+  EXPRESSIVE  // Extrovertiert + Menschenorientiert
+  AMIABLE     // Introvertiert + Menschenorientiert
+  ANALYTIC    // Introvertiert + Aufgabenorientiert
+  UNKNOWN     // noch nicht eingeschätzt
+}
+
 model User {
   id                String      @id @default(cuid())
   name              String
@@ -126,6 +136,8 @@ model User {
   shiftApplications    ShiftApplication[]
   vacationRequests     VacationRequest[]    @relation("VacationEmployee")
   reviewedVacations    VacationRequest[]    @relation("VacationReviewer")
+  insight              EmployeeInsight?     @relation("InsightSubject")
+  authoredInsights     EmployeeInsight[]    @relation("InsightAuthor")
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 }
@@ -295,4 +307,22 @@ model VacationRequest {
   reviewer    User?          @relation("VacationReviewer", fields: [reviewedBy], references: [id])
   reviewedAt  DateTime?
   createdAt   DateTime       @default(now())
+}
+
+// Vertrauliche Team-Intelligence-Einschätzung pro Mitarbeiter.
+// NUR für SUPER_ADMIN les-/schreibbar (app-seitig erzwungen – die App nutzt
+// keine RLS, da Prisma über eine postgres-Rolle mit BYPASSRLS verbindet).
+model EmployeeInsight {
+  id              String          @id @default(cuid())
+  userId          String          @unique
+  user            User            @relation("InsightSubject", fields: [userId], references: [id], onDelete: Cascade)
+  personalityType PersonalityType @default(UNKNOWN)
+  personalityNote String?         // Mischtyp-/Tendenz-Notiz (app-seitig auf 80 Zeichen begrenzt)
+  superpowers     String[]        @default([]) // Stärken (app-seitig auf max. 7 begrenzt)
+  observations    String?         // freie Beobachtungen, kein Limit
+  assessedAt      DateTime?       // Zeitpunkt der letzten inhaltlichen Einschätzung
+  assessedById    String?         // SUPER_ADMIN, der zuletzt einschätzte
+  assessedBy      User?           @relation("InsightAuthor", fields: [assessedById], references: [id])
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 }

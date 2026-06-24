@@ -14,6 +14,7 @@ import {
   IconLogout,
   IconUmbrella,
   IconFileText,
+  IconBrain,
 } from '@tabler/icons-react'
 import Image from 'next/image'
 
@@ -69,6 +70,12 @@ export default function AdminSidebar({ userName, userRole, openBugCount, pending
         <NavLink href="/admin/export" icon={<IconDownload size={16} stroke={1.75} />} collapsed={collapsed}>Export</NavLink>
         <NavLink href="/admin/settings" icon={<IconSettings size={16} stroke={1.75} />} collapsed={collapsed}>Einstellungen</NavLink>
         <NavLink href="/admin/bugs" icon={<IconBug size={16} stroke={1.75} />} collapsed={collapsed} badge={openBugCount}>Fehlerberichte</NavLink>
+        {userRole === 'SUPER_ADMIN' && (
+          <>
+            <div className="my-1.5 border-t border-gray-100" />
+            <NavLink href="/admin/team-map" icon={<IconBrain size={16} stroke={1.75} />} collapsed={collapsed}>Team-Map</NavLink>
+          </>
+        )}
       </nav>
 
       <div className="border-t border-gray-100 p-2 space-y-0.5">

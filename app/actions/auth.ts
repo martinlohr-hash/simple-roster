@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
-import { encrypt, decrypt, isAdmin, type SessionPayload } from '@/lib/session'
+import { encrypt, decrypt, isAdmin, isSuperAdmin, type SessionPayload } from '@/lib/session'
 
 // Setzt das Session-Cookie (7 Tage). Wird beim Login und nach Abschluss des
 // Personalbogens (zum Aktualisieren von onboardingDone) verwendet.
@@ -62,4 +62,12 @@ export async function getSession() {
 export async function requireAdmin(): Promise<void> {
   const session = await getSession()
   if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
+}
+
+// Strenger Gate für den vertraulichen Team-Intelligence-Bereich: nur SUPER_ADMIN.
+// Gibt die Session zurück, damit Aufrufer userId/name weiterverwenden können.
+export async function requireSuperAdmin(): Promise<SessionPayload> {
+  const session = await getSession()
+  if (!session || !isSuperAdmin(session.role)) throw new Error('Unauthorized')
+  return session
 }

@@ -8,7 +8,7 @@ import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
 import { isAdmin, isSuperAdmin } from '@/lib/session'
 import { sendInviteEmail } from '@/lib/email/invite'
-import { parseGermanAddress, deriveGrossSalary, deriveWeeklyWorkTime } from '@/lib/documents'
+import { parseGermanAddress, composeAddress, deriveGrossSalary, deriveWeeklyWorkTime } from '@/lib/documents'
 
 function parseDays(values: FormDataEntryValue[]): number[] {
   return values
@@ -146,14 +146,22 @@ export async function updateEmployee(id: string, formData: FormData) {
   const startDate = formData.get('startDate') ? new Date(formData.get('startDate') as string) : null
   const endDate = formData.get('endDate') ? new Date(formData.get('endDate') as string) : null
   const vacationDaysPerYear = parseInt(formData.get('vacationDaysPerYear') as string) || 0
-  const addressRaw = (formData.get('address') as string)?.trim() || null
-  const parsedAddr = parseGermanAddress(addressRaw)
+  // Name & Adresse: Stammdaten = einzige Quelle (Vor-/Nachname → name, struktur → address)
+  const firstName = (formData.get('firstName') as string)?.trim() || null
+  const lastName = (formData.get('lastName') as string)?.trim() || null
+  const fullName = [firstName, lastName].filter(Boolean).join(' ') || null
+  const street = (formData.get('street') as string)?.trim() || null
+  const postalCode = (formData.get('postalCode') as string)?.trim() || null
+  const city = (formData.get('city') as string)?.trim() || null
+  const address = composeAddress(street, postalCode, city)
   // Lohn/Stunden: operative Zahl = Quelle, Personalbogen-Freitext wird daraus abgeleitet
   const hourlyRate = salaryType === 'monthly' ? 0 : (parseFloat(formData.get('hourlyRate') as string) || 0)
   const monthlyRate = salaryType === 'monthly' ? (parseFloat(formData.get('monthlyRate') as string) || 0) : null
   const maxHoursWeek = formData.get('maxHoursWeek') ? parseFloat(formData.get('maxHoursWeek') as string) : null
   const data: Record<string, unknown> = {
-    name: formData.get('name') as string,
+    firstName,
+    lastName,
+    ...(fullName ? { name: fullName } : {}),
     email: formData.get('email') as string,
     hourlyRate,
     monthlyRate,
@@ -172,9 +180,10 @@ export async function updateEmployee(id: string, formData: FormData) {
     exitDate: endDate, // Spiegel
     birthday: formData.get('birthday') ? new Date(formData.get('birthday') as string) : null,
     phone: (formData.get('phone') as string) || null,
-    address: addressRaw,
-    // Adresse strukturiert ableiten (nur bei eindeutigem Treffer überschreiben)
-    ...(parsedAddr ? { street: parsedAddr.street, postalCode: parsedAddr.postalCode, city: parsedAddr.city } : {}),
+    street,
+    postalCode,
+    city,
+    address,
     unavailableDays: parseDays(formData.getAll('unavailableDays')),
     preferredDays: parseDays(formData.getAll('preferredDays')),
     earliestStart: (formData.get('earliestStart') as string) || null,
@@ -215,48 +224,21 @@ function str(v: FormDataEntryValue | null): string | null {
   const s = (v as string | null)?.trim()
   return s || null
 }
-function date(v: FormDataEntryValue | null): Date | null {
-  const s = (v as string | null) || ''
-  return s ? new Date(s) : null
-}
 
 // Speichert den kompletten Personalbogen (MA-Teil + Beschäftigungs-Teil) durch den Admin.
 export async function updatePersonalbogen(id: string, formData: FormData): Promise<{ error?: string }> {
   const session = await getSession()
   if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
-  const firstName = str(formData.get('firstName'))
-  const lastName = str(formData.get('lastName'))
-  const fullName = [firstName, lastName].filter(Boolean).join(' ') || undefined
-  const street = str(formData.get('street'))
-  const postalCode = str(formData.get('postalCode'))
-  const city = str(formData.get('city'))
-  const address = [street, [postalCode, city].filter(Boolean).join(' ').trim()]
-    .filter(Boolean)
-    .join(', ') || null
-
-  // Eintritt/Austritt/Urlaub: kanonisch in den operativen Spalten speichern
-  // (startDate/endDate/vacationDaysPerYear) und die Bogen-Spalten gespiegelt
-  // halten – so zeigen Stammdaten, Personalbogen und Dokumente denselben Wert.
-  const entryDate = date(formData.get('entryDate'))
-  const exitDate = date(formData.get('exitDate'))
-  const vacAnnual = num(formData.get('vacationDaysAnnual') as string | null)
-
+  // Der Personalbogen pflegt NUR noch die HR-Detail-Felder. Name, Adresse,
+  // Geburtstag, Telefon, E-Mail, Eintritt/Austritt, Urlaubsanspruch und Lohn/Std
+  // liegen ausschließlich in den Stammdaten (updateEmployee) → eine Bearbeitungsstelle.
   try {
     await prisma.user.update({
       where: { id },
       data: {
-        // Angaben zum Mitarbeiter
-        firstName,
-        lastName,
-        ...(fullName ? { name: fullName } : {}),
-        email: str(formData.get('email')) ?? undefined,
-        street,
-        postalCode,
-        city,
-        address,
+        // Persönliche HR-Daten
         nationality: str(formData.get('nationality')),
-        birthday: date(formData.get('birthday')),
         birthName: str(formData.get('birthName')),
         birthPlace: str(formData.get('birthPlace')),
         gender: pickEnum(GENDERS, formData.get('gender') as string | null),
@@ -264,16 +246,9 @@ export async function updatePersonalbogen(id: string, formData: FormData): Promi
         socialSecurityNo: (str(formData.get('socialSecurityNo')) || '').replace(/\s/g, '') || null,
         iban: (str(formData.get('iban')) || '').replace(/\s/g, '') || null,
         healthInsurance: str(formData.get('healthInsurance')),
-        phone: str(formData.get('phone')),
         // Angaben zur Beschäftigung
         personnelNumber: str(formData.get('personnelNumber')),
-        entryDate,
-        startDate: entryDate, // kanonisch (operativ)
-        exitDate,
-        endDate: exitDate, // kanonisch (operativ)
         jobTitle: str(formData.get('jobTitle')),
-        // weeklyWorkTime + grossSalary werden NICHT hier gepflegt – sie leiten sich
-        // aus den operativen Feldern (Max.Std / Stundenlohn) ab (siehe updateEmployee).
         additionalSalaryComponents: str(formData.get('additionalSalaryComponents')),
         specialPayments: str(formData.get('specialPayments')),
         payrollType: pickEnum(PAYROLL_TYPES, formData.get('payrollType') as string | null),
@@ -282,13 +257,11 @@ export async function updatePersonalbogen(id: string, formData: FormData): Promi
         shareholderPercent: str(formData.get('shareholderPercent')),
         otherEmployment: { set: (formData.getAll('otherEmployment') as string[])
           .filter((v): v is (typeof OTHER_EMPLOYMENTS)[number] => (OTHER_EMPLOYMENTS as readonly string[]).includes(v)) },
-        vacationDaysAnnual: vacAnnual,
-        vacationDaysPerYear: vacAnnual != null ? Math.round(vacAnnual) : 0, // kanonisch (operativ)
         vacationDaysProRata: num(formData.get('vacationDaysProRata') as string | null),
       },
     })
   } catch {
-    return { error: 'Speichern fehlgeschlagen (E-Mail evtl. bereits vergeben).' }
+    return { error: 'Speichern fehlgeschlagen.' }
   }
 
   revalidatePath(`/admin/employees/${id}/personalbogen`)

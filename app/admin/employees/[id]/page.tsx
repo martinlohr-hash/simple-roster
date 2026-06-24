@@ -96,7 +96,8 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
         updateAction={updateEmployee.bind(null, id)}
         locations={locations.map((l) => ({ id: l.id, name: l.name }))}
         employeeDefaults={{
-          name: user.name,
+          firstName: user.firstName,
+          lastName: user.lastName,
           email: user.email,
           role: user.role,
           hourlyRate: user.hourlyRate,
@@ -109,8 +110,10 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
           startDate: user.startDate,
           endDate: user.endDate,
           phone: user.phone,
-          address: user.address,
           birthday: user.birthday,
+          street: user.street,
+          postalCode: user.postalCode,
+          city: user.city,
           unavailableDays: user.unavailableDays,
           preferredDays: user.preferredDays,
           earliestStart: user.earliestStart,

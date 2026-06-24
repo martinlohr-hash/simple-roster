@@ -145,32 +145,25 @@ export default function PersonalbogenForm({ user }: { user: PersonalbogenUser })
 
   return (
     <form action={formAction} className="space-y-5 max-w-3xl">
-      <Section title="Angaben zum Mitarbeiter">
-        <Txt label="Vorname" name="firstName" def={user.firstName} />
-        <Txt label="Name" name="lastName" def={user.lastName} />
-        <Txt label="Straße und Hausnummer" name="street" def={user.street} full />
-        <Txt label="PLZ" name="postalCode" def={user.postalCode} />
-        <Txt label="Ort" name="city" def={user.city} />
-        <Txt label="Staatsangehörigkeit" name="nationality" def={user.nationality} />
-        <Txt label="Geburtsdatum" name="birthday" def={user.birthday} type="date" />
-        <Txt label="Geburtsname (falls abweichend)" name="birthName" def={user.birthName} />
-        <Txt label="Geburtsort und Land" name="birthPlace" def={user.birthPlace} />
+      <Section title="Persönliche HR-Daten">
+        <p className="sm:col-span-2 text-xs text-gray-400 -mt-1">
+          Name, Adresse, Geburtstag, Telefon und E-Mail werden in den Stammdaten gepflegt.
+        </p>
         <Sel label="Geschlecht" name="gender" def={user.gender} options={[
           { v: 'MALE', l: 'männlich' }, { v: 'FEMALE', l: 'weiblich' }, { v: 'DIVERSE', l: 'divers' },
         ]} />
-        <Txt label="E-Mail" name="email" def={user.email} type="email" />
+        <Txt label="Staatsangehörigkeit" name="nationality" def={user.nationality} />
+        <Txt label="Geburtsname (falls abweichend)" name="birthName" def={user.birthName} />
+        <Txt label="Geburtsort und Land" name="birthPlace" def={user.birthPlace} />
         <Txt label="Steuer-Identifikationsnummer" name="taxId" def={user.taxId} hint="11-stellig" />
         <Txt label="Sozialversicherungs-Nr." name="socialSecurityNo" def={user.socialSecurityNo} hint="12-stellig" />
         <Txt label="Bankverbindung / IBAN" name="iban" def={user.iban} />
         <Txt label="Krankenkasse" name="healthInsurance" def={user.healthInsurance} />
-        <Txt label="Telefon" name="phone" def={user.phone} type="tel" />
       </Section>
 
       <Section title="Angaben zur Beschäftigung">
         <Txt label="Personalnummer" name="personnelNumber" def={user.personnelNumber} />
         <Txt label="Genaue Tätigkeitsbezeichnung" name="jobTitle" def={user.jobTitle} />
-        <Txt label="Eintritt" name="entryDate" def={user.entryDate} type="date" />
-        <Txt label="Austritt (falls bekannt)" name="exitDate" def={user.exitDate} type="date" />
         <Derived label="Wochenarbeitszeit" value={user.weeklyWorkTime} hint="ergibt sich aus Max. Std./Woche (Stammdaten)" full />
         <Derived label="Brutto-Verdienst" value={user.grossSalary} hint="ergibt sich aus Stundenlohn/Monatslohn (Stammdaten)" full />
         <Txt label="Sonstige Gehaltsbestandteile (VWL/Firmenwagen etc.)" name="additionalSalaryComponents" def={user.additionalSalaryComponents} full />
@@ -181,7 +174,6 @@ export default function PersonalbogenForm({ user }: { user: PersonalbogenUser })
         ]} />
         <Txt label="Gesellschaftsanteile in % (bei Geschäftsführer)" name="shareholderPercent" def={user.shareholderPercent} />
         <MultiSel label="Werden weitere Beschäftigungen ausgeübt? (Mehrfachauswahl)" name="otherEmployment" def={user.otherEmployment} options={OTHER_OPTIONS} />
-        <Txt label="Urlaubsanspruch jährlich (Tage)" name="vacationDaysAnnual" def={user.vacationDaysAnnual?.toString() ?? ''} type="number" />
         <Txt label="Urlaubsanspruch lfd. Jahr / anteilig (Tage)" name="vacationDaysProRata" def={user.vacationDaysProRata?.toString() ?? ''} type="number" />
         <label className="sm:col-span-2 flex items-center gap-2.5 text-sm text-gray-700">
           <input type="checkbox" name="voluntaryInternship" defaultChecked={user.voluntaryInternship} className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />

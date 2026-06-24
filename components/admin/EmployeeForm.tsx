@@ -7,13 +7,14 @@ import AvailabilityFields from './AvailabilityFields'
 
 type Location = { id: string; name: string }
 type Defaults = {
-  name?: string; email?: string; role?: string
+  firstName?: string | null; lastName?: string | null; email?: string; role?: string
   hourlyRate?: number; monthlyRate?: number | null; overheadPercent?: number
   maxHoursWeek?: number | null; maxHoursMonth?: number | null
   vacationDaysPerYear?: number
   primaryLocationId?: string | null
   startDate?: Date | string | null; endDate?: Date | string | null
-  phone?: string | null; address?: string | null; birthday?: Date | string | null
+  phone?: string | null; birthday?: Date | string | null
+  street?: string | null; postalCode?: string | null; city?: string | null
   unavailableDays?: number[]; preferredDays?: number[]
   earliestStart?: string | null; latestEnd?: string | null
 }
@@ -40,9 +41,10 @@ export default function EmployeeForm({ action, locations, defaults }: Props) {
       <input type="hidden" name="salaryType" value={salaryType} />
 
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Name" name="name" defaultValue={defaults?.name} required />
-        <Field label="E-Mail" name="email" type="email" defaultValue={defaults?.email} required />
+        <Field label="Vorname" name="firstName" defaultValue={defaults?.firstName ?? ''} />
+        <Field label="Nachname" name="lastName" defaultValue={defaults?.lastName ?? ''} />
       </div>
+      <Field label="E-Mail" name="email" type="email" defaultValue={defaults?.email} required />
 
       <div>
         <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -150,7 +152,11 @@ export default function EmployeeForm({ action, locations, defaults }: Props) {
         <Field label="Handynummer" name="phone" defaultValue={defaults?.phone ?? ''} placeholder="z.B. 0176 12345678" />
       </div>
 
-      <Field label="Adresse" name="address" defaultValue={defaults?.address ?? ''} placeholder="Straße, PLZ Ort" />
+      <Field label="Straße und Hausnummer" name="street" defaultValue={defaults?.street ?? ''} placeholder="z.B. Isestraße 85" />
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="PLZ" name="postalCode" defaultValue={defaults?.postalCode ?? ''} placeholder="z.B. 20149" />
+        <Field label="Ort" name="city" defaultValue={defaults?.city ?? ''} placeholder="z.B. Hamburg" />
+      </div>
 
       <AvailabilityFields
         unavailableDays={defaults?.unavailableDays}

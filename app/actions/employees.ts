@@ -39,7 +39,9 @@ export async function createEmployee(
   const session = await getSession()
   if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
-  const name = formData.get('name') as string
+  const firstName = (formData.get('firstName') as string)?.trim() || null
+  const lastName = (formData.get('lastName') as string)?.trim() || null
+  const name = [firstName, lastName].filter(Boolean).join(' ')
   const email = formData.get('email') as string
   const salaryType = formData.get('salaryType') as string
   const hourlyRate = salaryType === 'monthly' ? 0 : (parseFloat(formData.get('hourlyRate') as string) || 0)
@@ -71,6 +73,8 @@ export async function createEmployee(
   try {
     await prisma.user.create({
       data: {
+        firstName,
+        lastName,
         name,
         email,
         passwordHash: null,

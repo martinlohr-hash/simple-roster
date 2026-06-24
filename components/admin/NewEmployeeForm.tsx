@@ -107,13 +107,17 @@ export default function NewEmployeeForm({ locations }: { locations: Location[] }
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Name</label>
-          <input type="text" name="name" required className={inputClass} />
+          <label className="block text-xs font-medium text-gray-700 mb-1">Vorname</label>
+          <input type="text" name="firstName" required className={inputClass} />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">E-Mail</label>
-          <input type="email" name="email" required className={inputClass} />
+          <label className="block text-xs font-medium text-gray-700 mb-1">Nachname</label>
+          <input type="text" name="lastName" required className={inputClass} />
         </div>
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-gray-700 mb-1">E-Mail</label>
+        <input type="email" name="email" required className={inputClass} />
       </div>
 
       <div>

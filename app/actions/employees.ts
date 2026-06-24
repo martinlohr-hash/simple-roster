@@ -8,7 +8,7 @@ import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
 import { isAdmin, isSuperAdmin } from '@/lib/session'
 import { sendInviteEmail } from '@/lib/email/invite'
-import { parseGermanAddress } from '@/lib/documents'
+import { parseGermanAddress, deriveGrossSalary, deriveWeeklyWorkTime } from '@/lib/documents'
 
 function parseDays(values: FormDataEntryValue[]): number[] {
   return values
@@ -82,6 +82,8 @@ export async function createEmployee(
         overheadPercent,
         maxHoursWeek,
         maxHoursMonth,
+        grossSalary: deriveGrossSalary(hourlyRate, monthlyRate), // abgeleitet
+        weeklyWorkTime: deriveWeeklyWorkTime(maxHoursWeek), // abgeleitet
         vacationDaysPerYear,
         vacationDaysAnnual: vacationDaysPerYear, // Spiegel (Personalbogen)
         startDate,
@@ -146,18 +148,22 @@ export async function updateEmployee(id: string, formData: FormData) {
   const vacationDaysPerYear = parseInt(formData.get('vacationDaysPerYear') as string) || 0
   const addressRaw = (formData.get('address') as string)?.trim() || null
   const parsedAddr = parseGermanAddress(addressRaw)
+  // Lohn/Stunden: operative Zahl = Quelle, Personalbogen-Freitext wird daraus abgeleitet
+  const hourlyRate = salaryType === 'monthly' ? 0 : (parseFloat(formData.get('hourlyRate') as string) || 0)
+  const monthlyRate = salaryType === 'monthly' ? (parseFloat(formData.get('monthlyRate') as string) || 0) : null
+  const maxHoursWeek = formData.get('maxHoursWeek') ? parseFloat(formData.get('maxHoursWeek') as string) : null
   const data: Record<string, unknown> = {
     name: formData.get('name') as string,
     email: formData.get('email') as string,
-    hourlyRate: salaryType === 'monthly' ? 0 : (parseFloat(formData.get('hourlyRate') as string) || 0),
-    monthlyRate: salaryType === 'monthly' ? (parseFloat(formData.get('monthlyRate') as string) || 0) : null,
+    hourlyRate,
+    monthlyRate,
     overheadPercent: parseFloat(formData.get('overheadPercent') as string) || 0,
-    maxHoursWeek: formData.get('maxHoursWeek')
-      ? parseFloat(formData.get('maxHoursWeek') as string)
-      : null,
+    maxHoursWeek,
     maxHoursMonth: formData.get('maxHoursMonth')
       ? parseFloat(formData.get('maxHoursMonth') as string)
       : null,
+    grossSalary: deriveGrossSalary(hourlyRate, monthlyRate), // abgeleitet
+    weeklyWorkTime: deriveWeeklyWorkTime(maxHoursWeek), // abgeleitet
     vacationDaysPerYear,
     vacationDaysAnnual: vacationDaysPerYear, // Spiegel (Personalbogen)
     startDate,
@@ -266,8 +272,8 @@ export async function updatePersonalbogen(id: string, formData: FormData): Promi
         exitDate,
         endDate: exitDate, // kanonisch (operativ)
         jobTitle: str(formData.get('jobTitle')),
-        weeklyWorkTime: str(formData.get('weeklyWorkTime')),
-        grossSalary: str(formData.get('grossSalary')),
+        // weeklyWorkTime + grossSalary werden NICHT hier gepflegt – sie leiten sich
+        // aus den operativen Feldern (Max.Std / Stundenlohn) ab (siehe updateEmployee).
         additionalSalaryComponents: str(formData.get('additionalSalaryComponents')),
         specialPayments: str(formData.get('specialPayments')),
         payrollType: pickEnum(PAYROLL_TYPES, formData.get('payrollType') as string | null),

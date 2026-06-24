@@ -100,6 +100,29 @@ export function parseGermanAddress(
   return { street, postalCode: m[1], city: m[2].trim() }
 }
 
+// Deutsche Zahl (2 Nachkommastellen, abschließende ,00 bleibt für Geldbeträge weg-trimmbar).
+function deNumber(n: number, decimals = 2): string {
+  return n.toLocaleString('de-DE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+}
+
+// Leitet den Brutto-Verdienst-Freitext aus den operativen Lohnfeldern ab
+// (operative Zahl = einzige Quelle). Monatslohn hat Vorrang vor Stundenlohn.
+export function deriveGrossSalary(
+  hourlyRate?: number | null,
+  monthlyRate?: number | null,
+): string | null {
+  if (monthlyRate && monthlyRate > 0) return `${deNumber(monthlyRate)} € / Monat`
+  if (hourlyRate && hourlyRate > 0) return `${deNumber(hourlyRate)} €/Stunde`
+  return null
+}
+
+// Leitet die Wochenarbeitszeit aus Max. Std./Woche ab. Ganze Zahlen ohne Nachkommastellen.
+export function deriveWeeklyWorkTime(maxHoursWeek?: number | null): string | null {
+  if (maxHoursWeek == null || maxHoursWeek <= 0) return null
+  const n = Number.isInteger(maxHoursWeek) ? String(maxHoursWeek) : deNumber(maxHoursWeek, 1)
+  return `${n} Std/Woche`
+}
+
 // Setzt aus strukturierten Feldern den Freitext "Straße, PLZ Ort" zusammen.
 export function composeAddress(
   street?: string | null,

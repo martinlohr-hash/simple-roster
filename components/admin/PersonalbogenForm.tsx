@@ -55,6 +55,22 @@ function Txt({ label, name, def, type = 'text', placeholder, hint, full }: {
   )
 }
 
+// Abgeleitetes, nicht editierbares Feld (Wert kommt aus den Stammdaten → kein eigenes Input,
+// wird daher auch nicht mitgespeichert).
+function Derived({ label, value, hint, full }: {
+  label: string; value?: string | null; hint?: string; full?: boolean
+}) {
+  return (
+    <div className={full ? 'sm:col-span-2' : ''}>
+      <label className={labelClass}>{label}</label>
+      <div className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700">
+        {value || <span className="text-gray-400">– aus Stammdaten –</span>}
+      </div>
+      {hint && <p className="text-[11px] text-gray-400 mt-1">{hint}</p>}
+    </div>
+  )
+}
+
 function Sel({ label, name, def, options }: {
   label: string; name: string; def?: string | null; options: { v: string; l: string }[]
 }) {
@@ -155,8 +171,8 @@ export default function PersonalbogenForm({ user }: { user: PersonalbogenUser })
         <Txt label="Genaue Tätigkeitsbezeichnung" name="jobTitle" def={user.jobTitle} />
         <Txt label="Eintritt" name="entryDate" def={user.entryDate} type="date" />
         <Txt label="Austritt (falls bekannt)" name="exitDate" def={user.exitDate} type="date" />
-        <Txt label="Wochenarbeitszeit (Stunden und Tage)" name="weeklyWorkTime" def={user.weeklyWorkTime} placeholder="z. B. 20 Std / 4 Tage" full />
-        <Txt label="Brutto-Verdienst (Lohn/Gehalt oder Stundenlohn)" name="grossSalary" def={user.grossSalary} placeholder="z. B. 13,50 €/Std" full />
+        <Derived label="Wochenarbeitszeit" value={user.weeklyWorkTime} hint="ergibt sich aus Max. Std./Woche (Stammdaten)" full />
+        <Derived label="Brutto-Verdienst" value={user.grossSalary} hint="ergibt sich aus Stundenlohn/Monatslohn (Stammdaten)" full />
         <Txt label="Sonstige Gehaltsbestandteile (VWL/Firmenwagen etc.)" name="additionalSalaryComponents" def={user.additionalSalaryComponents} full />
         <Txt label="Vertraglich festgelegte Sonderzahlungen (Weihnachts-/Urlaubsgeld / Boni)" name="specialPayments" def={user.specialPayments} full />
         <Sel label="Abrechnungs-Art" name="payrollType" def={user.payrollType} options={PAYROLL_OPTIONS} />
@@ -184,7 +200,7 @@ export default function PersonalbogenForm({ user }: { user: PersonalbogenUser })
         >
           {pending ? 'Speichern …' : 'Personalbogen speichern'}
         </button>
-        <Link href="/admin/personalbogen" className="text-sm text-gray-500 hover:text-gray-900">Zur Übersicht</Link>
+        <Link href="/admin/employees" className="text-sm text-gray-500 hover:text-gray-900">Zur Übersicht</Link>
       </div>
     </form>
   )

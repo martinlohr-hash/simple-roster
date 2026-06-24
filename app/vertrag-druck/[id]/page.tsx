@@ -44,7 +44,7 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
   const anschrift = [u.street, [u.postalCode, u.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   const anrede = herrFrau(u.gender) // "Herr"/"Frau"/""
   const einsatzort = u.primaryLocation?.name
-  const urlaub = urlaubSplit(u.vacationDaysAnnual)
+  const urlaub = urlaubSplit(u.vacationDaysPerYear)
   const missing = missingFields(u, 'arbeitsvertrag')
 
   return (
@@ -74,7 +74,7 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
       {/* I. Aufgabengebiet */}
       <H no="I">Aufgabengebiet und Zuständigkeit</H>
       <P n={1}>
-        Der Angestellte wird ab {dLong(u.entryDate) || '________'} als{' '}
+        Der Angestellte wird ab {dLong(u.startDate) || '________'} als{' '}
         {u.jobTitle || '________'} eingestellt.
         {einsatzort ? ` Einsatzort ist der Betrieb „${einsatzort}".` : ''}
       </P>

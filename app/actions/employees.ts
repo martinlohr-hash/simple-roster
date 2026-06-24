@@ -8,6 +8,7 @@ import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
 import { isAdmin, isSuperAdmin } from '@/lib/session'
 import { sendInviteEmail } from '@/lib/email/invite'
+import { parseGermanAddress } from '@/lib/documents'
 
 function parseDays(values: FormDataEntryValue[]): number[] {
   return values
@@ -57,7 +58,8 @@ export async function createEmployee(
   const endDate = formData.get('endDate') ? new Date(formData.get('endDate') as string) : null
   const birthday = formData.get('birthday') ? new Date(formData.get('birthday') as string) : null
   const phone = (formData.get('phone') as string) || null
-  const address = (formData.get('address') as string) || null
+  const address = ((formData.get('address') as string) || '').trim() || null
+  const parsedAddr = parseGermanAddress(address)
   const unavailableDays = parseDays(formData.getAll('unavailableDays'))
   const preferredDays = parseDays(formData.getAll('preferredDays'))
   const earliestStart = (formData.get('earliestStart') as string) || null
@@ -81,11 +83,15 @@ export async function createEmployee(
         maxHoursWeek,
         maxHoursMonth,
         vacationDaysPerYear,
+        vacationDaysAnnual: vacationDaysPerYear, // Spiegel (Personalbogen)
         startDate,
+        entryDate: startDate, // Spiegel
         endDate,
+        exitDate: endDate, // Spiegel
         birthday,
         phone,
         address,
+        ...(parsedAddr ? { street: parsedAddr.street, postalCode: parsedAddr.postalCode, city: parsedAddr.city } : {}),
         unavailableDays,
         preferredDays,
         earliestStart,
@@ -134,6 +140,12 @@ export async function updateEmployee(id: string, formData: FormData) {
   }
 
   const salaryType = formData.get('salaryType') as string
+  // Kanonische Werte + Spiegel in die Personalbogen-Spalten (eine Quelle, überall gleich)
+  const startDate = formData.get('startDate') ? new Date(formData.get('startDate') as string) : null
+  const endDate = formData.get('endDate') ? new Date(formData.get('endDate') as string) : null
+  const vacationDaysPerYear = parseInt(formData.get('vacationDaysPerYear') as string) || 0
+  const addressRaw = (formData.get('address') as string)?.trim() || null
+  const parsedAddr = parseGermanAddress(addressRaw)
   const data: Record<string, unknown> = {
     name: formData.get('name') as string,
     email: formData.get('email') as string,
@@ -146,12 +158,17 @@ export async function updateEmployee(id: string, formData: FormData) {
     maxHoursMonth: formData.get('maxHoursMonth')
       ? parseFloat(formData.get('maxHoursMonth') as string)
       : null,
-    vacationDaysPerYear: parseInt(formData.get('vacationDaysPerYear') as string) || 0,
-    startDate: formData.get('startDate') ? new Date(formData.get('startDate') as string) : null,
-    endDate: formData.get('endDate') ? new Date(formData.get('endDate') as string) : null,
+    vacationDaysPerYear,
+    vacationDaysAnnual: vacationDaysPerYear, // Spiegel (Personalbogen)
+    startDate,
+    entryDate: startDate, // Spiegel
+    endDate,
+    exitDate: endDate, // Spiegel
     birthday: formData.get('birthday') ? new Date(formData.get('birthday') as string) : null,
     phone: (formData.get('phone') as string) || null,
-    address: (formData.get('address') as string) || null,
+    address: addressRaw,
+    // Adresse strukturiert ableiten (nur bei eindeutigem Treffer überschreiben)
+    ...(parsedAddr ? { street: parsedAddr.street, postalCode: parsedAddr.postalCode, city: parsedAddr.city } : {}),
     unavailableDays: parseDays(formData.getAll('unavailableDays')),
     preferredDays: parseDays(formData.getAll('preferredDays')),
     earliestStart: (formData.get('earliestStart') as string) || null,
@@ -211,6 +228,13 @@ export async function updatePersonalbogen(id: string, formData: FormData): Promi
     .filter(Boolean)
     .join(', ') || null
 
+  // Eintritt/Austritt/Urlaub: kanonisch in den operativen Spalten speichern
+  // (startDate/endDate/vacationDaysPerYear) und die Bogen-Spalten gespiegelt
+  // halten – so zeigen Stammdaten, Personalbogen und Dokumente denselben Wert.
+  const entryDate = date(formData.get('entryDate'))
+  const exitDate = date(formData.get('exitDate'))
+  const vacAnnual = num(formData.get('vacationDaysAnnual') as string | null)
+
   try {
     await prisma.user.update({
       where: { id },
@@ -236,8 +260,10 @@ export async function updatePersonalbogen(id: string, formData: FormData): Promi
         phone: str(formData.get('phone')),
         // Angaben zur Beschäftigung
         personnelNumber: str(formData.get('personnelNumber')),
-        entryDate: date(formData.get('entryDate')),
-        exitDate: date(formData.get('exitDate')),
+        entryDate,
+        startDate: entryDate, // kanonisch (operativ)
+        exitDate,
+        endDate: exitDate, // kanonisch (operativ)
         jobTitle: str(formData.get('jobTitle')),
         weeklyWorkTime: str(formData.get('weeklyWorkTime')),
         grossSalary: str(formData.get('grossSalary')),
@@ -249,7 +275,8 @@ export async function updatePersonalbogen(id: string, formData: FormData): Promi
         shareholderPercent: str(formData.get('shareholderPercent')),
         otherEmployment: { set: (formData.getAll('otherEmployment') as string[])
           .filter((v): v is (typeof OTHER_EMPLOYMENTS)[number] => (OTHER_EMPLOYMENTS as readonly string[]).includes(v)) },
-        vacationDaysAnnual: num(formData.get('vacationDaysAnnual') as string | null),
+        vacationDaysAnnual: vacAnnual,
+        vacationDaysPerYear: vacAnnual != null ? Math.round(vacAnnual) : 0, // kanonisch (operativ)
         vacationDaysProRata: num(formData.get('vacationDaysProRata') as string | null),
       },
     })
@@ -290,6 +317,7 @@ export async function archiveEmployee(id: string) {
   const session = await getSession()
   if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
 
-  await prisma.user.update({ where: { id }, data: { endDate: new Date() } })
+  const now = new Date()
+  await prisma.user.update({ where: { id }, data: { endDate: now, exitDate: now } })
   revalidatePath('/admin/employees')
 }

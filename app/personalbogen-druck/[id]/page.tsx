@@ -133,8 +133,8 @@ export default async function EinstellungsbogenPrintPage({ params }: Props) {
             {/* Angaben zur Beschäftigung */}
             <SectionRow title="Angaben zur Beschäftigung" />
             <Row label="Personalnummer" value={u.personnelNumber} />
-            <Row label="Eintritt" value={d(u.entryDate)} />
-            <Row label="Austritt (falls bekannt)" value={d(u.exitDate)} />
+            <Row label="Eintritt" value={d(u.startDate)} />
+            <Row label="Austritt (falls bekannt)" value={d(u.endDate)} />
             <Row label="genaue Tätigkeitsbezeichnung" value={u.jobTitle} />
             <Row label="Wochenarbeitszeit in Stunden und Tagen" value={u.weeklyWorkTime} />
             <Row label="Brutto-Verdienst" hint="(Lohn/Gehalt oder Stundenlohn)" value={u.grossSalary} />
@@ -179,8 +179,8 @@ export default async function EinstellungsbogenPrintPage({ params }: Props) {
             </Row>
             <Row
               label="Urlaubsanspruch in Tagen: Jährlich / lfd. Jahr (anteilig)"
-              value={[u.vacationDaysAnnual, u.vacationDaysProRata].some((x) => x != null)
-                ? `${u.vacationDaysAnnual ?? '–'} / ${u.vacationDaysProRata ?? '–'}`
+              value={[u.vacationDaysPerYear, u.vacationDaysProRata].some((x) => x != null)
+                ? `${u.vacationDaysPerYear ?? '–'} / ${u.vacationDaysProRata ?? '–'}`
                 : ''}
             />
 

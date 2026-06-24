@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getSession, setSessionCookie } from '@/app/actions/auth'
 import { prisma } from '@/lib/db'
+import { parseGermanAddress } from '@/lib/documents'
 
 type Gender = 'MALE' | 'FEMALE' | 'DIVERSE'
 
@@ -118,12 +119,17 @@ export async function updateProfile(data: {
   const unavailableDays = sanitizeDays(data.unavailableDays)
   const preferredDays = sanitizeDays(data.preferredDays).filter((d) => !unavailableDays.includes(d))
 
+  // Adresse strukturiert ableiten, damit Stammdaten/Personalbogen/Dokumente konsistent bleiben.
+  const addressRaw = data.address.trim() || null
+  const parsedAddr = parseGermanAddress(addressRaw)
+
   await prisma.user.update({
     where: { id: session.userId },
     data: {
       email,
       phone: data.phone.trim() || null,
-      address: data.address.trim() || null,
+      address: addressRaw,
+      ...(parsedAddr ? { street: parsedAddr.street, postalCode: parsedAddr.postalCode, city: parsedAddr.city } : {}),
       unavailableDays,
       preferredDays,
       earliestStart: data.earliestStart || null,

@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     where: userId
       ? { id: userId }
       : scope === 'active'
-        ? { exitDate: null, endDate: null }
+        ? { endDate: null }
         : {},
     orderBy: [{ lastName: 'asc' }, { name: 'asc' }],
   })
@@ -69,8 +69,8 @@ export async function GET(request: NextRequest) {
     'E-Mail': u.email,
     // Angaben zur Beschäftigung
     Personalnummer: u.personnelNumber || '',
-    Eintritt: d(u.entryDate),
-    Austritt: d(u.exitDate),
+    Eintritt: d(u.startDate),
+    Austritt: d(u.endDate),
     Tätigkeitsbezeichnung: u.jobTitle || '',
     Wochenarbeitszeit: u.weeklyWorkTime || '',
     'Brutto-Verdienst': u.grossSalary || '',
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     'Freiwilliges Praktikum': u.voluntaryInternship ? 'Ja' : '',
     'Gesellschaftsanteile (%)': u.shareholderPercent || '',
     'Weitere Beschäftigungen': u.otherEmployment.map((e) => OTHER_LABELS[e] ?? e).join(', '),
-    'Urlaub jährlich (Tage)': u.vacationDaysAnnual ?? '',
+    'Urlaub jährlich (Tage)': u.vacationDaysPerYear ?? '',
     'Urlaub lfd. Jahr (Tage)': u.vacationDaysProRata ?? '',
     Status: u.onboardingCompletedAt ? 'ausgefüllt' : 'offen',
   }))

@@ -73,14 +73,41 @@ export interface EmployeeLike {
   postalCode?: string | null
   city?: string | null
   gender?: Gender
-  entryDate?: Date | null
-  exitDate?: Date | null
+  // Kanonische Quelle = die operativen Spalten (startDate/endDate/vacationDaysPerYear).
+  // entryDate/exitDate/vacationDaysAnnual sind nur gespiegelte Kopien davon.
+  startDate?: Date | null
+  endDate?: Date | null
   jobTitle?: string | null
   grossSalary?: string | null
   weeklyWorkTime?: string | null
-  vacationDaysAnnual?: number | null
+  vacationDaysPerYear?: number | null
   additionalSalaryComponents?: string | null
   specialPayments?: string | null
+}
+
+// Best-effort-Parser für eine deutsche Adresse "Straße Nr, PLZ Ort".
+// Gibt nur bei eindeutigem 5-stelligem PLZ-Treffer Werte zurück (sonst null →
+// vorhandene strukturierte Felder werden NICHT überschrieben).
+export function parseGermanAddress(
+  input: string | null | undefined,
+): { street: string; postalCode: string; city: string } | null {
+  if (!input) return null
+  const parts = input.split(',').map((p) => p.trim()).filter(Boolean)
+  if (parts.length < 2) return null
+  const street = parts[0]
+  const m = parts.slice(1).join(', ').match(/(\d{5})\s+(.+)/)
+  if (!m) return null
+  return { street, postalCode: m[1], city: m[2].trim() }
+}
+
+// Setzt aus strukturierten Feldern den Freitext "Straße, PLZ Ort" zusammen.
+export function composeAddress(
+  street?: string | null,
+  postalCode?: string | null,
+  city?: string | null,
+): string | null {
+  const plzOrt = [postalCode, city].filter(Boolean).join(' ').trim()
+  return [street, plzOrt].filter(Boolean).join(', ') || null
 }
 
 export function fullName(u: EmployeeLike): string {
@@ -115,15 +142,15 @@ export function missingFields(u: EmployeeLike, type: DocType): string[] {
 
   if (type === 'arbeitsvertrag') {
     checks.push(
-      { ok: !!u.entryDate, label: 'Eintrittsdatum' },
+      { ok: !!u.startDate, label: 'Eintrittsdatum' },
       { ok: !!u.jobTitle, label: 'Tätigkeitsbezeichnung' },
       { ok: !!u.grossSalary, label: 'Brutto-Verdienst' },
       { ok: !!u.weeklyWorkTime, label: 'Wochenarbeitszeit' },
     )
   } else {
-    checks.push({ ok: !!u.entryDate, label: 'Eintrittsdatum (Vertragsbeginn)' })
+    checks.push({ ok: !!u.startDate, label: 'Eintrittsdatum (Vertragsbeginn)' })
     if (type === 'kuendigung-regulaer') {
-      checks.push({ ok: !!u.exitDate, label: 'Austrittsdatum' })
+      checks.push({ ok: !!u.endDate, label: 'Austrittsdatum' })
     }
   }
   return checks.filter((c) => !c.ok).map((c) => c.label)
@@ -136,7 +163,7 @@ export function missingFields(u: EmployeeLike, type: DocType): string[] {
  *  - Regulär:   Austrittsdatum (Pflichtfeld).
  */
 export function kuendigungEndDate(u: EmployeeLike, type: DocType, letterDate: Date): Date | null {
-  if (u.exitDate) return u.exitDate
+  if (u.endDate) return u.endDate
   if (type === 'kuendigung-probezeit') return addDays(letterDate, 14)
   return null
 }

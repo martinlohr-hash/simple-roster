@@ -30,7 +30,7 @@ export default async function KuendigungPrintPage({ params, searchParams }: Prop
 
   const letterDate = new Date()
   const end = kuendigungEndDate(u, art, letterDate)
-  const frist = gesetzlicheFrist(u.entryDate, letterDate)
+  const frist = gesetzlicheFrist(u.startDate, letterDate)
   const greeting = anrede(form, u.gender, u.firstName || '', u.lastName || '')
   const missing = missingFields(u, art)
 
@@ -65,14 +65,14 @@ export default async function KuendigungPrintPage({ params, searchParams }: Prop
       {probezeit ? (
         <p className="mb-4">
           hiermit kündige ich das mit {form === 'sie' ? 'Ihnen' : 'Dir'} am{' '}
-          {dDot(u.entryDate) || '____________'} geschlossene Arbeitsverhältnis innerhalb der Probezeit
+          {dDot(u.startDate) || '____________'} geschlossene Arbeitsverhältnis innerhalb der Probezeit
           unter Einhaltung der vereinbarten Kündigungsfrist von zwei Wochen. Das Arbeitsverhältnis
           endet somit zum {dDot(end) || '____________'}, hilfsweise 14 Tage nach Erhalt der Kündigung.
         </p>
       ) : (
         <p className="mb-4">
           hiermit kündige ich das mit {form === 'sie' ? 'Ihnen' : 'Dir'} am{' '}
-          {dDot(u.entryDate) || '____________'} geschlossene Arbeitsverhältnis ordentlich und
+          {dDot(u.startDate) || '____________'} geschlossene Arbeitsverhältnis ordentlich und
           fristgerecht unter Einhaltung der gesetzlichen Kündigungsfrist von {frist}. Das
           Arbeitsverhältnis endet somit zum {dDot(end) || '____________'}.
         </p>

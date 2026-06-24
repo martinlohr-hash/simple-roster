@@ -31,8 +31,10 @@ export default async function EmployeePersonalbogenPage({ params }: Props) {
     healthInsurance: user.healthInsurance,
     phone: user.phone,
     personnelNumber: user.personnelNumber,
-    entryDate: d(user.entryDate),
-    exitDate: d(user.exitDate),
+    // Kanonische Quelle = operative Spalten (startDate/endDate), damit Stammdaten
+    // und Personalbogen denselben Wert zeigen.
+    entryDate: d(user.startDate),
+    exitDate: d(user.endDate),
     jobTitle: user.jobTitle,
     weeklyWorkTime: user.weeklyWorkTime,
     grossSalary: user.grossSalary,
@@ -43,7 +45,7 @@ export default async function EmployeePersonalbogenPage({ params }: Props) {
     voluntaryInternship: user.voluntaryInternship,
     shareholderPercent: user.shareholderPercent,
     otherEmployment: user.otherEmployment,
-    vacationDaysAnnual: user.vacationDaysAnnual,
+    vacationDaysAnnual: user.vacationDaysPerYear,
     vacationDaysProRata: user.vacationDaysProRata,
   }
 

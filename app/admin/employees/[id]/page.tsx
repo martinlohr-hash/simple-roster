@@ -1,0 +1,127 @@
+import { notFound } from 'next/navigation'
+import Link from 'next/link'
+import { IconBrain } from '@tabler/icons-react'
+import { prisma } from '@/lib/db'
+import { updateEmployee } from '@/app/actions/employees'
+import { getSession } from '@/app/actions/auth'
+import { isSuperAdmin } from '@/lib/session'
+import { missingFields } from '@/lib/documents'
+import EmployeeDetailTabs, { type DetailTab } from '@/components/admin/EmployeeDetailTabs'
+import { type PersonalbogenUser } from '@/components/admin/PersonalbogenForm'
+
+export const metadata = { title: 'Mitarbeiter' }
+
+type Props = {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ tab?: string }>
+}
+
+const d = (v: Date | null) => (v ? v.toISOString().split('T')[0] : null)
+
+const VALID_TABS: DetailTab[] = ['stammdaten', 'beschaeftigung', 'dokumente']
+
+export default async function EmployeeDetailPage({ params, searchParams }: Props) {
+  const [{ id }, sp, session] = await Promise.all([params, searchParams, getSession()])
+  const [user, locations] = await Promise.all([
+    prisma.user.findUnique({ where: { id } }),
+    prisma.location.findMany({ orderBy: { sortOrder: 'asc' } }),
+  ])
+  if (!user) notFound()
+
+  const initialTab: DetailTab = VALID_TABS.includes(sp.tab as DetailTab)
+    ? (sp.tab as DetailTab)
+    : 'stammdaten'
+  const showInsights = !!session && isSuperAdmin(session.role)
+
+  // DTO für den Personalbogen (1:1 wie zuvor in personalbogen/page.tsx)
+  const personalbogenUser: PersonalbogenUser = {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    street: user.street,
+    postalCode: user.postalCode,
+    city: user.city,
+    nationality: user.nationality,
+    birthday: d(user.birthday),
+    birthName: user.birthName,
+    birthPlace: user.birthPlace,
+    gender: user.gender,
+    taxId: user.taxId,
+    socialSecurityNo: user.socialSecurityNo,
+    iban: user.iban,
+    healthInsurance: user.healthInsurance,
+    phone: user.phone,
+    personnelNumber: user.personnelNumber,
+    // Kanonische Quelle = operative Spalten
+    entryDate: d(user.startDate),
+    exitDate: d(user.endDate),
+    jobTitle: user.jobTitle,
+    weeklyWorkTime: user.weeklyWorkTime,
+    grossSalary: user.grossSalary,
+    additionalSalaryComponents: user.additionalSalaryComponents,
+    specialPayments: user.specialPayments,
+    payrollType: user.payrollType,
+    shortTermLimit: user.shortTermLimit,
+    voluntaryInternship: user.voluntaryInternship,
+    shareholderPercent: user.shareholderPercent,
+    otherEmployment: user.otherEmployment,
+    vacationDaysAnnual: user.vacationDaysPerYear,
+    vacationDaysProRata: user.vacationDaysProRata,
+  }
+
+  return (
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="mb-6">
+        <Link href="/admin/employees" className="text-sm text-gray-500 hover:text-gray-900">
+          ← Mitarbeiter
+        </Link>
+        <div className="flex items-center justify-between gap-3 mt-2">
+          <h1 className="text-xl font-semibold text-gray-900">{user.name}</h1>
+          {showInsights && (
+            <Link
+              href={`/admin/employees/${id}/insights`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-indigo-200 text-indigo-700 hover:bg-indigo-50 transition shrink-0"
+            >
+              <IconBrain size={15} stroke={1.75} />
+              Insights
+            </Link>
+          )}
+        </div>
+      </div>
+
+      <EmployeeDetailTabs
+        userId={user.id}
+        initialTab={initialTab}
+        updateAction={updateEmployee.bind(null, id)}
+        locations={locations.map((l) => ({ id: l.id, name: l.name }))}
+        employeeDefaults={{
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          hourlyRate: user.hourlyRate,
+          monthlyRate: user.monthlyRate,
+          overheadPercent: user.overheadPercent,
+          maxHoursWeek: user.maxHoursWeek,
+          maxHoursMonth: user.maxHoursMonth,
+          vacationDaysPerYear: user.vacationDaysPerYear,
+          primaryLocationId: user.primaryLocationId,
+          startDate: user.startDate,
+          endDate: user.endDate,
+          phone: user.phone,
+          address: user.address,
+          birthday: user.birthday,
+          unavailableDays: user.unavailableDays,
+          preferredDays: user.preferredDays,
+          earliestStart: user.earliestStart,
+          latestEnd: user.latestEnd,
+        }}
+        personalbogenUser={personalbogenUser}
+        documentsUrl={user.documentsUrl}
+        contractMissing={missingFields(user, 'arbeitsvertrag')}
+        probezeitMissing={missingFields(user, 'kuendigung-probezeit')}
+        regulaerMissing={missingFields(user, 'kuendigung-regulaer')}
+      />
+    </div>
+  )
+}

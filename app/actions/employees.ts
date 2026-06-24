@@ -184,7 +184,8 @@ export async function updateEmployee(id: string, formData: FormData) {
 
   await prisma.user.update({ where: { id }, data })
   revalidatePath('/admin/employees')
-  redirect('/admin/employees')
+  revalidatePath(`/admin/employees/${id}`)
+  redirect(`/admin/employees/${id}?tab=stammdaten`)
 }
 
 const PAYROLL_TYPES = [

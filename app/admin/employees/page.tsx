@@ -15,10 +15,11 @@ export default async function EmployeesPage({ searchParams }: Props) {
     ? { endDate: { lt: now } }
     : { OR: [{ endDate: null }, { endDate: { gte: now } }] }
 
-  const [users, locations] = await Promise.all([
-    prisma.user.findMany({ where, orderBy: { name: 'asc' }, include: { primaryLocation: true } }),
-    prisma.location.findMany({ orderBy: { sortOrder: 'asc' } }),
-  ])
+  const users = await prisma.user.findMany({
+    where,
+    orderBy: { name: 'asc' },
+    include: { primaryLocation: true },
+  })
 
   return (
     <div className="p-6">
@@ -40,12 +41,28 @@ export default async function EmployeesPage({ searchParams }: Props) {
             </Link>
           </div>
         </div>
-        <Link
-          href="/admin/employees/new"
-          className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition active:scale-[0.97]"
-        >
-          + Mitarbeiter hinzufügen
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href="/api/personalbogen?format=excel&scope=active"
+            className="px-3 py-2 border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition"
+            title="Personalbögen aller aktiven MA als Excel (fürs Lohnbüro)"
+          >
+            Export Excel
+          </a>
+          <a
+            href="/api/personalbogen?format=csv&scope=active"
+            className="px-3 py-2 border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition"
+            title="Personalbögen aller aktiven MA als CSV"
+          >
+            CSV
+          </a>
+          <Link
+            href="/admin/employees/new"
+            className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition active:scale-[0.97]"
+          >
+            + Mitarbeiter hinzufügen
+          </Link>
+        </div>
       </div>
       <EmployeesTable
         viewerRole={viewerRole}
@@ -65,8 +82,8 @@ export default async function EmployeesPage({ searchParams }: Props) {
           address: u.address,
           birthday: u.birthday ? u.birthday.toISOString() : null,
           startDate: u.startDate ? u.startDate.toISOString() : null,
+          onboardingCompletedAt: u.onboardingCompletedAt ? u.onboardingCompletedAt.toISOString() : null,
         }))}
-        locations={locations.map((l) => ({ id: l.id, name: l.name, color: l.color }))}
       />
     </div>
   )

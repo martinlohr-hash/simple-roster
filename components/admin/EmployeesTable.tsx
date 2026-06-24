@@ -92,6 +92,13 @@ export default function EmployeesTable({ users, locations, viewerRole }: Props) 
                     >
                       Personalbogen
                     </Link>
+                    <Link
+                      href={`/admin/employees/${user.id}/dokumente`}
+                      className="text-xs font-medium text-gray-500 hover:text-indigo-600 whitespace-nowrap"
+                      title="Dokumente & Verträge"
+                    >
+                      Dokumente
+                    </Link>
                     {user.status === 'PENDING' && <ResendInviteButton id={user.id} />}
                     {(viewerRole === 'SUPER_ADMIN' || user.role !== 'SUPER_ADMIN') && (
                       <DeleteEmployeeButton id={user.id} name={user.name} isSuperAdmin={viewerRole === 'SUPER_ADMIN'} />

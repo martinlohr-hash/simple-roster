@@ -129,6 +129,9 @@ model User {
   vacationDaysAnnual        Float?            // Urlaubsanspruch jährlich
   vacationDaysProRata       Float?            // Urlaubsanspruch lfd. Jahr (anteilig)
 
+  // Dokumente: Link zum Google-Drive-Ordner dieses MA (Originale liegen in Drive)
+  documentsUrl              String?
+
   primaryLocationId String?
   primaryLocation   Location?   @relation("PrimaryLocation", fields: [primaryLocationId], references: [id])
   shifts               Shift[]

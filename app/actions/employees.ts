@@ -263,6 +263,21 @@ export async function updatePersonalbogen(id: string, formData: FormData): Promi
   return {}
 }
 
+// Speichert/aktualisiert den Google-Drive-Ordnerlink eines MA (Dokumente-Bereich).
+export async function saveDocumentsUrl(id: string, formData: FormData): Promise<{ error?: string }> {
+  const session = await getSession()
+  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
+
+  const raw = (formData.get('documentsUrl') as string | null)?.trim() || null
+  if (raw && !/^https?:\/\//i.test(raw)) {
+    return { error: 'Bitte eine vollständige URL angeben (mit https://).' }
+  }
+
+  await prisma.user.update({ where: { id }, data: { documentsUrl: raw } })
+  revalidatePath(`/admin/employees/${id}/dokumente`)
+  return {}
+}
+
 export async function deleteEmployee(id: string) {
   const session = await getSession()
   if (!session || !isSuperAdmin(session.role)) throw new Error('Unauthorized')

@@ -62,6 +62,12 @@ export default async function EmployeePersonalbogenPage({ params }: Props) {
           </div>
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <Link
+              href={`/admin/employees/${user.id}/dokumente`}
+              className="px-3 py-2 text-sm font-medium rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition whitespace-nowrap"
+            >
+              Dokumente & Verträge
+            </Link>
+            <Link
               href={`/personalbogen-druck/${user.id}`}
               className="px-3 py-2 text-sm font-medium rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition whitespace-nowrap"
             >

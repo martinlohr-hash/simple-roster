@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useActionState, useEffect, useState } from 'react'
 import { login } from '@/app/actions/auth'
 
@@ -22,8 +23,10 @@ export default function LoginPage() {
   )
 
   const [sammie, setSammie] = useState<string | null>(null)
+  const [resetDone, setResetDone] = useState(false)
   useEffect(() => {
     setSammie(SAMMIE_IMAGES[Math.floor(Math.random() * SAMMIE_IMAGES.length)])
+    setResetDone(new URLSearchParams(window.location.search).get('reset') === 'ok')
   }, [])
 
   return (
@@ -45,6 +48,12 @@ export default function LoginPage() {
             <h1 className="text-2xl font-semibold text-gray-900">SimpleRoster</h1>
             <p className="text-sm text-gray-500 mt-1">Bitte melde dich an</p>
           </div>
+
+          {resetDone && (
+            <p className="text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2 mb-4">
+              Dein Passwort wurde geändert. Du kannst dich jetzt anmelden.
+            </p>
+          )}
 
           <form action={action} className="space-y-4">
             <div>
@@ -74,6 +83,14 @@ export default function LoginPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 placeholder="••••••••"
               />
+              <div className="mt-1.5 text-right">
+                <Link
+                  href="/passwort-vergessen"
+                  className="text-xs text-indigo-600 hover:text-indigo-700 hover:underline"
+                >
+                  Passwort vergessen?
+                </Link>
+              </div>
             </div>
             {error && (
               <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>

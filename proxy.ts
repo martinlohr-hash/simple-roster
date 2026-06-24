@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { decrypt } from '@/lib/session'
 
-const PUBLIC_ROUTES = ['/login', '/onboarding']
+const PUBLIC_ROUTES = ['/login', '/onboarding', '/passwort-vergessen', '/passwort-zuruecksetzen']
 const ADMIN_ROUTES = ['/admin']
 const EMPLOYEE_ROUTES = ['/employee']
 

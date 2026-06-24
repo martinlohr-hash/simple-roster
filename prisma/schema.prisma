@@ -74,6 +74,8 @@ model User {
   status            UserStatus  @default(ACTIVE)
   inviteToken       String?     @unique
   inviteTokenExpiry DateTime?
+  resetToken        String?     @unique
+  resetTokenExpiry  DateTime?
   role              Role        @default(EMPLOYEE)
   hourlyRate        Float       @default(0)
   overheadPercent   Float       @default(0)

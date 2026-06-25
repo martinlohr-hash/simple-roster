@@ -78,6 +78,7 @@ type Props = {
   weekStart: Date
   weekStartStr: string
   dayNotes: Record<string, string>
+  calendarEvents?: Record<string, string[]>
   coverageRules: CoverageRuleData[]
   prevWeekHref: string
   nextWeekHref: string
@@ -117,7 +118,7 @@ function getInitials(name: string): string {
     .join('')
 }
 
-export default function WeekGrid({ shifts, users, locations, weekStart, weekStartStr, dayNotes, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays, isSuperAdmin, dayStats, unplannedEntries }: Props) {
+export default function WeekGrid({ shifts, users, locations, weekStart, weekStartStr, dayNotes, calendarEvents, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays, isSuperAdmin, dayStats, unplannedEntries }: Props) {
   const router = useRouter()
   const [activeShift, setActiveShift] = useState<ShiftData | null>(null)
   const [resizingShift, setResizingShift] = useState<{ id: string; previewEndTime: string } | null>(null)
@@ -786,7 +787,7 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
                   const dateStr = format(day, 'yyyy-MM-dd')
                   return (
                     <td key={i} className="p-0 align-top border-l border-gray-100 first:border-l-0">
-                      <DayNoteCell key={dateStr} date={dateStr} initialContent={dayNotes[dateStr] ?? ''} />
+                      <DayNoteCell key={dateStr} date={dateStr} initialContent={dayNotes[dateStr] ?? ''} calendarEvents={calendarEvents?.[dateStr] ?? []} />
                     </td>
                   )
                 })}

@@ -17,6 +17,7 @@ type Defaults = {
   street?: string | null; postalCode?: string | null; city?: string | null
   unavailableDays?: number[]; preferredDays?: number[]
   earliestStart?: string | null; latestEnd?: string | null
+  onboardingCompletedAt?: Date | string | null
 }
 
 type Props = {
@@ -164,6 +165,22 @@ export default function EmployeeForm({ action, locations, defaults }: Props) {
         earliestStart={defaults?.earliestStart}
         latestEnd={defaults?.latestEnd}
       />
+
+      <label className="flex items-start gap-2.5 rounded-xl border border-gray-200 bg-gray-50/60 p-3 cursor-pointer">
+        <input
+          type="checkbox"
+          name="onboardingDone"
+          defaultChecked={defaults?.onboardingCompletedAt != null}
+          className="mt-0.5 rounded border-gray-300"
+        />
+        <span className="text-sm text-gray-700">
+          Begrüßungsbogen bereits erledigt
+          <span className="block text-[11px] text-gray-400 mt-0.5">
+            Aktivieren, wenn die Daten schon vorliegen – dann wird der/die MA beim ersten Login
+            nicht zum Ausfüllen aufgefordert. (Steuer-ID, SV-Nr. und IBAN bitte im Reiter „Beschäftigung“ eintragen.)
+          </span>
+        </span>
+      </label>
 
       <div className="flex gap-3 pt-2">
         <Link href="/admin/employees" className="flex-1 py-2 px-4 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 text-center transition active:scale-[0.97]">

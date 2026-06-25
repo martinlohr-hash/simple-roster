@@ -201,6 +201,17 @@ export default function NewEmployeeForm({ locations }: { locations: Location[] }
 
       <AvailabilityFields />
 
+      <label className="flex items-start gap-2.5 rounded-xl border border-gray-200 bg-gray-50/60 p-3 cursor-pointer">
+        <input type="checkbox" name="onboardingDone" className="mt-0.5 rounded border-gray-300" />
+        <span className="text-sm text-gray-700">
+          Daten liegen bereits vollständig vor – Begrüßungsbogen überspringen
+          <span className="block text-[11px] text-gray-400 mt-0.5">
+            Dann wird der/die MA beim ersten Login nicht zum Ausfüllen aufgefordert. Steuer-ID, SV-Nr.
+            und IBAN trägst du anschließend im Reiter „Beschäftigung“ ein.
+          </span>
+        </span>
+      </label>
+
       {error && (
         <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
       )}

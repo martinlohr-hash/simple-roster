@@ -118,6 +118,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
           preferredDays: user.preferredDays,
           earliestStart: user.earliestStart,
           latestEnd: user.latestEnd,
+          onboardingCompletedAt: user.onboardingCompletedAt,
         }}
         personalbogenUser={personalbogenUser}
         documentsUrl={user.documentsUrl}

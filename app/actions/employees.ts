@@ -66,6 +66,8 @@ export async function createEmployee(
   const preferredDays = parseDays(formData.getAll('preferredDays'))
   const earliestStart = (formData.get('earliestStart') as string) || null
   const latestEnd = (formData.get('latestEnd') as string) || null
+  // Admin hat die Daten schon → Begrüßungsbogen (/willkommen) beim ersten Login überspringen.
+  const onboardingCompletedAt = formData.get('onboardingDone') === 'on' ? new Date() : null
 
   const inviteToken = randomBytes(32).toString('hex')
   const inviteTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
@@ -102,6 +104,7 @@ export async function createEmployee(
         preferredDays,
         earliestStart,
         latestEnd,
+        onboardingCompletedAt,
         primaryLocationId: locationId || undefined,
         role,
       },
@@ -199,6 +202,14 @@ export async function updateEmployee(id: string, formData: FormData) {
   const newPassword = formData.get('password') as string
   if (newPassword) {
     data.passwordHash = await bcrypt.hash(newPassword, 10)
+  }
+
+  // Begrüßungsbogen-Marker: gesetzten Zeitpunkt beibehalten, sonst neu setzen / leeren.
+  if (formData.get('onboardingDone') === 'on') {
+    const current = await prisma.user.findUnique({ where: { id }, select: { onboardingCompletedAt: true } })
+    data.onboardingCompletedAt = current?.onboardingCompletedAt ?? new Date()
+  } else {
+    data.onboardingCompletedAt = null
   }
 
   await prisma.user.update({ where: { id }, data })

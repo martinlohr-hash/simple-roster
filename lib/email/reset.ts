@@ -1,7 +1,7 @@
 import 'server-only'
 import { sendMail, isMailConfigured } from '@/lib/mail'
 import { getBaseUrl } from '@/lib/baseUrl'
-import { COMPANY_NAME } from '@/lib/company'
+import { COMPANY_BRAND } from '@/lib/company'
 
 export function buildResetLink(resetToken: string): string {
   return `${getBaseUrl()}/passwort-zuruecksetzen/${resetToken}`
@@ -23,12 +23,12 @@ export async function sendResetEmail(args: {
 
   const link = buildResetLink(args.resetToken)
   const greeting = `Hallo ${firstNameOf(args.name)},`
-  const subject = `Passwort zurücksetzen – ${COMPANY_NAME}`
+  const subject = `Passwort zurücksetzen – ${COMPANY_BRAND}`
 
   const text = [
     greeting,
     '',
-    `für deinen ${COMPANY_NAME}-Dienstplanzugang wurde das Zurücksetzen des Passworts angefordert.`,
+    `für deinen ${COMPANY_BRAND}-Dienstplanzugang wurde das Zurücksetzen des Passworts angefordert.`,
     'Über den folgenden Link kannst du ein neues Passwort vergeben:',
     '',
     link,
@@ -36,14 +36,14 @@ export async function sendResetEmail(args: {
     'Der Link ist 1 Stunde gültig. Falls du das nicht warst, kannst du diese E-Mail ignorieren – dein Passwort bleibt unverändert.',
     '',
     'Viele Grüße',
-    COMPANY_NAME,
+    COMPANY_BRAND,
   ].join('\n')
 
   const html = `
   <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;color:#1f2937;">
     <p style="font-size:15px;">${greeting}</p>
     <p style="font-size:15px;line-height:1.5;">
-      für deinen <strong>${COMPANY_NAME}</strong>-Dienstplanzugang wurde das Zurücksetzen des Passworts angefordert.
+      für deinen <strong>${COMPANY_BRAND}</strong>-Dienstplanzugang wurde das Zurücksetzen des Passworts angefordert.
       Klicke auf den Button, um ein neues Passwort zu vergeben.
     </p>
     <p style="text-align:center;margin:28px 0;">
@@ -61,7 +61,7 @@ export async function sendResetEmail(args: {
       dein Passwort bleibt unverändert.
     </p>
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
-    <p style="font-size:12px;color:#9ca3af;">${COMPANY_NAME}</p>
+    <p style="font-size:12px;color:#9ca3af;">${COMPANY_BRAND}</p>
   </div>`
 
   await sendMail({ to: args.to, subject, html, text })

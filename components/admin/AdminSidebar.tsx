@@ -14,6 +14,7 @@ import {
   IconLogout,
   IconUmbrella,
   IconBrain,
+  IconMailFast,
 } from '@tabler/icons-react'
 import Image from 'next/image'
 
@@ -63,6 +64,7 @@ export default function AdminSidebar({ userName, userRole, openBugCount, pending
         <NavLink href="/admin/schedule" icon={<IconCalendarEvent size={16} stroke={1.75} />} collapsed={collapsed} badge={unconfirmedDaysCount}>Dienstplan</NavLink>
         <NavLink href="/admin/my-schedule" icon={<IconUser size={16} stroke={1.75} />} collapsed={collapsed}>Mein Plan</NavLink>
         <NavLink href="/admin/employees" icon={<IconUsers size={16} stroke={1.75} />} collapsed={collapsed}>Mitarbeiter</NavLink>
+        <NavLink href="/admin/onboarding" icon={<IconMailFast size={16} stroke={1.75} />} collapsed={collapsed}>Onboarding-Mails</NavLink>
         <NavLink href="/admin/costs" icon={<IconChartBar size={16} stroke={1.75} />} collapsed={collapsed}>Lohnkosten</NavLink>
         <NavLink href="/admin/vacations" icon={<IconUmbrella size={16} stroke={1.75} />} collapsed={collapsed} badge={pendingVacationCount}>Urlaub</NavLink>
         <NavLink href="/admin/export" icon={<IconDownload size={16} stroke={1.75} />} collapsed={collapsed}>Export</NavLink>

@@ -96,6 +96,8 @@ model User {
   // ---- Personalbogen / Einstellungsbogen ----
   // Gate: null = Stammdaten beim ersten Login noch nicht ausgefüllt → /willkommen erzwingen
   onboardingCompletedAt DateTime?
+  // Start der Onboarding-Mail-Sequenz (gesetzt beim ersten Login / Passwort-Setzen). null = noch nicht gestartet.
+  onboardingDripStartedAt DateTime?
 
   // Angaben zum Mitarbeiter (vom MA selbst eingetragen; Geburtsdatum = birthday)
   firstName         String?
@@ -143,6 +145,7 @@ model User {
   reviewedVacations    VacationRequest[]    @relation("VacationReviewer")
   insight              EmployeeInsight?     @relation("InsightSubject")
   authoredInsights     EmployeeInsight[]    @relation("InsightAuthor")
+  onboardingDeliveries OnboardingDelivery[]
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 }
@@ -330,4 +333,34 @@ model EmployeeInsight {
   assessedBy      User?           @relation("InsightAuthor", fields: [assessedById], references: [id])
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
+}
+
+// Eine Stufe der Onboarding-Mail-Sequenz (admin-editierbar unter /admin/onboarding).
+// delayDays = Versand X Tage nach dem Start (0 = sofort beim ersten Login).
+model OnboardingStep {
+  id         String   @id @default(cuid())
+  order      Int      @default(0)   // Anzeige-/Sortierreihenfolge
+  delayDays  Int      @default(0)   // Tage nach Sequenz-Start
+  subject    String                 // Betreff der Mail
+  body       String                 // Markdown-lite: Absätze, **fett**, [text](url), - Listen, {{vorname}}/{{firma}}
+  ctaLabel   String?                // optionaler Button-Text
+  ctaUrl     String?                // optionale Button-URL
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deliveries OnboardingDelivery[]
+}
+
+// Versand-Protokoll: hält fest, welche Stufe ein MA schon bekommen hat (idempotent).
+model OnboardingDelivery {
+  id        String         @id @default(cuid())
+  userId    String
+  stepId    String
+  sentAt    DateTime       @default(now())
+  status    String         @default("SENT") // SENT | FAILED
+  error     String?
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  step      OnboardingStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, stepId])
 }

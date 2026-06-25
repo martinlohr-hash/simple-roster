@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
+import { startDripForUser } from '@/lib/onboarding/drip'
 
 export async function completeOnboarding(
   token: string,
@@ -37,6 +38,10 @@ export async function completeOnboarding(
       ...(name ? { name } : {}),
     },
   })
+
+  // Onboarding-Mail-Sequenz starten + Tag-0-Willkommensmail sofort verschicken.
+  // Wirft nie (Fehler werden geloggt), damit das Onboarding nicht abbricht.
+  await startDripForUser(user.id)
 
   redirect('/login')
 }

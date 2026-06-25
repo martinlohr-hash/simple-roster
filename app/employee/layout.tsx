@@ -4,10 +4,24 @@ import Link from 'next/link'
 import BugReportButton from '@/components/ui/BugReportButton'
 import BottomNav from '@/components/employee/BottomNav'
 import WelcomeModal from '@/components/employee/WelcomeModal'
+import MissingDataNag, { type DeferredField } from '@/components/employee/MissingDataNag'
+import { prisma } from '@/lib/db'
 
 export default async function EmployeeLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession()
   if (!session) redirect('/login')
+
+  // Nachreichbare Abrechnungs-Daten: prüfen, welche noch fehlen (für den Nag-Screen).
+  const profile = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { taxId: true, socialSecurityNo: true, iban: true, onboardingCompletedAt: true },
+  })
+  const missingData: DeferredField[] = []
+  if (profile?.onboardingCompletedAt) {
+    if (!profile.taxId) missingData.push('taxId')
+    if (!profile.socialSecurityNo) missingData.push('socialSecurityNo')
+    if (!profile.iban) missingData.push('iban')
+  }
 
   const initials = session.name
     .split(' ')
@@ -48,6 +62,7 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
       <BottomNav />
       <BugReportButton />
       <WelcomeModal userId={session.userId} name={session.name} />
+      {missingData.length > 0 && <MissingDataNag userId={session.userId} missing={missingData} />}
     </div>
   )
 }

@@ -138,28 +138,36 @@ export default function OnboardingProfileForm({ initial }: { initial: Initial })
         </div>
       </div>
 
-      <Field
-        label="Persönliche Steuer-Identifikationsnummer"
-        name="taxId"
-        value={f.taxId}
-        onChange={set('taxId')}
-        required
-        inputMode="numeric"
-        hint="11-stellig"
-        placeholder="12 345 678 901"
-      />
-      <Field
-        label="Sozialversicherungs-Nr."
-        name="socialSecurityNo"
-        value={f.socialSecurityNo}
-        onChange={set('socialSecurityNo')}
-        required
-        hint="12-stellig"
-        placeholder="65 170839 J 003"
-      />
-      <Field label="Bankverbindung / IBAN" name="iban" value={f.iban} onChange={set('iban')} required placeholder="DE.." />
       <Field label="Krankenkasse" name="healthInsurance" value={f.healthInsurance} onChange={set('healthInsurance')} required />
       <Field label="Telefon" name="phone" type="tel" value={f.phone} onChange={set('phone')} placeholder="+49 …" />
+
+      <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 p-4 space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700">Kannst du auch später nachreichen</h3>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            Diese Angaben brauchen wir für die Abrechnung. Hast du sie nicht zur Hand, lass sie einfach leer –
+            du kommst trotzdem direkt rein und wirst später kurz daran erinnert.
+          </p>
+        </div>
+        <Field
+          label="Persönliche Steuer-Identifikationsnummer"
+          name="taxId"
+          value={f.taxId}
+          onChange={set('taxId')}
+          inputMode="numeric"
+          hint="11-stellig"
+          placeholder="12 345 678 901"
+        />
+        <Field
+          label="Sozialversicherungs-Nr."
+          name="socialSecurityNo"
+          value={f.socialSecurityNo}
+          onChange={set('socialSecurityNo')}
+          hint="12-stellig"
+          placeholder="65 170839 J 003"
+        />
+        <Field label="Bankverbindung / IBAN" name="iban" value={f.iban} onChange={set('iban')} placeholder="DE.." />
+      </div>
 
       {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
 

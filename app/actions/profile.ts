@@ -88,6 +88,46 @@ export async function completeMyProfile(data: {
   redirect('/employee/dashboard')
 }
 
+// Speichert die nachgereichten Abrechnungs-Daten (Steuer-ID, SV-Nr., IBAN), die
+// beim Onboarding übersprungen werden dürfen. Nur befüllte Felder werden gesetzt;
+// scoped auf den eigenen Account. Wird vom Nag-Screen aufgerufen.
+export async function saveDeferredData(data: {
+  taxId?: string
+  socialSecurityNo?: string
+  iban?: string
+}): Promise<{ error?: string }> {
+  const session = await getSession()
+  if (!session) return { error: 'Nicht angemeldet' }
+
+  const update: { taxId?: string; socialSecurityNo?: string; iban?: string } = {}
+
+  if (data.taxId != null && data.taxId.trim() !== '') {
+    const taxId = data.taxId.replace(/\s/g, '')
+    if (!/^\d{11}$/.test(taxId)) {
+      return { error: 'Die Steuer-Identifikationsnummer muss 11-stellig sein.' }
+    }
+    update.taxId = taxId
+  }
+
+  if (data.socialSecurityNo != null && data.socialSecurityNo.trim() !== '') {
+    const ssn = data.socialSecurityNo.replace(/\s/g, '')
+    if (ssn.length !== 12) {
+      return { error: 'Die Sozialversicherungs-Nummer muss 12-stellig sein.' }
+    }
+    update.socialSecurityNo = ssn
+  }
+
+  if (data.iban != null && data.iban.trim() !== '') {
+    update.iban = data.iban.replace(/\s/g, '')
+  }
+
+  if (Object.keys(update).length === 0) return {}
+
+  await prisma.user.update({ where: { id: session.userId }, data: update })
+  revalidatePath('/employee', 'layout')
+  return {}
+}
+
 function sanitizeDays(days: number[] | undefined): number[] {
   if (!Array.isArray(days)) return []
   return [...new Set(days.map(Number).filter((n) => !Number.isNaN(n) && n >= 0 && n <= 6))].sort(

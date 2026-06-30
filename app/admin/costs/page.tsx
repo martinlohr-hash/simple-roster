@@ -1,4 +1,4 @@
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, getISOWeek, getMonth, getYear } from 'date-fns'
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, parseISO, getISOWeek, getMonth, getYear } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { prisma } from '@/lib/db'
 import { calcHours, calcLaborCost, getTrafficLight } from '@/lib/calculations'
@@ -18,6 +18,10 @@ export default async function CostsPage({ searchParams }: Props) {
   if (period === 'week') {
     from = startOfWeek(now, { weekStartsOn: 1 })
     to = endOfWeek(now, { weekStartsOn: 1 })
+  } else if (period === 'nextmonth') {
+    const next = addMonths(now, 1)
+    from = startOfMonth(next)
+    to = endOfMonth(next)
   } else if (period === 'custom' && sp.from && sp.to) {
     from = parseISO(sp.from)
     to = parseISO(sp.to)
@@ -26,7 +30,7 @@ export default async function CostsPage({ searchParams }: Props) {
     to = endOfMonth(now)
   }
 
-  const showBudget = period === 'week' || period === 'month'
+  const showBudget = period === 'week' || period === 'month' || period === 'nextmonth'
   const budgetPeriod: 'WEEKLY' | 'MONTHLY' = period === 'week' ? 'WEEKLY' : 'MONTHLY'
   const budgetYear = getYear(from)
   const budgetWeekOrMonth = period === 'week' ? getISOWeek(from) : getMonth(from) + 1

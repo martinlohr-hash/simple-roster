@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 
 type Location = { id: string; name: string }
 
@@ -12,17 +12,29 @@ export default function CostsFilter({ locations, defaults }: { locations: Locati
   const [to, setTo] = useState(defaults.to)
   const [locationId, setLocationId] = useState(defaults.locationId)
 
-  function apply() {
-    const p = new URLSearchParams({ period, locationId })
-    if (period === 'custom') { p.set('from', from); p.set('to', to) }
-    router.push(`/admin/costs?${p.toString()}`)
+  function go(next: { period?: string; from?: string; to?: string; locationId?: string }) {
+    const p = next.period ?? period
+    const l = next.locationId ?? locationId
+    const params = new URLSearchParams({ period: p, locationId: l })
+    if (p === 'custom') {
+      params.set('from', next.from ?? from)
+      params.set('to', next.to ?? to)
+    }
+    router.push(`/admin/costs?${params.toString()}`)
+  }
+
+  function onPeriodChange(value: string) {
+    setPeriod(value)
+    // Vordefinierte Zeiträume sofort anwenden – nur "benutzerdefiniert"
+    // wartet auf die Datumsauswahl + "Anwenden".
+    if (value !== 'custom') go({ period: value })
   }
 
   return (
     <div className="flex flex-wrap gap-3 mb-6">
       <select
         value={period}
-        onChange={(e) => setPeriod(e.target.value)}
+        onChange={(e) => onPeriodChange(e.target.value)}
         className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
       >
         <option value="week">Diese Woche</option>
@@ -40,18 +52,20 @@ export default function CostsFilter({ locations, defaults }: { locations: Locati
       )}
       <select
         value={locationId}
-        onChange={(e) => setLocationId(e.target.value)}
+        onChange={(e) => { setLocationId(e.target.value); go({ locationId: e.target.value }) }}
         className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
       >
         <option value="">Alle Standorte</option>
         {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
       </select>
-      <button
-        onClick={apply}
-        className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition active:scale-[0.97]"
-      >
-        Anwenden
-      </button>
+      {period === 'custom' && (
+        <button
+          onClick={() => go({})}
+          className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition active:scale-[0.97]"
+        >
+          Anwenden
+        </button>
+      )}
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, pa
 import { de } from 'date-fns/locale'
 import { prisma } from '@/lib/db'
 import { calcHours, calcLaborCost, getTrafficLight } from '@/lib/calculations'
+import { timeToMinutes } from '@/lib/timeUtils'
 import CostsFilter from '@/components/admin/CostsFilter'
 import BudgetProgress from '@/components/admin/BudgetProgress'
 
@@ -35,7 +36,7 @@ export default async function CostsPage({ searchParams }: Props) {
   const budgetYear = getYear(from)
   const budgetWeekOrMonth = period === 'week' ? getISOWeek(from) : getMonth(from) + 1
 
-  const [entries, users, locations, budget] = await Promise.all([
+  const [entries, shifts, users, locations, budget] = await Promise.all([
     prisma.timeEntry.findMany({
       where: {
         checkinAt: { gte: from, lte: to },
@@ -43,6 +44,15 @@ export default async function CostsPage({ searchParams }: Props) {
         ...(sp.locationId ? { locationId: sp.locationId } : {}),
       },
       include: { user: true, location: true },
+    }),
+    prisma.shift.findMany({
+      where: {
+        date: { gte: from, lte: to },
+        status: { not: 'CANCELLED' },
+        userId: { not: null },
+        ...(sp.locationId ? { locationId: sp.locationId } : {}),
+      },
+      select: { userId: true, startTime: true, endTime: true },
     }),
     prisma.user.findMany({
       where: { OR: [{ endDate: null }, { endDate: { gte: new Date() } }] },
@@ -62,10 +72,17 @@ export default async function CostsPage({ searchParams }: Props) {
       : Promise.resolve(null),
   ])
 
-  type UserStats = { name: string; hours: number; cost: number; light: 'green' | 'yellow' | 'red' }
+  type UserStats = {
+    name: string
+    plannedHours: number
+    plannedCost: number
+    hours: number
+    cost: number
+    light: 'green' | 'yellow' | 'red'
+  }
   const byUser: Record<string, UserStats> = {}
   for (const user of users) {
-    byUser[user.id] = { name: user.name, hours: 0, cost: 0, light: 'green' }
+    byUser[user.id] = { name: user.name, plannedHours: 0, plannedCost: 0, hours: 0, cost: 0, light: 'green' }
   }
   for (const e of entries) {
     const h = calcHours(e.checkinAt, e.checkoutAt!)
@@ -74,11 +91,22 @@ export default async function CostsPage({ searchParams }: Props) {
       byUser[e.userId].cost += calcLaborCost(h, e.user.hourlyRate, e.user.overheadPercent)
     }
   }
+  const rateById = new Map(users.map((u) => [u.id, { rate: u.hourlyRate, overhead: u.overheadPercent }]))
+  for (const s of shifts) {
+    if (!s.userId || !byUser[s.userId]) continue
+    const h = (timeToMinutes(s.endTime) - timeToMinutes(s.startTime)) / 60
+    const r = rateById.get(s.userId)
+    byUser[s.userId].plannedHours += h
+    if (r) byUser[s.userId].plannedCost += calcLaborCost(h, r.rate, r.overhead)
+  }
   for (const [id, stats] of Object.entries(byUser)) {
     const user = users.find((u) => u.id === id)
-    stats.light = getTrafficLight(stats.hours, user?.maxHoursMonth)
+    // Ampel auf Basis der höheren Belastung (Plan oder Ist) – beim Planen zählt der Plan.
+    stats.light = getTrafficLight(Math.max(stats.plannedHours, stats.hours), user?.maxHoursMonth)
   }
 
+  const totalPlannedHours = Object.values(byUser).reduce((s, u) => s + u.plannedHours, 0)
+  const totalPlannedCost = Object.values(byUser).reduce((s, u) => s + u.plannedCost, 0)
   const totalHours = Object.values(byUser).reduce((s, u) => s + u.hours, 0)
   const totalCost = Object.values(byUser).reduce((s, u) => s + u.cost, 0)
   const lightDot = { green: 'bg-green-500', yellow: 'bg-yellow-500', red: 'bg-red-500' }
@@ -106,6 +134,8 @@ export default async function CostsPage({ searchParams }: Props) {
           budget={budget}
           actualHours={totalHours}
           actualEuros={totalCost}
+          plannedHours={totalPlannedHours}
+          plannedEuros={totalPlannedCost}
           period={budgetPeriod}
           year={budgetYear}
           weekOrMonth={budgetWeekOrMonth}
@@ -114,12 +144,32 @@ export default async function CostsPage({ searchParams }: Props) {
 
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-          <div className="text-xs text-gray-500 mb-1">Gesamtstunden</div>
-          <div className="text-2xl font-semibold text-gray-900">{totalHours.toFixed(1)}h</div>
+          <div className="text-xs text-gray-500 mb-1">Stunden</div>
+          <div className="flex items-baseline gap-4">
+            <div>
+              <div className="text-2xl font-semibold text-gray-900">{totalPlannedHours.toFixed(1)}h</div>
+              <div className="text-xs text-gray-400">geplant</div>
+            </div>
+            <div className="text-gray-300">/</div>
+            <div>
+              <div className="text-2xl font-semibold text-gray-900">{totalHours.toFixed(1)}h</div>
+              <div className="text-xs text-gray-400">Ist</div>
+            </div>
+          </div>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-          <div className="text-xs text-gray-500 mb-1">Gesamtlohnkosten</div>
-          <div className="text-2xl font-semibold text-gray-900">{totalCost.toFixed(2)} €</div>
+          <div className="text-xs text-gray-500 mb-1">Lohnkosten</div>
+          <div className="flex items-baseline gap-4">
+            <div>
+              <div className="text-2xl font-semibold text-gray-900">{totalPlannedCost.toFixed(2)} €</div>
+              <div className="text-xs text-gray-400">geplant</div>
+            </div>
+            <div className="text-gray-300">/</div>
+            <div>
+              <div className="text-2xl font-semibold text-gray-900">{totalCost.toFixed(2)} €</div>
+              <div className="text-xs text-gray-400">Ist</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -128,8 +178,10 @@ export default async function CostsPage({ searchParams }: Props) {
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="text-left text-xs font-medium text-gray-500 px-4 py-3">Mitarbeiter</th>
-              <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">Stunden</th>
-              <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">Lohnkosten</th>
+              <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">Plan-Std</th>
+              <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">Ist-Std</th>
+              <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">Plan-Kosten</th>
+              <th className="text-right text-xs font-medium text-gray-500 px-4 py-3">Ist-Kosten</th>
               <th className="text-center text-xs font-medium text-gray-500 px-4 py-3">Ampel</th>
             </tr>
           </thead>
@@ -137,7 +189,9 @@ export default async function CostsPage({ searchParams }: Props) {
             {Object.values(byUser).map((u) => (
               <tr key={u.name} className="hover:bg-gray-50/50">
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">{u.name}</td>
+                <td className="px-4 py-3 text-sm text-gray-700 text-right">{u.plannedHours.toFixed(2)}h</td>
                 <td className="px-4 py-3 text-sm text-gray-700 text-right">{u.hours.toFixed(2)}h</td>
+                <td className="px-4 py-3 text-sm text-gray-700 text-right">{u.plannedCost.toFixed(2)} €</td>
                 <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">{u.cost.toFixed(2)} €</td>
                 <td className="px-4 py-3 text-center">
                   <span
@@ -151,7 +205,9 @@ export default async function CostsPage({ searchParams }: Props) {
           <tfoot className="border-t-2 border-gray-200 bg-gray-50">
             <tr>
               <td className="px-4 py-3 text-sm font-semibold text-gray-900">Gesamt</td>
+              <td className="px-4 py-3 text-sm font-semibold text-gray-900 text-right">{totalPlannedHours.toFixed(2)}h</td>
               <td className="px-4 py-3 text-sm font-semibold text-gray-900 text-right">{totalHours.toFixed(2)}h</td>
+              <td className="px-4 py-3 text-sm font-semibold text-gray-900 text-right">{totalPlannedCost.toFixed(2)} €</td>
               <td className="px-4 py-3 text-sm font-semibold text-gray-900 text-right">{totalCost.toFixed(2)} €</td>
               <td />
             </tr>

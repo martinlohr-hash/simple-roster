@@ -16,6 +16,8 @@ type Props = {
   budget: Budget
   actualHours: number
   actualEuros: number
+  plannedHours?: number
+  plannedEuros?: number
   period: 'WEEKLY' | 'MONTHLY'
   year: number
   weekOrMonth: number
@@ -28,6 +30,8 @@ export default function BudgetProgress({
   budget,
   actualHours,
   actualEuros,
+  plannedHours = 0,
+  plannedEuros = 0,
   period,
   year,
   weekOrMonth,
@@ -40,8 +44,10 @@ export default function BudgetProgress({
   const actual = type === 'HOURS' ? actualHours : actualEuros
   const budgetAmount = budget?.amount ?? 0
   const displayActual = budget?.type === 'HOURS' ? actualHours : actualEuros
+  const displayPlanned = budget?.type === 'HOURS' ? plannedHours : plannedEuros
   const status = budget ? getBudgetStatus(displayActual, budgetAmount) : 'green'
   const pct = budget && budgetAmount > 0 ? Math.min(100, (displayActual / budgetAmount) * 100) : 0
+  const plannedPct = budget && budgetAmount > 0 ? Math.min(100, (displayPlanned / budgetAmount) * 100) : 0
 
   const barColor =
     status === 'red' ? 'bg-red-500' : status === 'warning' ? 'bg-amber-400' : 'bg-green-500'
@@ -125,6 +131,7 @@ export default function BudgetProgress({
               {budget.type === 'EUROS'
                 ? `${displayActual.toFixed(2)} €`
                 : `${displayActual.toFixed(1)} h`}
+              <span className="ml-1 text-xs font-normal text-gray-400">Ist</span>
             </span>
             <span className="text-xs text-gray-500">
               von{' '}
@@ -133,13 +140,29 @@ export default function BudgetProgress({
                 : `${budget.amount} h`}
             </span>
           </div>
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full ${barColor}`}
               style={{ width: `${pct}%`, transition: 'width 300ms var(--ease-out)' }}
             />
+            {displayPlanned > 0 && (
+              <div
+                className="absolute top-0 bottom-0 w-0.5 bg-gray-700"
+                style={{ left: `calc(${plannedPct}% - 1px)` }}
+                title={`Plan: ${budget.type === 'EUROS' ? `${displayPlanned.toFixed(2)} €` : `${displayPlanned.toFixed(1)} h`}`}
+              />
+            )}
           </div>
-          <div className="text-xs text-gray-400 mt-1 text-right">{pct.toFixed(1)} %</div>
+          <div className="flex justify-between text-xs mt-1">
+            <span className="text-gray-500">
+              Plan:{' '}
+              {budget.type === 'EUROS'
+                ? `${displayPlanned.toFixed(2)} €`
+                : `${displayPlanned.toFixed(1)} h`}
+              {budgetAmount > 0 && ` (${plannedPct.toFixed(1)} %)`}
+            </span>
+            <span className="text-gray-400">Ist {pct.toFixed(1)} %</span>
+          </div>
         </>
       ) : (
         <p className="text-xs text-gray-400">

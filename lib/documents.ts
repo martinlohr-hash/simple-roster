@@ -14,6 +14,8 @@ export const COMPANY = {
   street: 'Isestr. 85',
   city: '20149 Hamburg',
   managingDirector: 'Martin Lohr',
+  // Urlaubsanspruch bei Vollzeit (5-Tage-Woche); bei Teilzeit/Abruf anteilig.
+  vollzeitUrlaubstage: 24,
   footerLines: [
     'Simple Sandwich Holding GmbH | HRB 194190',
     'Simple Sandwich Hamburg GmbH | HRB 194322',

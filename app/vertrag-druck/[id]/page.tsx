@@ -4,7 +4,7 @@ import { getSession } from '@/app/actions/auth'
 import { isAdmin } from '@/lib/session'
 import DocumentSheet from '@/components/admin/DocumentSheet'
 import {
-  COMPANY, fullName, herrFrau, dLong, urlaubSplit, missingFields,
+  COMPANY, fullName, herrFrau, dLong, missingFields,
 } from '@/lib/documents'
 
 export const metadata = { title: 'Arbeitsvertrag (Druck)' }
@@ -44,7 +44,6 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
   const anschrift = [u.street, [u.postalCode, u.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   const anrede = herrFrau(u.gender) // "Herr"/"Frau"/""
   const einsatzort = u.primaryLocation?.name
-  const urlaub = urlaubSplit(u.vacationDaysPerYear)
   const missing = missingFields(u, 'arbeitsvertrag')
 
   return (
@@ -135,16 +134,15 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
       {/* V. Urlaub */}
       <H no="V">Urlaub</H>
       <P n={1}>
-        Der Angestellte hat Anspruch auf einen gesetzlichen Mindesturlaub von derzeit{' '}
-        {urlaub.gesetzlich} Arbeitstagen im Kalenderjahr.
+        Bei einer Vollzeitbeschäftigung mit einer 5-Tage-Woche beträgt der Urlaubsanspruch{' '}
+        {COMPANY.vollzeitUrlaubstage} Arbeitstage pro Kalenderjahr.
       </P>
-      {urlaub.zusaetzlich > 0 && (
-        <P n={2}>
-          Darüber hinaus werden dem Arbeitnehmer {urlaub.zusaetzlich} zusätzliche Urlaubstage pro Jahr
-          gewährt (Gesamturlaubsanspruch {urlaub.total} Tage).
-        </P>
-      )}
-      <P n={urlaub.zusaetzlich > 0 ? 3 : 2}>
+      <P n={2}>
+        Da die Tätigkeit im Rahmen von Arbeit auf Abruf erfolgt, berechnet sich der tatsächliche
+        Urlaubsanspruch anteilig entsprechend dem Umfang der Beschäftigung (durchschnittliche
+        Arbeitstage pro Woche). Der gesetzliche Mindesturlaub bleibt in jedem Fall gewahrt.
+      </P>
+      <P n={3}>
         Bei Beendigung des Arbeitsverhältnisses sind verbleibende Urlaubsansprüche innerhalb der
         Kündigungsfrist abzubauen, soweit dies möglich ist. Im Übrigen richtet sich die Behandlung des
         Urlaubs nach den gesetzlichen Bestimmungen. Urlaubsanträge sind von der Geschäftsführung zu

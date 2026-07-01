@@ -14,8 +14,6 @@ export const COMPANY = {
   street: 'Isestr. 85',
   city: '20149 Hamburg',
   managingDirector: 'Martin Lohr',
-  // Urlaubsanspruch bei Vollzeit (5-Tage-Woche); bei Teilzeit/Abruf anteilig.
-  vollzeitUrlaubstage: 24,
   footerLines: [
     'Simple Sandwich Holding GmbH | HRB 194190',
     'Simple Sandwich Hamburg GmbH | HRB 194322',
@@ -171,6 +169,7 @@ export function missingFields(u: EmployeeLike, type: DocType): string[] {
       { ok: !!u.jobTitle, label: 'Tätigkeitsbezeichnung' },
       { ok: !!u.grossSalary, label: 'Brutto-Verdienst' },
       { ok: !!u.weeklyWorkTime, label: 'Wochenarbeitszeit' },
+      { ok: !!u.vacationDaysPerYear && u.vacationDaysPerYear > 0, label: 'Urlaubstage/Jahr (Vollzeit)' },
     )
   } else {
     checks.push({ ok: !!u.startDate, label: 'Eintrittsdatum (Vertragsbeginn)' })
@@ -210,9 +209,10 @@ export function gesetzlicheFrist(entryDate: Date | null | undefined, ref: Date):
   return 'vier Wochen zum Fünfzehnten oder zum Ende eines Kalendermonats'
 }
 
-// ── Urlaub: gesetzlich + zusätzlich aufschlüsseln (für Vertrag) ──────────
+// ── Urlaub: Vollzeit-Basis (aus Stammdaten) in gesetzlich + freiwilligen ──
+// Mehrurlaub aufschlüsseln. 0/leer → total 0 (Aufrufer rendert Platzhalter).
 export function urlaubSplit(vacationDaysAnnual: number | null | undefined) {
-  const total = vacationDaysAnnual ?? 30
+  const total = vacationDaysAnnual ?? 0
   const gesetzlich = Math.min(20, total)
   const zusaetzlich = Math.max(0, total - gesetzlich)
   return { total, gesetzlich, zusaetzlich }

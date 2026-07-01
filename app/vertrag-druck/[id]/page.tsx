@@ -4,7 +4,7 @@ import { getSession } from '@/app/actions/auth'
 import { isAdmin } from '@/lib/session'
 import DocumentSheet from '@/components/admin/DocumentSheet'
 import {
-  COMPANY, fullName, herrFrau, dLong, missingFields,
+  COMPANY, fullName, herrFrau, dLong, urlaubSplit, missingFields,
 } from '@/lib/documents'
 
 export const metadata = { title: 'Arbeitsvertrag (Druck)' }
@@ -44,6 +44,7 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
   const anschrift = [u.street, [u.postalCode, u.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   const anrede = herrFrau(u.gender) // "Herr"/"Frau"/""
   const einsatzort = u.primaryLocation?.name
+  const urlaub = urlaubSplit(u.vacationDaysPerYear)
   const missing = missingFields(u, 'arbeitsvertrag')
 
   return (
@@ -135,7 +136,10 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
       <H no="V">Urlaub</H>
       <P n={1}>
         Bei einer Vollzeitbeschäftigung mit einer 5-Tage-Woche beträgt der Urlaubsanspruch{' '}
-        {COMPANY.vollzeitUrlaubstage} Arbeitstage pro Kalenderjahr.
+        {urlaub.total > 0 ? urlaub.total : '________'} Arbeitstage pro Kalenderjahr
+        {urlaub.zusaetzlich > 0
+          ? ` – davon ${urlaub.gesetzlich} Arbeitstage gesetzlicher Mindesturlaub und ${urlaub.zusaetzlich} Arbeitstage freiwilliger Mehrurlaub.`
+          : '.'}
       </P>
       <P n={2}>
         Da die Tätigkeit im Rahmen von Arbeit auf Abruf erfolgt, berechnet sich der tatsächliche

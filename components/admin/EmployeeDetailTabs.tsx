@@ -88,7 +88,7 @@ export default function EmployeeDetailTabs({
 
       {tab === 'beschaeftigung' && (
         <div role="tabpanel">
-          <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
+          <div className="flex flex-wrap items-center justify-start gap-2 mb-4">
             <Link
               href={`/personalbogen-druck/${userId}`}
               className="px-3 py-2 text-sm font-medium rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition whitespace-nowrap"

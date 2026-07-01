@@ -5,7 +5,6 @@ import { redirect } from 'next/navigation'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { encrypt, decrypt, isAdmin, isSuperAdmin, type SessionPayload } from '@/lib/session'
-import { startDripForUser } from '@/lib/onboarding/drip'
 
 // Setzt das Session-Cookie (7 Tage). Wird beim Login und nach Abschluss des
 // Personalbogens (zum Aktualisieren von onboardingDone) verwendet.
@@ -43,12 +42,10 @@ export async function login(formData: FormData) {
   const onboardingDone = user.role !== 'EMPLOYEE' || user.onboardingCompletedAt != null
   await setSessionCookie({ userId: user.id, role: user.role, name: user.name, onboardingDone })
 
-  // Sicherheitsnetz: Onboarding-Mail-Serie spätestens beim ersten Login starten –
-  // unabhängig davon, ob der Begrüßungsbogen übersprungen wurde oder das Passwort
-  // direkt vom Admin gesetzt wurde. startDripForUser ist idempotent + wirft nie.
-  if (user.role === 'EMPLOYEE' && !user.onboardingDripStartedAt) {
-    await startDripForUser(user.id)
-  }
+  // Hinweis: Die Onboarding-Mail-Serie wird NICHT beim Login gestartet. Sie beginnt
+  // ausschließlich, wenn ein neuer MA sein Passwort über den Einladungslink setzt
+  // (completeOnboarding → startDripForUser). Andernfalls würden auch langjährige
+  // Bestands-MA, die sich erstmals nach dem Feature-Launch einloggen, die Serie erhalten.
 
   if (!onboardingDone) redirect('/willkommen')
   redirect(isAdmin(user.role) ? '/admin/schedule' : '/employee/dashboard')

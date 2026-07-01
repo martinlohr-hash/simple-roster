@@ -93,8 +93,11 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
       {/* II. Arbeitszeit */}
       <H no="II">Arbeitszeit</H>
       <P n={1}>
-        Die regelmäßige Arbeitszeit beträgt {u.weeklyWorkTime || '________'}. Sie richtet sich nach den
-        Anforderungen der Position und den Erfordernissen des Aufgabenbereichs.
+        Die Arbeit erfolgt im Rahmen von Arbeit auf Abruf. Der Angestellte wird nach betrieblichem
+        Bedarf zum Einsatz abgerufen. Eine durchschnittliche Arbeitszeit von{' '}
+        {u.weeklyWorkTime || '________'} dient als Planungsorientierung, begründet jedoch keinen
+        Anspruch auf eine Mindestarbeitszeit oder ein Mindestentgelt. Vergütet werden ausschließlich
+        die tatsächlich geleisteten Arbeitsstunden zum in Ziffer III vereinbarten Stundenlohn.
       </P>
       <P n={2}>
         Ab einer täglichen Arbeitszeit von sechs Stunden ist eine Pausenzeit von mindestens einer

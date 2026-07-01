@@ -122,6 +122,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
         }}
         personalbogenUser={personalbogenUser}
         documentsUrl={user.documentsUrl}
+        sofortmeldungSentAt={user.sofortmeldungSentAt?.toISOString() ?? null}
         contractMissing={missingFields(user, 'arbeitsvertrag')}
         probezeitMissing={missingFields(user, 'kuendigung-probezeit')}
         regulaerMissing={missingFields(user, 'kuendigung-regulaer')}

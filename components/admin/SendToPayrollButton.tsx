@@ -3,20 +3,38 @@
 import { useState, useTransition } from 'react'
 import { sendPersonalbogenToPayroll } from '@/app/actions/personalbogen'
 
-export default function SendToPayrollButton({ userId }: { userId: string }) {
+function formatBerlin(iso: string): string {
+  const d = new Date(iso)
+  const datum = d.toLocaleDateString('de-DE', {
+    timeZone: 'Europe/Berlin', day: '2-digit', month: '2-digit', year: 'numeric',
+  })
+  const zeit = d.toLocaleTimeString('de-DE', {
+    timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit',
+  })
+  return `${datum} um ${zeit} Uhr`
+}
+
+export default function SendToPayrollButton({
+  userId,
+  sentAt,
+}: {
+  userId: string
+  sentAt: string | null
+}) {
   const [isPending, startTransition] = useTransition()
-  const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+  const [lastSent, setLastSent] = useState<string | null>(sentAt)
+  const [error, setError] = useState<string | null>(null)
 
   function handleClick() {
     if (isPending) return
-    if (!confirm('Personalbogen jetzt an das Lohnbüro (info@optilon.de) senden?')) return
-    setMsg(null)
+    if (!confirm('Sofortmeldung jetzt an das Lohnbüro (info@optilon.de) senden?')) return
+    setError(null)
     startTransition(async () => {
       const res = await sendPersonalbogenToPayroll(userId)
       if ('ok' in res) {
-        setMsg({ kind: 'ok', text: `Gesendet an ${res.to}. Kopie liegt in deinem „Gesendet“-Ordner.` })
+        setLastSent(res.sentAt)
       } else {
-        setMsg({ kind: 'err', text: res.error })
+        setError(res.error)
       }
     })
   }
@@ -31,11 +49,12 @@ export default function SendToPayrollButton({ userId }: { userId: string }) {
       >
         {isPending ? 'Wird gesendet…' : 'An Lohnbüro senden'}
       </button>
-      {msg && (
-        <span className={`text-xs ${msg.kind === 'ok' ? 'text-emerald-600' : 'text-red-600'}`}>
-          {msg.text}
+      {lastSent && !error && (
+        <span className="text-xs text-emerald-600">
+          Sofortmeldung versendet am {formatBerlin(lastSent)}
         </span>
       )}
+      {error && <span className="text-xs text-red-600">{error}</span>}
     </div>
   )
 }

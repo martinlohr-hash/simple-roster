@@ -1,20 +1,23 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
+import { format } from 'date-fns'
 import { requireAdmin } from '@/app/actions/auth'
 import { prisma } from '@/lib/db'
 import { sendMail, isMailConfigured } from '@/lib/mail'
 import { personalbogenExcel, personalbogenFileBase } from '@/lib/personalbogen/export'
-import { COMPANY_BRAND } from '@/lib/company'
+import { COMPANY } from '@/lib/documents'
 
 // Empfänger = Lohnbüro. Standard fest hinterlegt, per Env überschreibbar.
 const PAYROLL_EMAIL = process.env.PAYROLL_EMAIL || 'info@optilon.de'
 
-type Result = { ok: true; to: string } | { error: string }
+type Result = { ok: true; to: string; sentAt: string } | { error: string }
 
 /**
- * Schickt den Personalbogen eines MA als Excel-Anhang an das Lohnbüro.
- * Versand über das GMAIL_USER-Konto (martin@asimple.world) → landet dort im
- * "Gesendet"-Ordner und ist damit nachvollziehbar.
+ * Schickt den Personalbogen eines MA als Sofortmeldung (Neuanmeldung) an das
+ * Lohnbüro – Excel-Anhang. Versand über das GMAIL_USER-Konto
+ * (martin@asimple.world) → landet dort im "Gesendet"-Ordner und ist damit
+ * nachvollziehbar. Merkt sich den Versandzeitpunkt (sofortmeldungSentAt).
  */
 export async function sendPersonalbogenToPayroll(userId: string): Promise<Result> {
   await requireAdmin()
@@ -27,19 +30,20 @@ export async function sendPersonalbogenToPayroll(userId: string): Promise<Result
   if (!user) return { error: 'Mitarbeiter nicht gefunden.' }
 
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.name
+  const eintritt = user.startDate ? format(user.startDate, 'dd.MM.yyyy') : '________'
   const excel = await personalbogenExcel([user])
   const fileBase = personalbogenFileBase([user])
 
-  const subject = `Personalbogen – ${fullName}`
+  const subject = `Neuanmeldung ${fullName}`
   const bodyLines = [
-    'Guten Tag,',
+    'Sehr geehrte Damen und Herren,',
     '',
-    `anbei der Personalbogen für ${fullName} zur Anlage in der Lohnabrechnung.`,
+    `bitte melden Sie den Mitarbeiter ${fullName} zum ${eintritt} per Sofortmeldung an.`,
     '',
-    'Bei Rückfragen gerne einfach auf diese Mail antworten.',
+    'Mit freundlichen Grüßen',
     '',
-    'Viele Grüße',
-    COMPANY_BRAND,
+    COMPANY.managingDirector,
+    COMPANY.name,
   ]
   const text = bodyLines.join('\n')
   const html =
@@ -69,5 +73,9 @@ export async function sendPersonalbogenToPayroll(userId: string): Promise<Result
     return { error: 'Versand fehlgeschlagen. Bitte später erneut versuchen.' }
   }
 
-  return { ok: true, to: PAYROLL_EMAIL }
+  const sentAt = new Date()
+  await prisma.user.update({ where: { id: userId }, data: { sofortmeldungSentAt: sentAt } })
+  revalidatePath(`/admin/employees/${userId}`)
+
+  return { ok: true, to: PAYROLL_EMAIL, sentAt: sentAt.toISOString() }
 }

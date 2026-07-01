@@ -28,6 +28,7 @@ export default function EmployeeDetailTabs({
   employeeDefaults,
   personalbogenUser,
   documentsUrl,
+  sofortmeldungSentAt,
   contractMissing,
   probezeitMissing,
   regulaerMissing,
@@ -40,6 +41,7 @@ export default function EmployeeDetailTabs({
   employeeDefaults: Record<string, unknown>
   personalbogenUser: PersonalbogenUser
   documentsUrl: string | null
+  sofortmeldungSentAt: string | null
   contractMissing: string[]
   probezeitMissing: string[]
   regulaerMissing: string[]
@@ -105,7 +107,7 @@ export default function EmployeeDetailTabs({
             >
               CSV
             </a>
-            <SendToPayrollButton userId={userId} />
+            <SendToPayrollButton userId={userId} sentAt={sofortmeldungSentAt} />
           </div>
           <PersonalbogenForm user={personalbogenUser} />
         </div>

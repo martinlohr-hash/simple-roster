@@ -7,6 +7,7 @@ import EmployeeForm from './EmployeeForm'
 import PersonalbogenForm, { type PersonalbogenUser } from './PersonalbogenForm'
 import DocumentsLinkForm from './DocumentsLinkForm'
 import DocumentGenerator from './DocumentGenerator'
+import SendToPayrollButton from './SendToPayrollButton'
 
 export type DetailTab = 'stammdaten' | 'beschaeftigung' | 'dokumente'
 
@@ -104,6 +105,7 @@ export default function EmployeeDetailTabs({
             >
               CSV
             </a>
+            <SendToPayrollButton userId={userId} />
           </div>
           <PersonalbogenForm user={personalbogenUser} />
         </div>

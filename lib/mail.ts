@@ -29,16 +29,30 @@ function getTransport(): Transporter {
   return cached
 }
 
+export type MailAttachment = {
+  filename: string
+  content: Buffer
+  contentType?: string
+}
+
 export type SendMailArgs = {
   to: string
   subject: string
   html: string
   text: string
+  cc?: string
+  bcc?: string
+  replyTo?: string
+  attachments?: MailAttachment[]
 }
 
 // Verschickt eine E-Mail. Wirft bei Konfigurations-/SMTP-Fehlern — Aufrufer entscheidet,
 // ob das den umgebenden Vorgang (z.B. MA-Anlage) abbrechen soll oder nicht.
-export async function sendMail({ to, subject, html, text }: SendMailArgs): Promise<void> {
+// Hinweis: Gmail-SMTP legt gesendete Nachrichten automatisch im "Gesendet"-Ordner
+// des GMAIL_USER-Kontos ab — dadurch ist der Versand dort nachvollziehbar.
+export async function sendMail({
+  to, subject, html, text, cc, bcc, replyTo, attachments,
+}: SendMailArgs): Promise<void> {
   const from = process.env.MAIL_FROM || process.env.GMAIL_USER!
-  await getTransport().sendMail({ from, to, subject, html, text })
+  await getTransport().sendMail({ from, to, subject, html, text, cc, bcc, replyTo, attachments })
 }

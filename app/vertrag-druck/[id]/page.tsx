@@ -122,10 +122,6 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
           Vertraglich festgelegte Sonderzahlungen: {u.specialPayments}.
         </P>
       )}
-      <P>
-        Überstunden werden, soweit möglich, durch Freizeit ausgeglichen. Ein Anspruch auf gesonderte
-        Entschädigung oder Zuschläge besteht nicht.
-      </P>
 
       {/* IV. Nebentätigkeit */}
       <H no="IV">Nebentätigkeit</H>

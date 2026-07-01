@@ -5,7 +5,8 @@ import { format } from 'date-fns'
 import { requireAdmin } from '@/app/actions/auth'
 import { prisma } from '@/lib/db'
 import { sendMail, isMailConfigured } from '@/lib/mail'
-import { personalbogenExcel, personalbogenFileBase } from '@/lib/personalbogen/export'
+import { personalbogenFileBase } from '@/lib/personalbogen/export'
+import { personalbogenPdf } from '@/lib/personalbogen/pdf'
 import { COMPANY } from '@/lib/documents'
 
 // Empfänger = Lohnbüro. Standard fest hinterlegt, per Env überschreibbar.
@@ -31,7 +32,7 @@ export async function sendPersonalbogenToPayroll(userId: string): Promise<Result
 
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.name
   const eintritt = user.startDate ? format(user.startDate, 'dd.MM.yyyy') : '________'
-  const excel = await personalbogenExcel([user])
+  const pdf = await personalbogenPdf(user)
   const fileBase = personalbogenFileBase([user])
 
   const subject = `Neuanmeldung ${fullName}`
@@ -62,9 +63,9 @@ export async function sendPersonalbogenToPayroll(userId: string): Promise<Result
       replyTo: sender,
       attachments: [
         {
-          filename: `${fileBase}.xlsx`,
-          content: excel,
-          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          filename: `${fileBase}.pdf`,
+          content: pdf,
+          contentType: 'application/pdf',
         },
       ],
     })

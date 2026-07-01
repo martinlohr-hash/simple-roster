@@ -209,13 +209,21 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
         Fahrlässigkeit beruht oder den gesetzlichen Mindestlohn betrifft.
       </P>
 
-      {/* XI. Social Media */}
-      <H no="XI">Bild- und Tonaufnahmen</H>
+      {/* XI. Bild- und Tonaufnahmen, Datenschutz */}
+      <H no="XI">Bild- und Tonaufnahmen, Datenschutz</H>
       <P n={1}>
         Der Arbeitnehmer willigt ein, dass der Arbeitgeber Bild- und Tonaufnahmen seiner Person, die im
         Rahmen der Tätigkeit entstehen, für Zwecke der Unternehmenskommunikation (z. B. Website,
         Social-Media-Kanäle, Printmedien) unentgeltlich nutzen darf. Die Einwilligung erfolgt freiwillig
         und kann jederzeit mit Wirkung für die Zukunft widerrufen werden.
+      </P>
+      <P n={2}>
+        Der Arbeitnehmer erteilt die Erlaubnis, dass seine Daten, solange sie für die Planung,
+        Abrechnung und Kommunikation nötig sind, elektronisch verarbeitet und gespeichert werden.
+      </P>
+      <P n={3}>
+        Sofern es gesetzlich vorgeschrieben ist, werden diese Daten auch nach seinem Ausscheiden
+        digital aufbewahrt (z. B. zum Nachweis der Arbeitszeiten).
       </P>
 
       {/* XII. Schlussbestimmungen */}

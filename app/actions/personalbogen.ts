@@ -10,7 +10,7 @@ import { personalbogenPdf } from '@/lib/personalbogen/pdf'
 import { COMPANY } from '@/lib/documents'
 
 // Empfänger = Lohnbüro. Standard fest hinterlegt, per Env überschreibbar.
-const PAYROLL_EMAIL = process.env.PAYROLL_EMAIL || 'info@optilon.de'
+const PAYROLL_EMAIL = process.env.PAYROLL_EMAIL || 'info@optilohn.de'
 
 type Result = { ok: true; to: string; sentAt: string } | { error: string }
 

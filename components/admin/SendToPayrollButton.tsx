@@ -27,7 +27,7 @@ export default function SendToPayrollButton({
 
   function handleClick() {
     if (isPending) return
-    if (!confirm('Sofortmeldung jetzt an das Lohnbüro (info@optilon.de) senden?')) return
+    if (!confirm('Sofortmeldung jetzt an das Lohnbüro (info@optilohn.de) senden?')) return
     setError(null)
     startTransition(async () => {
       const res = await sendPersonalbogenToPayroll(userId)

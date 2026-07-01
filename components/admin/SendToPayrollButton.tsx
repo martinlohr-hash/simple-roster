@@ -40,7 +40,7 @@ export default function SendToPayrollButton({
   }
 
   return (
-    <div className="flex flex-col items-end gap-1">
+    <div className="flex flex-col items-end gap-1 ml-auto">
       <button
         type="button"
         onClick={handleClick}

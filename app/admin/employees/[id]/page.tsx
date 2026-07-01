@@ -76,7 +76,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
         <Link href="/admin/employees" className="text-sm text-gray-500 hover:text-gray-900">
           ← Mitarbeiter
         </Link>
-        <div className="flex items-center justify-between gap-3 mt-2">
+        <div className="flex items-center justify-between gap-3 mt-2 max-w-3xl">
           <h1 className="text-xl font-semibold text-gray-900">{user.name}</h1>
           {showInsights && (
             <Link

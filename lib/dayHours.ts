@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { prisma } from '@/lib/db'
 import { calcHours } from '@/lib/calculations'
 import { timeToMinutes } from '@/lib/timeUtils'
@@ -137,7 +138,9 @@ export async function computeDayHours(day: string): Promise<{ hours: number; ent
  * `lookbackDays` Tage, die noch NICHT freigegeben/bestätigt sind. Für den
  * roten Hinweis-Badge im Dienstplan. Heute zählt nicht (Tag noch nicht vorbei).
  */
-export async function getUnconfirmedDays(lookbackDays = 14): Promise<string[]> {
+// cache(): AdminLayout (Badge) und Schedule-Page rufen das im selben Request auf –
+// so laufen die 3 Queries nur einmal.
+export const getUnconfirmedDays = cache(async (lookbackDays = 14): Promise<string[]> => {
   const todayStr = berlinDay(new Date())
   const todayMidnightUtc = new Date(`${todayStr}T00:00:00Z`)
   const startUtc = new Date(todayMidnightUtc)
@@ -168,7 +171,7 @@ export async function getUnconfirmedDays(lookbackDays = 14): Promise<string[]> {
   }
 
   return [...candidate].filter((d) => !released.has(d)).sort()
-}
+})
 
 export async function countUnconfirmedDays(lookbackDays = 14): Promise<number> {
   return (await getUnconfirmedDays(lookbackDays)).length

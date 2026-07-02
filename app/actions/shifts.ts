@@ -5,18 +5,23 @@ import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
 import { isAdmin } from '@/lib/session'
 
+// Fachliche Fehler als Rückgabewert statt throw: geworfene Errors werden von
+// Next.js in Production maskiert und kämen beim Nutzer nie an.
+export type ShiftActionResult = { error?: string }
+
 export async function createShift(data: {
   userId: string | null
   locationId: string
   date: string
   startTime: string
   endTime: string
-}) {
+}): Promise<ShiftActionResult> {
   const session = await getSession()
-  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) return { error: 'Keine Berechtigung' }
 
   if (data.userId) {
-    await checkOverlap({ userId: data.userId, date: data.date, startTime: data.startTime, endTime: data.endTime })
+    const conflict = await checkOverlap({ userId: data.userId, date: data.date, startTime: data.startTime, endTime: data.endTime })
+    if (conflict) return { error: conflict }
   }
 
   await prisma.shift.create({
@@ -29,13 +34,15 @@ export async function createShift(data: {
     },
   })
   revalidatePath('/admin/schedule')
+  return {}
 }
 
-export async function updateShift(id: string, data: { userId?: string | null; date?: string; startTime?: string; endTime?: string; locationId?: string }) {
+export async function updateShift(id: string, data: { userId?: string | null; date?: string; startTime?: string; endTime?: string; locationId?: string }): Promise<ShiftActionResult> {
   const session = await getSession()
-  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) return { error: 'Keine Berechtigung' }
 
-  const existing = await prisma.shift.findUniqueOrThrow({ where: { id } })
+  const existing = await prisma.shift.findUnique({ where: { id } })
+  if (!existing) return { error: 'Schicht nicht gefunden' }
   const effectiveUserId = data.userId !== undefined ? data.userId : existing.userId
   const effectiveDate = data.date
     ? new Date(data.date).toISOString().slice(0, 10)
@@ -44,13 +51,14 @@ export async function updateShift(id: string, data: { userId?: string | null; da
   const effectiveEnd = data.endTime ?? existing.endTime
 
   if (effectiveUserId) {
-    await checkOverlap({
+    const conflict = await checkOverlap({
       userId: effectiveUserId,
       date: effectiveDate,
       startTime: effectiveStart,
       endTime: effectiveEnd,
       excludeId: id,
     })
+    if (conflict) return { error: conflict }
   }
 
   await prisma.shift.update({
@@ -64,14 +72,15 @@ export async function updateShift(id: string, data: { userId?: string | null; da
     },
   })
   revalidatePath('/admin/schedule')
+  return {}
 }
 
-export async function duplicateShift(id: string) {
+export async function duplicateShift(id: string): Promise<ShiftActionResult> {
   const session = await getSession()
-  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) return { error: 'Keine Berechtigung' }
 
   const original = await prisma.shift.findUnique({ where: { id } })
-  if (!original) throw new Error('Schicht nicht gefunden')
+  if (!original) return { error: 'Schicht nicht gefunden' }
 
   await prisma.shift.create({
     data: {
@@ -84,11 +93,12 @@ export async function duplicateShift(id: string) {
     },
   })
   revalidatePath('/admin/schedule')
+  return {}
 }
 
-export async function deleteShift(id: string) {
+export async function deleteShift(id: string): Promise<ShiftActionResult> {
   const session = await getSession()
-  if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
+  if (!session || !isAdmin(session.role)) return { error: 'Keine Berechtigung' }
 
   const shift = await prisma.shift.findUnique({ where: { id } })
   await prisma.shift.deleteMany({ where: { id } })
@@ -124,8 +134,10 @@ export async function deleteShift(id: string) {
   }
 
   revalidatePath('/admin/schedule')
+  return {}
 }
 
+/** Liefert eine Konflikt-Meldung oder null, wenn die Zeiten frei sind. */
 async function checkOverlap({
   userId,
   date,
@@ -138,7 +150,7 @@ async function checkOverlap({
   startTime: string
   endTime: string
   excludeId?: string
-}) {
+}): Promise<string | null> {
   const dayStart = new Date(date)
   dayStart.setUTCHours(0, 0, 0, 0)
   const dayEnd = new Date(dayStart)
@@ -159,23 +171,7 @@ async function checkOverlap({
   )
 
   if (conflict) {
-    throw new Error(
-      `Zeitkonflikt: ${conflict.startTime}–${conflict.endTime} Uhr (${conflict.location.name}) überschneidet sich mit der neuen Schicht.`,
-    )
+    return `Zeitkonflikt: ${conflict.startTime}–${conflict.endTime} Uhr (${conflict.location.name}) überschneidet sich mit der neuen Schicht.`
   }
-}
-
-export async function getWeekShifts(weekStart: string) {
-  const session = await getSession()
-  if (!session) throw new Error('Unauthorized')
-
-  const start = new Date(weekStart)
-  const end = new Date(start)
-  end.setDate(end.getDate() + 7)
-
-  return prisma.shift.findMany({
-    where: { date: { gte: start, lt: end } },
-    include: { user: true, location: true, timeEntry: true },
-    orderBy: { startTime: 'asc' },
-  })
+  return null
 }

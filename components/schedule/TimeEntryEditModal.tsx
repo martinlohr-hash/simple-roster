@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { format, parseISO } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { adminUpdateTimeEntry, adminDeleteTimeEntry } from '@/app/actions/timesheets'
+import { unwrap } from '@/lib/actionResult'
 import type { LocationData } from './WeekGrid'
 import type { UnplannedEntryData } from './UnplannedBlock'
 
@@ -42,7 +43,7 @@ export default function TimeEntryEditModal({
     }
     setLoading(true)
     try {
-      await adminUpdateTimeEntry({ id: entry.id, date: entry.date, checkin: von, checkout: bis || undefined, locationId })
+      unwrap(await adminUpdateTimeEntry({ id: entry.id, date: entry.date, checkin: von, checkout: bis || undefined, locationId }))
       router.refresh()
       onClose()
     } catch (err) {
@@ -55,7 +56,7 @@ export default function TimeEntryEditModal({
     if (!confirm('Diesen ungeplanten Stempel-Eintrag wirklich löschen?')) return
     setLoading(true)
     try {
-      await adminDeleteTimeEntry(entry.id)
+      unwrap(await adminDeleteTimeEntry(entry.id))
       router.refresh()
       onClose()
     } catch (err) {

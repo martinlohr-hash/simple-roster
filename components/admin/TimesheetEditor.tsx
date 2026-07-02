@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconChevronLeft, IconChevronRight, IconTrash, IconPlus, IconAlertTriangle, IconCircleCheck, IconLock } from '@tabler/icons-react'
 import { adminCreateTimeEntry, adminUpdateTimeEntry, adminDeleteTimeEntry, releaseDay, unreleaseDay } from '@/app/actions/timesheets'
+import { unwrap } from '@/lib/actionResult'
 
 type Release = { releasedAt: string; releasedBy: string | null; hours: number }
 
@@ -191,7 +192,7 @@ function ReleaseBar({
     setError('')
     setBusy(true)
     try {
-      await releaseDay(day)
+      unwrap(await releaseDay(day))
       onDone()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler')
@@ -205,7 +206,7 @@ function ReleaseBar({
     setError('')
     setBusy(true)
     try {
-      await unreleaseDay(day)
+      unwrap(await unreleaseDay(day))
       onDone()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler')
@@ -318,7 +319,7 @@ function EntryRow({
     }
     setSaving(true)
     try {
-      await adminUpdateTimeEntry({ id: entry.id, date, checkin, checkout: checkout || undefined, locationId })
+      unwrap(await adminUpdateTimeEntry({ id: entry.id, date, checkin, checkout: checkout || undefined, locationId }))
       onDone()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler')
@@ -331,7 +332,7 @@ function EntryRow({
     if (!confirm(`Eintrag von ${entry.userName} löschen?`)) return
     setSaving(true)
     try {
-      await adminDeleteTimeEntry(entry.id)
+      unwrap(await adminDeleteTimeEntry(entry.id))
       onDone()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler')
@@ -424,7 +425,7 @@ function AddRow({
     }
     setSaving(true)
     try {
-      await adminCreateTimeEntry({ userId, locationId, date, checkin, checkout: checkout || undefined })
+      unwrap(await adminCreateTimeEntry({ userId, locationId, date, checkin, checkout: checkout || undefined }))
       setUserId('')
       setLocationId('')
       setCheckin('')

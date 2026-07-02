@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { createShift, updateShift } from '@/app/actions/shifts'
+import { unwrap } from '@/lib/actionResult'
 import type { Suggestion } from '@/lib/suggestions'
 
 function fmtHours(h: number): string {
@@ -26,15 +27,15 @@ export default function SuggestionsPanel({ suggestions }: { suggestions: Suggest
     setError(null)
     try {
       if (s.kind === 'assign' && s.targetShiftId) {
-        await updateShift(s.targetShiftId, { userId: s.userId })
+        unwrap(await updateShift(s.targetShiftId, { userId: s.userId }))
       } else {
-        await createShift({
+        unwrap(await createShift({
           userId: s.userId,
           locationId: s.locationId,
           date: s.date,
           startTime: s.startTime,
           endTime: s.endTime,
-        })
+        }))
       }
       setDismissed((prev) => new Set(prev).add(s.key))
       router.refresh()

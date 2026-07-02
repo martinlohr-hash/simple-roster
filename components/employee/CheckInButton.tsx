@@ -49,14 +49,19 @@ function Spinner() {
 
 export default function CheckInButton({ activeEntry, todayShift, locations, noShiftToday }: Props) {
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [selectedLocation, setSelectedLocation] = useState(
     todayShift?.locationId || locations[0]?.id || '',
   )
 
   async function handleCheckin() {
     setLoading(true)
+    setError(null)
     try {
-      await checkin(selectedLocation, todayShift?.id)
+      const res = await checkin(selectedLocation, todayShift?.id)
+      if (res.error) setError(res.error)
+    } catch {
+      setError('Einstempeln fehlgeschlagen – bitte nochmal versuchen')
     } finally {
       setLoading(false)
     }
@@ -64,8 +69,12 @@ export default function CheckInButton({ activeEntry, todayShift, locations, noSh
 
   async function handleCheckout() {
     setLoading(true)
+    setError(null)
     try {
-      await checkout()
+      const res = await checkout()
+      if (res.error) setError(res.error)
+    } catch {
+      setError('Ausstempeln fehlgeschlagen – bitte nochmal versuchen')
     } finally {
       setLoading(false)
     }
@@ -92,6 +101,10 @@ export default function CheckInButton({ activeEntry, todayShift, locations, noSh
           })}{' '}
           Uhr
         </p>
+
+        {error && (
+          <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2.5 mb-4">{error}</p>
+        )}
 
         <button
           onClick={handleCheckout}
@@ -145,6 +158,10 @@ export default function CheckInButton({ activeEntry, todayShift, locations, noSh
             ))}
           </select>
         </div>
+      )}
+
+      {error && (
+        <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2.5 mb-4">{error}</p>
       )}
 
       <button

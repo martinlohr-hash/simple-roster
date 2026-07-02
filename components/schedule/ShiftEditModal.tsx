@@ -6,6 +6,7 @@ import { format, parseISO } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { ShiftData, LocationData, UserData, ApplicationData } from './WeekGrid'
 import { adminUpdateTimeEntry } from '@/app/actions/timesheets'
+import { unwrap } from '@/lib/actionResult'
 
 function isoToTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })
@@ -50,13 +51,13 @@ export default function ShiftEditModal({ shift, locations, users, onClose, onSav
     }
     setSavingIst(true)
     try {
-      await adminUpdateTimeEntry({
+      unwrap(await adminUpdateTimeEntry({
         id: shift.timeEntry.id,
         date: dateStr,
         checkin: istVon,
         checkout: istBis || undefined,
         locationId,
-      })
+      }))
       setIstSaved(true)
       router.refresh()
     } catch (err) {

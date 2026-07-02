@@ -5,6 +5,10 @@ import { prisma } from '@/lib/db'
 import { requireAdmin, getSession } from '@/app/actions/auth'
 import { computeDayHours } from '@/lib/dayHours'
 
+// Fachliche Fehler als Rückgabewert statt throw: geworfene Errors werden von
+// Next.js in Production maskiert und kämen beim Nutzer nie an.
+export type TimesheetActionResult = { error?: string }
+
 /** Baut aus "yyyy-MM-dd" + "HH:mm" ein Date in der Server-Zeitzone (= Anzeige-Zeitzone). */
 function combineDateTime(dateStr: string, timeStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number)
@@ -21,11 +25,11 @@ type CreateInput = {
 }
 
 /** Admin trägt einen Stempel-Eintrag für einen Mitarbeiter nach (z. B. wenn vergessen wurde zu stempeln). */
-export async function adminCreateTimeEntry(input: CreateInput) {
+export async function adminCreateTimeEntry(input: CreateInput): Promise<TimesheetActionResult> {
   await requireAdmin()
 
   if (!input.userId || !input.locationId || !input.date || !input.checkin) {
-    throw new Error('Mitarbeiter, Standort, Datum und Beginn sind erforderlich.')
+    return { error: 'Mitarbeiter, Standort, Datum und Beginn sind erforderlich.' }
   }
 
   const checkinAt = combineDateTime(input.date, input.checkin)
@@ -41,6 +45,7 @@ export async function adminCreateTimeEntry(input: CreateInput) {
   })
 
   revalidatePath('/admin/timesheets')
+  return {}
 }
 
 type UpdateInput = {
@@ -52,11 +57,11 @@ type UpdateInput = {
 }
 
 /** Admin korrigiert Beginn/Ende (oder Standort) eines bestehenden Eintrags. */
-export async function adminUpdateTimeEntry(input: UpdateInput) {
+export async function adminUpdateTimeEntry(input: UpdateInput): Promise<TimesheetActionResult> {
   await requireAdmin()
 
   if (!input.id || !input.date || !input.checkin) {
-    throw new Error('Eintrag, Datum und Beginn sind erforderlich.')
+    return { error: 'Eintrag, Datum und Beginn sind erforderlich.' }
   }
 
   const checkinAt = combineDateTime(input.date, input.checkin)
@@ -76,24 +81,26 @@ export async function adminUpdateTimeEntry(input: UpdateInput) {
   })
 
   revalidatePath('/admin/timesheets')
+  return {}
 }
 
 /** Admin löscht einen Eintrag (z. B. Doppel-Stempelung). */
-export async function adminDeleteTimeEntry(id: string) {
+export async function adminDeleteTimeEntry(id: string): Promise<TimesheetActionResult> {
   await requireAdmin()
-  if (!id) throw new Error('Kein Eintrag angegeben.')
+  if (!id) return { error: 'Kein Eintrag angegeben.' }
 
   await prisma.timeEntry.delete({ where: { id } })
   revalidatePath('/admin/timesheets')
+  return {}
 }
 
 /**
  * Gibt einen Tag frei: friert die aktuellen Tages-Gesamtstunden als Snapshot ein.
  * Nur freigegebene Tage werden in die Auswertungs-Tabelle synchronisiert.
  */
-export async function releaseDay(day: string) {
+export async function releaseDay(day: string): Promise<TimesheetActionResult> {
   await requireAdmin()
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error('Ungültiger Tag.')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { error: 'Ungültiger Tag.' }
 
   const session = await getSession()
   const { hours, entries } = await computeDayHours(day)
@@ -105,13 +112,15 @@ export async function releaseDay(day: string) {
   })
 
   revalidatePath('/admin/timesheets')
+  return {}
 }
 
 /** Hebt die Freigabe eines Tages wieder auf (wird dann nicht mehr synchronisiert). */
-export async function unreleaseDay(day: string) {
+export async function unreleaseDay(day: string): Promise<TimesheetActionResult> {
   await requireAdmin()
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error('Ungültiger Tag.')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { error: 'Ungültiger Tag.' }
 
   await prisma.timesheetRelease.deleteMany({ where: { day } })
   revalidatePath('/admin/timesheets')
+  return {}
 }

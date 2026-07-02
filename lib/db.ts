@@ -6,12 +6,9 @@ function createClient() {
   return new PrismaClient({ adapter })
 }
 
-// In development: always create a fresh client so that `prisma generate`
-// changes take effect without a server restart.
-export const prisma = process.env.NODE_ENV === 'production'
-  ? (() => {
-      const g = globalThis as unknown as { prisma?: PrismaClient }
-      if (!g.prisma) g.prisma = createClient()
-      return g.prisma
-    })()
-  : createClient()
+// Auch im Development auf globalThis cachen: sonst legt jeder Hot-Reload einen
+// neuen Client samt pg-Pool an, ohne den alten zu schließen, und die
+// Supabase-Pooler-Connections laufen voll. Nach `prisma generate` einmal den
+// Dev-Server neu starten.
+const g = globalThis as unknown as { prisma?: PrismaClient }
+export const prisma = g.prisma ?? (g.prisma = createClient())

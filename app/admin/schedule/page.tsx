@@ -23,7 +23,9 @@ export default async function SchedulePage({ searchParams }: Props) {
   const [{ week }, session] = await Promise.all([searchParams, getSession()])
   const viewerIsSuperAdmin = isSuperAdmin(session?.role ?? '')
 
-  const weekStart = week
+  // Nur gültige yyyy-MM-dd akzeptieren – Müll im Query-Param würde als
+  // Invalid Date bis in die Prisma-Queries durchschlagen (500er).
+  const weekStart = week && /^\d{4}-\d{2}-\d{2}$/.test(week) && !isNaN(new Date(week).getTime())
     ? new Date(week)
     : startOfWeek(new Date(), { weekStartsOn: 1 })
 
@@ -39,7 +41,7 @@ export default async function SchedulePage({ searchParams }: Props) {
   const weekYear = getYear(weekStart)
   const weekNumber = getISOWeek(weekStart)
 
-  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations, timesheetReleases, dayActuals, unplannedTimeEntries, calendarEvents] = await Promise.all([
+  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations, timesheetReleases, dayActuals, unplannedTimeEntries, calendarEvents, unconfirmedDays] = await Promise.all([
     prisma.shift.findMany({
       where: { date: { gte: weekStart, lt: weekEnd } },
       include: { user: true, location: true, timeEntry: true },
@@ -76,6 +78,7 @@ export default async function SchedulePage({ searchParams }: Props) {
       orderBy: { checkinAt: 'asc' },
     }),
     getAllDayEventsForDates(weekDates),
+    getUnconfirmedDays(),
   ])
 
   // Auto-apply default template on empty weeks
@@ -159,7 +162,6 @@ export default async function SchedulePage({ searchParams }: Props) {
     }
   }
   // Unbestätigte vergangene Tage – für Banner-Hinweis + Sprung zur ältesten offenen Woche
-  const unconfirmedDays = await getUnconfirmedDays()
   const unconfirmedThisWeek = unconfirmedDays.filter((d) => weekDates.includes(d))
   const oldestUnconfirmed = unconfirmedDays[0]
   const oldestWeekMonday = oldestUnconfirmed

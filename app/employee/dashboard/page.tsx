@@ -13,22 +13,27 @@ export default async function DashboardPage() {
   const dayStart = startOfDay(now)
   const dayEnd = endOfDay(now)
 
-  const [activeEntry, todayShift, locations, user] = await Promise.all([
+  const [activeEntry, todayShifts, locations, user] = await Promise.all([
     prisma.timeEntry.findFirst({
       where: { userId: session.userId, checkoutAt: null },
       include: { location: true },
     }),
-    prisma.shift.findFirst({
+    prisma.shift.findMany({
       where: {
         userId: session.userId,
         date: { gte: dayStart, lte: dayEnd },
+        status: { not: 'CANCELLED' },
       },
-      include: { location: true },
+      include: { location: true, timeEntry: true },
       orderBy: { startTime: 'asc' },
     }),
     prisma.location.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.user.findUnique({ where: { id: session.userId } }),
   ])
+
+  // Bei Doppelschichten die nächste noch nicht gestempelte Schicht anbieten –
+  // sonst hinge der zweite Check-in an der bereits abgeschlossenen ersten Schicht.
+  const todayShift = todayShifts.find((s) => !s.timeEntry) ?? null
 
   const greeting = getGreeting()
 

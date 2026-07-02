@@ -48,7 +48,8 @@ export default async function SchedulePage({ searchParams }: Props) {
 
   const days = eachDayOfInterval({ start: weekStart, end: weekEnd }).map((day) => {
     const dateStr = format(day, 'yyyy-MM-dd')
-    const myShift = myShifts.find((s) => format(s.date, 'yyyy-MM-dd') === dateStr) ?? null
+    // Alle eigenen Schichten des Tages (Doppelschichten möglich)
+    const dayShifts = myShifts.filter((s) => format(s.date, 'yyyy-MM-dd') === dateStr)
 
     const isVacation = myVacations.some((v) => {
       const start = new Date(v.startDate)
@@ -58,29 +59,23 @@ export default async function SchedulePage({ searchParams }: Props) {
       return day >= start && day <= end
     })
 
-    const colleagues = myShift
-      ? allShifts
-          .filter(
-            (s) =>
-              format(s.date, 'yyyy-MM-dd') === dateStr &&
-              s.locationId === myShift.locationId &&
-              s.userId !== session.userId &&
-              s.user != null,
-          )
-          .map((s) => ({ name: s.user!.name }))
-      : []
-
     return {
       date: dateStr,
       isVacation,
-      shift: myShift
-        ? {
-            startTime: myShift.startTime,
-            endTime: myShift.endTime,
-            location: { name: myShift.location.name, color: myShift.location.color },
-            colleagues,
-          }
-        : null,
+      shifts: dayShifts.map((shift) => ({
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        location: { name: shift.location.name, color: shift.location.color },
+        colleagues: allShifts
+          .filter(
+            (s) =>
+              format(s.date, 'yyyy-MM-dd') === dateStr &&
+              s.locationId === shift.locationId &&
+              s.userId !== session.userId &&
+              s.user != null,
+          )
+          .map((s) => ({ name: s.user!.name })),
+      })),
     }
   })
 

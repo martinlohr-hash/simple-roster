@@ -6,15 +6,18 @@ import { de } from 'date-fns/locale'
 
 type Colleague = { name: string }
 
+type ShiftData = {
+  startTime: string
+  endTime: string
+  location: { name: string; color: string }
+  colleagues: Colleague[]
+}
+
 type DayData = {
   date: string
   isVacation: boolean
-  shift: {
-    startTime: string
-    endTime: string
-    location: { name: string; color: string }
-    colleagues: Colleague[]
-  } | null
+  // Alle Schichten des Tages (Doppelschichten möglich, z. B. zwei Standorte)
+  shifts: ShiftData[]
 }
 
 type Props = {
@@ -69,7 +72,7 @@ function ColleagueAvatars({ colleagues }: { colleagues: Colleague[] }) {
   )
 }
 
-function ShiftCard({ shift }: { shift: NonNullable<DayData['shift']> }) {
+function ShiftCard({ shift }: { shift: ShiftData }) {
   const duration = calcDurationH(shift.startTime, shift.endTime)
   const color = shift.location.color
 
@@ -191,8 +194,18 @@ export default function WeekPlanView({ weekStart, days, userName }: Props) {
                 <p className="text-[10px] text-gray-400 leading-none mt-0.5">{format(date, 'MMM', { locale: de })}</p>
               </div>
 
-              {/* Card */}
-              {day.shift ? <ShiftCard shift={day.shift} /> : day.isVacation ? <VacationCard /> : <FreeDayCard />}
+              {/* Card(s) – bei Doppelschichten alle untereinander */}
+              {day.shifts.length > 0 ? (
+                <div className="flex-1 space-y-2">
+                  {day.shifts.map((shift, si) => (
+                    <ShiftCard key={si} shift={shift} />
+                  ))}
+                </div>
+              ) : day.isVacation ? (
+                <VacationCard />
+              ) : (
+                <FreeDayCard />
+              )}
             </div>
           )
         })}

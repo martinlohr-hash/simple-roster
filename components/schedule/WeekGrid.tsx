@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useOptimistic, startTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   DndContext,
@@ -25,6 +25,7 @@ import Link from 'next/link'
 import { updateShift, deleteShift, createShift, duplicateShift } from '@/app/actions/shifts'
 import { releaseWeek, revokeWeekRelease, assignShiftToApplicant } from '@/app/actions/bidding'
 import { releaseDay, unreleaseDay } from '@/app/actions/timesheets'
+import { unwrap } from '@/lib/actionResult'
 import { addMinutesToTime } from '@/lib/timeUtils'
 import CoverageWarningsBar from './CoverageWarningsBar'
 import { computeCoverageWarnings, type CoverageRuleData } from '@/lib/coverage'
@@ -118,8 +119,16 @@ function getInitials(name: string): string {
     .join('')
 }
 
-export default function WeekGrid({ shifts, users, locations, weekStart, weekStartStr, dayNotes, calendarEvents, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays, isSuperAdmin, dayStats, unplannedEntries }: Props) {
+export default function WeekGrid({ shifts: serverShifts, users, locations, weekStart, weekStartStr, dayNotes, calendarEvents, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays, isSuperAdmin, dayStats, unplannedEntries }: Props) {
   const router = useRouter()
+  // Optimistische Sicht auf die Schichten: Drag/Resize wird sofort angezeigt,
+  // der Server-Roundtrip läuft im Hintergrund. Schlägt die Action fehl (oder
+  // kommt der neue Server-Stand), setzt React automatisch zurück.
+  const [shifts, applyShiftPatch] = useOptimistic(
+    serverShifts,
+    (state: ShiftData[], patch: { id: string; data: Partial<ShiftData> }) =>
+      state.map((s) => (s.id === patch.id ? { ...s, ...patch.data } : s)),
+  )
   const [activeShift, setActiveShift] = useState<ShiftData | null>(null)
   const [resizingShift, setResizingShift] = useState<{ id: string; previewEndTime: string } | null>(null)
   const [modalCell, setModalCell] = useState<{ userId: string | null; date: string } | null>(null)
@@ -141,8 +150,8 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
   async function toggleDayRelease(dateStr: string, released: boolean) {
     setBusyDay(dateStr)
     try {
-      if (released) await unreleaseDay(dateStr)
-      else await releaseDay(dateStr)
+      if (released) unwrap(await unreleaseDay(dateStr))
+      else unwrap(await releaseDay(dateStr))
       router.refresh()
     } catch (e) {
       setDragError(e instanceof Error ? e.message : 'Freigabe fehlgeschlagen')
@@ -286,16 +295,19 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
   )
 
   const handleDragEnd = useCallback(
-    async (event: DragEndEvent) => {
+    (event: DragEndEvent) => {
       if (resizingShift) {
         const { id, previewEndTime } = resizingShift
         setResizingShift(null)
-        try {
-          await updateShift(id, { endTime: previewEndTime })
-        } catch (err) {
-          setDragError(err instanceof Error ? err.message : 'Größe ändern fehlgeschlagen')
-          setTimeout(() => setDragError(null), 5000)
-        }
+        startTransition(async () => {
+          applyShiftPatch({ id, data: { endTime: previewEndTime } })
+          try {
+            unwrap(await updateShift(id, { endTime: previewEndTime }))
+          } catch (err) {
+            setDragError(err instanceof Error ? err.message : 'Größe ändern fehlgeschlagen')
+            setTimeout(() => setDragError(null), 5000)
+          }
+        })
         return
       }
 
@@ -308,22 +320,29 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
       const newDateStr = parts[1]
       const shift = shifts.find((s) => s.id === active.id)
       if (!shift) return
-      try {
-        await updateShift(String(active.id), { userId: newUserId, date: newDateStr })
-      } catch (err) {
-        setDragError(err instanceof Error ? err.message : 'Verschieben fehlgeschlagen')
-        setTimeout(() => setDragError(null), 5000)
-      }
+      const targetUser = newUserId ? users.find((u) => u.id === newUserId) ?? null : null
+      startTransition(async () => {
+        applyShiftPatch({
+          id: String(active.id),
+          data: { userId: newUserId, date: `${newDateStr}T00:00:00.000Z`, user: targetUser },
+        })
+        try {
+          unwrap(await updateShift(String(active.id), { userId: newUserId, date: newDateStr }))
+        } catch (err) {
+          setDragError(err instanceof Error ? err.message : 'Verschieben fehlgeschlagen')
+          setTimeout(() => setDragError(null), 5000)
+        }
+      })
     },
-    [resizingShift, shifts],
+    [resizingShift, shifts, users, applyShiftPatch],
   )
 
   async function handleDelete(id: string) {
-    await deleteShift(id)
+    unwrap(await deleteShift(id))
   }
 
   async function handleDuplicate(id: string) {
-    await duplicateShift(id)
+    unwrap(await duplicateShift(id))
   }
 
   function handleEdit(shift: ShiftData) {
@@ -331,12 +350,12 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
   }
 
   async function handleEditSave(id: string, data: { startTime: string; endTime: string; locationId: string; userId: string | null }) {
-    await updateShift(id, data)
+    unwrap(await updateShift(id, data))
     setEditShift(null)
   }
 
   async function handleEditDelete(id: string) {
-    await deleteShift(id)
+    unwrap(await deleteShift(id))
     setEditShift(null)
   }
 
@@ -371,7 +390,7 @@ export default function WeekGrid({ shifts, users, locations, weekStart, weekStar
     startTime: string
     endTime: string
   }) {
-    await createShift(data)
+    unwrap(await createShift(data))
     setModalCell(null)
   }
 

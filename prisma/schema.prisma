@@ -92,6 +92,7 @@ model User {
   preferredDays     Int[]       @default([])  // Wochentage, die in der Regel gut passen (Wunschtage)
   earliestStart     String?     // "HH:MM" – kann i.d.R. erst ab dieser Uhrzeit
   latestEnd         String?     // "HH:MM" – kann i.d.R. nur bis dieser Uhrzeit
+  icalToken         String?     @unique // Geheimer Token für den persönlichen Kalender-Feed (/api/ical/<token>)
 
   // ---- Personalbogen / Einstellungsbogen ----
   // Gate: null = Stammdaten beim ersten Login noch nicht ausgefüllt → /willkommen erzwingen
@@ -190,6 +191,9 @@ model Shift {
   timeEntry    TimeEntry?
   applications ShiftApplication[]
   createdAt    DateTime           @default(now())
+
+  @@index([date])
+  @@index([userId, date])
 }
 
 model TimeEntry {
@@ -203,6 +207,9 @@ model TimeEntry {
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   location   Location  @relation(fields: [locationId], references: [id])
   createdAt  DateTime  @default(now())
+
+  @@index([checkinAt])
+  @@index([userId, checkoutAt])
 }
 
 enum BudgetPeriod {

@@ -180,3 +180,22 @@ export async function updateProfile(data: {
   revalidatePath('/employee/profile')
   return {}
 }
+
+// Erstellt (oder rotiert) den geheimen Token für den persönlichen Kalender-Feed.
+// Rotieren macht alte Feed-URLs ungültig – z. B. wenn ein Link versehentlich
+// weitergegeben wurde.
+export async function rotateIcalToken(): Promise<{ token?: string; error?: string }> {
+  const session = await getSession()
+  if (!session) return { error: 'Nicht angemeldet' }
+
+  const { randomBytes } = await import('crypto')
+  const token = randomBytes(24).toString('base64url')
+
+  await prisma.user.update({
+    where: { id: session.userId },
+    data: { icalToken: token },
+  })
+
+  revalidatePath('/employee/profile')
+  return { token }
+}

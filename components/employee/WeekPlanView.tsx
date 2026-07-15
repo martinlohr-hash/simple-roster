@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { format, parseISO, addWeeks, subWeeks, endOfWeek, getISOWeek } from 'date-fns'
 import { de } from 'date-fns/locale'
+import { shiftDurationHours } from '@/lib/timeUtils'
 
 type Colleague = { name: string }
 
@@ -26,16 +27,7 @@ type Props = {
   userName: string
 }
 
-function timeToMinutes(t: string) {
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
-}
-
-function calcDurationH(start: string, end: string): number {
-  let diff = timeToMinutes(end) - timeToMinutes(start)
-  if (diff <= 0) diff += 24 * 60
-  return diff / 60
-}
+const calcDurationH = shiftDurationHours
 
 function formatDuration(h: number): string {
   return h.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 1 }) + ' h'

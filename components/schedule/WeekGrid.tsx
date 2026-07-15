@@ -26,7 +26,7 @@ import { updateShift, deleteShift, createShift, duplicateShift } from '@/app/act
 import { releaseWeek, revokeWeekRelease, assignShiftToApplicant } from '@/app/actions/bidding'
 import { releaseDay, unreleaseDay } from '@/app/actions/timesheets'
 import { unwrap } from '@/lib/actionResult'
-import { addMinutesToTime } from '@/lib/timeUtils'
+import { addMinutesToTime, shiftDurationHours } from '@/lib/timeUtils'
 import CoverageWarningsBar from './CoverageWarningsBar'
 import { computeCoverageWarnings, type CoverageRuleData } from '@/lib/coverage'
 import EmployeeEditModal from '@/components/admin/EmployeeEditModal'
@@ -259,11 +259,7 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
   function getWeekHours(userId: string) {
     return shifts
       .filter((s) => s.userId === userId)
-      .reduce((sum, s) => {
-        const [sh, sm] = s.startTime.split(':').map(Number)
-        const [eh, em] = s.endTime.split(':').map(Number)
-        return sum + ((eh * 60 + em) - (sh * 60 + sm)) / 60
-      }, 0)
+      .reduce((sum, s) => sum + shiftDurationHours(s.startTime, s.endTime), 0)
   }
 
   const handleDragStart = useCallback(

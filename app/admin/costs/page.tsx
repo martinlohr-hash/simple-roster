@@ -2,7 +2,7 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, pa
 import { de } from 'date-fns/locale'
 import { prisma } from '@/lib/db'
 import { calcHours, calcLaborCost, getTrafficLight } from '@/lib/calculations'
-import { timeToMinutes } from '@/lib/timeUtils'
+import { shiftDurationHours } from '@/lib/timeUtils'
 import CostsFilter from '@/components/admin/CostsFilter'
 import BudgetProgress from '@/components/admin/BudgetProgress'
 
@@ -94,7 +94,7 @@ export default async function CostsPage({ searchParams }: Props) {
   const rateById = new Map(users.map((u) => [u.id, { rate: u.hourlyRate, overhead: u.overheadPercent }]))
   for (const s of shifts) {
     if (!s.userId || !byUser[s.userId]) continue
-    const h = (timeToMinutes(s.endTime) - timeToMinutes(s.startTime)) / 60
+    const h = shiftDurationHours(s.startTime, s.endTime)
     const r = rateById.get(s.userId)
     byUser[s.userId].plannedHours += h
     if (r) byUser[s.userId].plannedCost += calcLaborCost(h, r.rate, r.overhead)

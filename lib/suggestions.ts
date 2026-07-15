@@ -1,5 +1,5 @@
 import { computeCoverageWarnings, type CoverageRuleData } from './coverage'
-import { timeToMinutes } from './timeUtils'
+import { shiftDurationHours } from './timeUtils'
 
 // Regelbasierte Dienstplan-Vorschläge — komplett ohne KI/Token.
 // Idee: für jede Unterdeckung (Coverage-Lücke) den/die passendste/n
@@ -55,7 +55,7 @@ export type Suggestion = {
 }
 
 function hoursBetween(start: string, end: string): number {
-  return (timeToMinutes(end) - timeToMinutes(start)) / 60
+  return shiftDurationHours(start, end)
 }
 
 export function computeSuggestions(input: {

@@ -1,7 +1,14 @@
 import { cache } from 'react'
 import { prisma } from '@/lib/db'
 import { calcHours } from '@/lib/calculations'
-import { timeToMinutes } from '@/lib/timeUtils'
+import { timeToMinutes, shiftDurationHours } from '@/lib/timeUtils'
+
+/** Folgetag eines "yyyy-MM-dd"-Strings. */
+function nextDayStr(day: string): string {
+  const d = new Date(`${day}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
 
 /** Berliner Kalendertag eines Zeitstempels als "yyyy-MM-dd" (DST-sicher via Intl). */
 export function berlinDay(d: Date): string {
@@ -111,13 +118,15 @@ export async function computeDaysStats(days: string[]): Promise<Record<string, D
     if (!s.userId || !s.user || isAdminRole(s.user.role)) continue
     const day = s.date.toISOString().slice(0, 10)
     if (!out[day]) continue
-    const ended = day < todayStr || (day === todayStr && s.endTime <= nowTime)
+    // Über-Mitternacht-Schichten (Ende <= Start) enden erst am Folgetag.
+    const endDay = timeToMinutes(s.endTime) <= timeToMinutes(s.startTime) ? nextDayStr(day) : day
+    const ended = endDay < todayStr || (endDay === todayStr && s.endTime <= nowTime)
     if (!ended) continue
     const existing = stamp[day].get(s.userId)
     // Nur einspringen, wenn der MA an dem Tag weder gestempelt hat noch gerade
     // eingestempelt ist (dann zählt der Stempel bzw. der offene Status).
     if (existing && (existing.hours > 0 || existing.open > 0)) continue
-    const h = (timeToMinutes(s.endTime) - timeToMinutes(s.startTime)) / 60
+    const h = shiftDurationHours(s.startTime, s.endTime)
     out[day].actual += h
     out[day].entries += 1
   }

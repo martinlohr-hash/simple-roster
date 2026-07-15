@@ -6,7 +6,7 @@ import { getHamburgHolidays } from '@/lib/vacation'
 import { getAllDayEventsForDates } from '@/lib/google/calendar'
 import { getSession } from '@/app/actions/auth'
 import { isSuperAdmin } from '@/lib/session'
-import { timeToMinutes } from '@/lib/timeUtils'
+import { shiftDurationHours } from '@/lib/timeUtils'
 import { computeDaysHours, getUnconfirmedDays, berlinDay } from '@/lib/dayHours'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
@@ -107,11 +107,11 @@ export default async function SchedulePage({ searchParams }: Props) {
 
   // Budget banner calculation
   const plannedHours = shifts.reduce((sum, s) => {
-    return sum + (timeToMinutes(s.endTime) - timeToMinutes(s.startTime)) / 60
+    return sum + shiftDurationHours(s.startTime, s.endTime)
   }, 0)
   const userRateMap = Object.fromEntries(users.map((u) => [u.id, { hourlyRate: u.hourlyRate, overheadPercent: u.overheadPercent }]))
   const plannedCost = shifts.reduce((sum, s) => {
-    const h = (timeToMinutes(s.endTime) - timeToMinutes(s.startTime)) / 60
+    const h = shiftDurationHours(s.startTime, s.endTime)
     const rates = s.userId ? userRateMap[s.userId] : null
     return sum + (rates ? h * rates.hourlyRate * (1 + rates.overheadPercent / 100) : 0)
   }, 0)
@@ -158,7 +158,7 @@ export default async function SchedulePage({ searchParams }: Props) {
   for (const s of shifts) {
     const day = s.date.toISOString().slice(0, 10)
     if (plannedPerDay[day] != null) {
-      plannedPerDay[day] += (timeToMinutes(s.endTime) - timeToMinutes(s.startTime)) / 60
+      plannedPerDay[day] += shiftDurationHours(s.startTime, s.endTime)
     }
   }
   // Unbestätigte vergangene Tage – für Banner-Hinweis + Sprung zur ältesten offenen Woche

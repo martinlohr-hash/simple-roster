@@ -1,4 +1,4 @@
-import { startOfWeek, addDays, format, getISOWeek, getYear, parseISO } from 'date-fns'
+import { startOfWeek, addDays, format, getISOWeek, getYear, parseISO, startOfMonth, addMonths } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { redirect } from 'next/navigation'
 import { getBudgetStatus } from '@/lib/calculations'
@@ -41,7 +41,14 @@ export default async function SchedulePage({ searchParams }: Props) {
   const weekYear = getYear(weekStart)
   const weekNumber = getISOWeek(weekStart)
 
-  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations, timesheetReleases, dayActuals, unplannedTimeEntries, calendarEvents, unconfirmedDays] = await Promise.all([
+  // Monatsauslastung: maßgeblich ist der Monat, in dem der Donnerstag der Woche liegt
+  // (bei Monatswechsel innerhalb der Woche gewinnt der Monat mit der Mehrheit der Tage)
+  const monthAnchor = addDays(weekStart, 3)
+  const monthStartStr = format(startOfMonth(monthAnchor), 'yyyy-MM-dd')
+  const monthEndStr = format(addMonths(startOfMonth(monthAnchor), 1), 'yyyy-MM-dd')
+  const monthLabel = format(monthAnchor, 'MMMM', { locale: de })
+
+  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations, timesheetReleases, dayActuals, unplannedTimeEntries, calendarEvents, unconfirmedDays, monthShifts] = await Promise.all([
     prisma.shift.findMany({
       where: { date: { gte: weekStart, lt: weekEnd } },
       include: { user: true, location: true, timeEntry: true },
@@ -79,6 +86,10 @@ export default async function SchedulePage({ searchParams }: Props) {
     }),
     getAllDayEventsForDates(weekDates),
     getUnconfirmedDays(),
+    prisma.shift.findMany({
+      where: { date: { gte: new Date(monthStartStr), lt: new Date(monthEndStr) }, userId: { not: null } },
+      select: { userId: true, date: true, startTime: true, endTime: true },
+    }),
   ])
 
   // Auto-apply default template on empty weeks
@@ -148,6 +159,17 @@ export default async function SchedulePage({ searchParams }: Props) {
     }
   }
   const displayUsers = [...users, ...extraUsers]
+
+  // Monatsstunden je MA AUSSERHALB der sichtbaren Woche – das Grid addiert die
+  // Wochen-Schichten live dazu (zählt so beim Drag&Drop optimistisch mit).
+  const weekDateSet = new Set(weekDates)
+  const monthOutsideHours: Record<string, number> = {}
+  for (const s of monthShifts) {
+    if (!s.userId) continue
+    const day = s.date.toISOString().slice(0, 10)
+    if (weekDateSet.has(day)) continue
+    monthOutsideHours[s.userId] = (monthOutsideHours[s.userId] ?? 0) + shiftDurationHours(s.startTime, s.endTime)
+  }
   const usersJson = displayUsers.map((u) => ({ id: u.id, name: u.name, maxHoursWeek: u.maxHoursWeek, maxHoursMonth: u.maxHoursMonth }))
   const locationsJson = locations.map((l) => ({ id: l.id, name: l.name, color: l.color }))
   const dayNotesMap = Object.fromEntries(dayNotes.map((n) => [n.date, n.content]))
@@ -310,6 +332,7 @@ export default async function SchedulePage({ searchParams }: Props) {
         }))}
         holidays={holidaysMap}
         isSuperAdmin={viewerIsSuperAdmin}
+        monthInfo={{ label: monthLabel, start: monthStartStr, end: monthEndStr, outsideHours: monthOutsideHours }}
         vacations={vacations.map((v) => ({
           id: v.id,
           userId: v.userId,

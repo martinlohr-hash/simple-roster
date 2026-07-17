@@ -90,6 +90,16 @@ type Props = {
   isSuperAdmin?: boolean
   dayStats: Record<string, DayStat>
   unplannedEntries: UnplannedEntryData[]
+  monthInfo?: MonthInfo
+}
+
+export type MonthInfo = {
+  label: string
+  start: string // yyyy-MM-dd, inklusiv
+  end: string // yyyy-MM-dd, exklusiv
+  // Geplante Monatsstunden je MA außerhalb der angezeigten Woche –
+  // die Schichten der Woche selbst kommen live aus dem (optimistischen) State dazu
+  outsideHours: Record<string, number>
 }
 
 export type DayStat = {
@@ -119,7 +129,7 @@ function getInitials(name: string): string {
     .join('')
 }
 
-export default function WeekGrid({ shifts: serverShifts, users, locations, weekStart, weekStartStr, dayNotes, calendarEvents, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays, isSuperAdmin, dayStats, unplannedEntries }: Props) {
+export default function WeekGrid({ shifts: serverShifts, users, locations, weekStart, weekStartStr, dayNotes, calendarEvents, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays, isSuperAdmin, dayStats, unplannedEntries, monthInfo }: Props) {
   const router = useRouter()
   // Optimistische Sicht auf die Schichten: Drag/Resize wird sofort angezeigt,
   // der Server-Roundtrip läuft im Hintergrund. Schlägt die Action fehl (oder
@@ -260,6 +270,46 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
     return shifts
       .filter((s) => s.userId === userId)
       .reduce((sum, s) => sum + shiftDurationHours(s.startTime, s.endTime), 0)
+  }
+
+  function getMonthHours(userId: string) {
+    if (!monthInfo) return 0
+    const inWeek = shifts
+      .filter((s) => s.userId === userId && s.date.slice(0, 10) >= monthInfo.start && s.date.slice(0, 10) < monthInfo.end)
+      .reduce((sum, s) => sum + shiftDurationHours(s.startTime, s.endTime), 0)
+    return (monthInfo.outsideHours[userId] ?? 0) + inWeek
+  }
+
+  function fmtHours(h: number): string {
+    return h % 1 === 0 ? h.toFixed(0) : h.toFixed(1)
+  }
+
+  // Monatsauslastung unter der Wochensumme: Mini-Balken + „92/120h" mit eigener Ampel
+  function renderMonthUsage(user: UserData) {
+    if (!monthInfo) return null
+    const monthHours = getMonthHours(user.id)
+    if (monthHours === 0 && !user.maxHoursMonth) return null
+    const light = getLight(monthHours, user.maxHoursMonth)
+    const barColor = light === 'red' ? 'bg-red-500' : light === 'yellow' ? 'bg-yellow-500' : 'bg-green-500'
+    const title = `${monthInfo.label}: ${fmtHours(monthHours)}h geplant${user.maxHoursMonth ? ` von max. ${user.maxHoursMonth}h` : ''}`
+    if (!user.maxHoursMonth) {
+      return (
+        <div className="mt-0.5 text-[9px] text-gray-400 tabular-nums" title={title}>
+          M {fmtHours(monthHours)}h
+        </div>
+      )
+    }
+    const pct = Math.min(100, (monthHours / user.maxHoursMonth) * 100)
+    return (
+      <div className="mt-1 max-w-[120px]" title={title}>
+        <div className="h-1 rounded-full bg-gray-100 overflow-hidden">
+          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+        </div>
+        <div className={`text-[9px] mt-0.5 tabular-nums ${light === 'red' ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
+          M {fmtHours(monthHours)}/{user.maxHoursMonth}h
+        </div>
+      </div>
+    )
   }
 
   const handleDragStart = useCallback(
@@ -564,6 +614,7 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                                     : `${weekHours.toFixed(1)}h`}
                               </span>
                             </div>
+                            {renderMonthUsage(user)}
                           </div>
                         </div>
                       </td>
@@ -884,6 +935,7 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                               </span>
                             </div>
                           )}
+                          {renderMonthUsage(user)}
                         </div>
                       </div>
                     </td>

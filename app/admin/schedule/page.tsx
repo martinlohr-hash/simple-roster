@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { getBudgetStatus } from '@/lib/calculations'
 import { getHamburgHolidays } from '@/lib/vacation'
 import { getAllDayEventsForDates } from '@/lib/google/calendar'
+import { getBookedEventsForDates } from '@/lib/notion/funnelEvents'
 import { getSession } from '@/app/actions/auth'
 import { isSuperAdmin } from '@/lib/session'
 import { shiftDurationHours } from '@/lib/timeUtils'
@@ -48,7 +49,7 @@ export default async function SchedulePage({ searchParams }: Props) {
   const monthEndStr = format(addMonths(startOfMonth(monthAnchor), 1), 'yyyy-MM-dd')
   const monthLabel = format(monthAnchor, 'MMMM', { locale: de })
 
-  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations, timesheetReleases, dayActuals, unplannedTimeEntries, calendarEvents, unconfirmedDays, monthShifts] = await Promise.all([
+  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations, timesheetReleases, dayActuals, unplannedTimeEntries, calendarEvents, funnelEvents, unconfirmedDays, monthShifts] = await Promise.all([
     prisma.shift.findMany({
       where: { date: { gte: weekStart, lt: weekEnd } },
       include: { user: true, location: true, timeEntry: true },
@@ -85,6 +86,7 @@ export default async function SchedulePage({ searchParams }: Props) {
       orderBy: { checkinAt: 'asc' },
     }),
     getAllDayEventsForDates(weekDates),
+    getBookedEventsForDates(weekDates),
     getUnconfirmedDays(),
     prisma.shift.findMany({
       where: { date: { gte: new Date(monthStartStr), lt: new Date(monthEndStr) }, userId: { not: null } },
@@ -316,6 +318,7 @@ export default async function SchedulePage({ searchParams }: Props) {
         weekStart={weekStart}
         dayNotes={dayNotesMap}
         calendarEvents={calendarEvents}
+        funnelEvents={funnelEvents}
         coverageRules={coverageRulesJson}
         prevWeekHref={`/admin/schedule?week=${format(prevWeek, 'yyyy-MM-dd')}`}
         nextWeekHref={`/admin/schedule?week=${format(nextWeek, 'yyyy-MM-dd')}`}

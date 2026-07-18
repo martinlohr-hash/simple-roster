@@ -7,9 +7,10 @@ type Props = {
   date: string
   initialContent: string
   calendarEvents?: string[]
+  funnelEvents?: string[]
 }
 
-export default function DayNoteCell({ date, initialContent, calendarEvents = [] }: Props) {
+export default function DayNoteCell({ date, initialContent, calendarEvents = [], funnelEvents = [] }: Props) {
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(initialContent)
   const [saved, setSaved] = useState(initialContent)
@@ -40,6 +41,25 @@ export default function DayNoteCell({ date, initialContent, calendarEvents = [] 
     }
   }
 
+  const eventBadges =
+    funnelEvents.length > 0 ? (
+      <div className="flex flex-col gap-1 px-1.5 pt-1">
+        {funnelEvents.map((title, i) => (
+          <div
+            key={i}
+            title={`Gebuchtes Event (Funnel): ${title}`}
+            className="flex items-start gap-1.5 bg-green-50 border border-green-200 rounded-md px-2 py-1 shadow-sm"
+          >
+            <svg className="w-3 h-3 text-green-600 mt-px shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path d="M5 21V7l7-4 7 4v14M5 21h14M9 21v-4h6v4" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M12 3v4" strokeLinecap="round" />
+            </svg>
+            <p className="text-[11px] font-medium text-green-800 leading-snug break-words">{title}</p>
+          </div>
+        ))}
+      </div>
+    ) : null
+
   const calBadges =
     calendarEvents.length > 0 ? (
       <div className="flex flex-col gap-1 px-1.5 pt-1">
@@ -62,6 +82,7 @@ export default function DayNoteCell({ date, initialContent, calendarEvents = [] 
   if (editing) {
     return (
       <div>
+        {eventBadges}
         {calBadges}
         <div className="px-1.5 py-1">
         <textarea
@@ -81,6 +102,7 @@ export default function DayNoteCell({ date, initialContent, calendarEvents = [] 
 
   return (
     <div>
+      {eventBadges}
       {calBadges}
       <div
         onClick={() => setEditing(true)}

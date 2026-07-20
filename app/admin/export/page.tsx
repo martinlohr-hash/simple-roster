@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import ExportForm from '@/components/admin/ExportForm'
 import PayrollExportCard from '@/components/admin/PayrollExportCard'
 import { calcHours } from '@/lib/calculations'
+import { shiftDurationHours } from '@/lib/timeUtils'
 import { format, endOfDay } from 'date-fns'
 
 export default async function ExportPage() {
@@ -10,7 +11,7 @@ export default async function ExportPage() {
   const payrollFrom = new Date(now.getFullYear(), now.getMonth() - 1, 21)
   const payrollTo = new Date(now.getFullYear(), now.getMonth(), 20)
 
-  const [users, locations, payrollEntries] = await Promise.all([
+  const [users, locations, payrollEntries, payrollShifts] = await Promise.all([
     prisma.user.findMany({ orderBy: { name: 'asc' } }),
     prisma.location.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.timeEntry.findMany({
@@ -20,17 +21,34 @@ export default async function ExportPage() {
       },
       select: { userId: true, checkinAt: true, checkoutAt: true },
     }),
+    prisma.shift.findMany({
+      where: {
+        user: { role: { in: ['ADMIN', 'SUPER_ADMIN'] } },
+        date: { gte: payrollFrom, lte: endOfDay(payrollTo) },
+        status: { not: 'CANCELLED' },
+      },
+      select: { userId: true, startTime: true, endTime: true },
+    }),
   ])
 
+  // Admins gehen mit ihren GEPLANTEN Schichten in den Lohn-Export ein, nicht mit Stempelzeiten
+  const adminIds = new Set(users.filter((u) => u.role !== 'EMPLOYEE').map((u) => u.id))
   const hoursByUser = new Map<string, number>()
   for (const e of payrollEntries) {
+    if (adminIds.has(e.userId)) continue
     const hours = calcHours(e.checkinAt, e.checkoutAt!)
     hoursByUser.set(e.userId, (hoursByUser.get(e.userId) ?? 0) + hours)
+  }
+  for (const s of payrollShifts) {
+    if (!s.userId) continue
+    const hours = shiftDurationHours(s.startTime, s.endTime)
+    hoursByUser.set(s.userId, (hoursByUser.get(s.userId) ?? 0) + hours)
   }
   const payrollRows = users.map((u) => ({
     id: u.id,
     name: u.name,
     hours: parseFloat((hoursByUser.get(u.id) ?? 0).toFixed(2)),
+    planBased: adminIds.has(u.id),
   }))
 
   const defaultFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]

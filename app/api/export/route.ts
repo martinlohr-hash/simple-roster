@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { decrypt, isAdmin } from '@/lib/session'
 import { prisma } from '@/lib/db'
 import { calcHours, calcLaborCost } from '@/lib/calculations'
+import { shiftDurationHours } from '@/lib/timeUtils'
 import { format, parseISO, endOfDay, startOfDay } from 'date-fns'
 import * as XLSX from 'xlsx'
 
@@ -45,8 +46,30 @@ export async function GET(request: NextRequest) {
   let rows: Record<string, unknown>[]
 
   if (summary) {
+    // Admins gehen mit ihren GEPLANTEN Schichten in den Lohn-Export ein, nicht mit Stempelzeiten
+    const adminUsers = await prisma.user.findMany({
+      where: {
+        role: { in: ['ADMIN', 'SUPER_ADMIN'] },
+        ...(userIds.length > 0 ? { id: { in: userIds } } : {}),
+      },
+      select: { id: true, name: true, hourlyRate: true, overheadPercent: true },
+    })
+    const adminIds = new Set(adminUsers.map((u) => u.id))
+    const adminShifts = adminUsers.length > 0
+      ? await prisma.shift.findMany({
+          where: {
+            userId: { in: [...adminIds] },
+            date: { gte: from, lte: to },
+            status: { not: 'CANCELLED' },
+            ...(locationId ? { locationId } : {}),
+          },
+          select: { userId: true, startTime: true, endTime: true },
+        })
+      : []
+
     const byUser = new Map<string, { name: string; hourlyRate: number; overheadPercent: number; hours: number }>()
     for (const e of entries) {
+      if (adminIds.has(e.userId)) continue
       const agg = byUser.get(e.userId) ?? {
         name: e.user.name,
         hourlyRate: e.user.hourlyRate,
@@ -55,6 +78,17 @@ export async function GET(request: NextRequest) {
       }
       agg.hours += calcHours(e.checkinAt, e.checkoutAt!)
       byUser.set(e.userId, agg)
+    }
+    for (const s of adminShifts) {
+      const u = adminUsers.find((a) => a.id === s.userId)!
+      const agg = byUser.get(u.id) ?? {
+        name: u.name,
+        hourlyRate: u.hourlyRate,
+        overheadPercent: u.overheadPercent,
+        hours: 0,
+      }
+      agg.hours += shiftDurationHours(s.startTime, s.endTime)
+      byUser.set(u.id, agg)
     }
     const aggs = [...byUser.values()].sort((a, b) => a.name.localeCompare(b.name, 'de'))
     const totalHours = aggs.reduce((sum, a) => sum + a.hours, 0)

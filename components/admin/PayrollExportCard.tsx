@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-type Row = { id: string; name: string; hours: number }
+type Row = { id: string; name: string; hours: number; planBased?: boolean }
 
 type Props = {
   rows: Row[]
@@ -108,7 +108,14 @@ export default function PayrollExportCard({ rows, from, to, fromLabel, toLabel }
                         className="rounded"
                       />
                     </td>
-                    <td className="px-3 py-2">{r.name}</td>
+                    <td className="px-3 py-2">
+                      {r.name}
+                      {r.planBased && (
+                        <span className="ml-1.5 text-[10px] font-medium text-blue-600 bg-blue-50 rounded px-1 py-0.5 align-middle">
+                          Plan
+                        </span>
+                      )}
+                    </td>
                     <td className="px-3 py-2 text-right tabular-nums">{de(r.hours)}</td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       {isSelected && tipShares.has(r.id) ? de(tipShares.get(r.id)!) : '–'}
@@ -146,8 +153,10 @@ export default function PayrollExportCard({ rows, from, to, fromLabel, toLabel }
             className={inputClass}
           />
           <p className="text-xs text-gray-400 mt-1">
-            Wird anteilig nach geleisteten Stunden auf die ausgewählten MA verteilt.
+            Wird anteilig nach Stunden auf die ausgewählten MA verteilt.
             MA ohne Stunden im Zeitraum erscheinen nicht in der Datei.
+            Bei <span className="font-medium">Plan</span>-Personen zählen die geplanten
+            Schichten, sonst die bestätigten Stempelzeiten.
           </p>
         </div>
 

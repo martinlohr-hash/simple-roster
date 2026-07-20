@@ -21,13 +21,15 @@ export async function GET(request: NextRequest) {
   const locationId = sp.get('locationId') || undefined
   const userIds = sp.getAll('userId').filter((id) => id !== 'all')
   const tips = parseFloat(sp.get('tips') || '0') || 0
+  const summary = sp.get('summary') === '1'
 
   const locationName = locationId
     ? (await prisma.location.findUnique({ where: { id: locationId }, select: { name: true } }))?.name ?? 'Unbekannt'
     : 'Alle Standorte'
 
   const dateRange = `${format(from, 'dd.MM.yyyy')} – ${format(to, 'dd.MM.yyyy')}`
-  const title = `Simple Sandwich Hamburg GmbH - Stundenexport (${dateRange}) - ${locationName}`
+  const title = `Simple Sandwich Hamburg GmbH - ${summary ? 'Lohn-Export kumuliert' : 'Stundenexport'} (${dateRange}) - ${locationName}`
+  const fileBase = `${summary ? 'lohn' : 'stunden'}_${format(from, 'yyyy-MM-dd')}_${format(to, 'yyyy-MM-dd')}`
 
   const entries = await prisma.timeEntry.findMany({
     where: {
@@ -40,43 +42,80 @@ export async function GET(request: NextRequest) {
     orderBy: [{ user: { name: 'asc' } }, { checkinAt: 'asc' }],
   })
 
-  const totalHours = tips > 0
-    ? entries.reduce((sum, e) => sum + calcHours(e.checkinAt, e.checkoutAt!), 0)
-    : 0
+  let rows: Record<string, unknown>[]
 
-  const rows = entries.map((e) => {
-    const hours = calcHours(e.checkinAt, e.checkoutAt!)
-    const cost = calcLaborCost(hours, e.user.hourlyRate, e.user.overheadPercent)
-    const tipShare = tips > 0 && totalHours > 0
-      ? parseFloat(((hours / totalHours) * tips).toFixed(2))
-      : null
-    const row: Record<string, unknown> = {
-      Name: e.user.name,
-      Datum: format(e.checkinAt, 'dd.MM.yyyy'),
-      'Geplant Von': e.shift?.startTime || '',
-      'Geplant Bis': e.shift?.endTime || '',
-      Einstempeln: format(e.checkinAt, 'HH:mm'),
-      Ausstempeln: format(e.checkoutAt!, 'HH:mm'),
-      'Ist-Stunden': parseFloat(hours.toFixed(2)),
-      Standort: e.location.name,
-      'Stundenlohn (€)': e.user.hourlyRate,
-      'NK-Quote (%)': e.user.overheadPercent,
-      'Lohnkosten (€)': parseFloat(cost.toFixed(2)),
+  if (summary) {
+    const byUser = new Map<string, { name: string; hourlyRate: number; overheadPercent: number; hours: number }>()
+    for (const e of entries) {
+      const agg = byUser.get(e.userId) ?? {
+        name: e.user.name,
+        hourlyRate: e.user.hourlyRate,
+        overheadPercent: e.user.overheadPercent,
+        hours: 0,
+      }
+      agg.hours += calcHours(e.checkinAt, e.checkoutAt!)
+      byUser.set(e.userId, agg)
     }
-    if (tips > 0) row['Trinkgeld (€)'] = tipShare
-    return row
-  })
+    const aggs = [...byUser.values()].sort((a, b) => a.name.localeCompare(b.name, 'de'))
+    const totalHours = aggs.reduce((sum, a) => sum + a.hours, 0)
+    // Letzte Zeile bekommt den Rest, damit die Summe exakt dem eingegebenen Trinkgeld entspricht
+    let assignedTips = 0
+    rows = aggs.map((a, i) => {
+      let tipShare = 0
+      if (tips > 0 && totalHours > 0) {
+        tipShare = i === aggs.length - 1
+          ? parseFloat((tips - assignedTips).toFixed(2))
+          : parseFloat(((a.hours / totalHours) * tips).toFixed(2))
+        assignedTips += tipShare
+      }
+      return {
+        Name: a.name,
+        'Ist-Stunden': parseFloat(a.hours.toFixed(2)),
+        'Stundenlohn (€)': a.hourlyRate,
+        'NK-Quote (%)': a.overheadPercent,
+        'Lohnkosten (€)': parseFloat(calcLaborCost(a.hours, a.hourlyRate, a.overheadPercent).toFixed(2)),
+        'Trinkgeld (€)': tipShare,
+      }
+    })
+  } else {
+    const totalHours = tips > 0
+      ? entries.reduce((sum, e) => sum + calcHours(e.checkinAt, e.checkoutAt!), 0)
+      : 0
+
+    rows = entries.map((e) => {
+      const hours = calcHours(e.checkinAt, e.checkoutAt!)
+      const cost = calcLaborCost(hours, e.user.hourlyRate, e.user.overheadPercent)
+      const tipShare = tips > 0 && totalHours > 0
+        ? parseFloat(((hours / totalHours) * tips).toFixed(2))
+        : null
+      const row: Record<string, unknown> = {
+        Name: e.user.name,
+        Datum: format(e.checkinAt, 'dd.MM.yyyy'),
+        'Geplant Von': e.shift?.startTime || '',
+        'Geplant Bis': e.shift?.endTime || '',
+        Einstempeln: format(e.checkinAt, 'HH:mm'),
+        Ausstempeln: format(e.checkoutAt!, 'HH:mm'),
+        'Ist-Stunden': parseFloat(hours.toFixed(2)),
+        Standort: e.location.name,
+        'Stundenlohn (€)': e.user.hourlyRate,
+        'NK-Quote (%)': e.user.overheadPercent,
+        'Lohnkosten (€)': parseFloat(cost.toFixed(2)),
+      }
+      if (tips > 0) row['Trinkgeld (€)'] = tipShare
+      return row
+    })
+  }
 
   if (fmt === 'excel') {
     const ws = XLSX.utils.aoa_to_sheet([[title]])
     XLSX.utils.sheet_add_json(ws, rows, { origin: 'A2' })
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Stunden')
+    XLSX.utils.book_append_sheet(wb, ws, summary ? 'Lohn' : 'Stunden')
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
-    return new NextResponse(buf, {
+    return new NextResponse(new Uint8Array(buf as Buffer), {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="stunden_${format(from, 'yyyy-MM-dd')}_${format(to, 'yyyy-MM-dd')}.xlsx"`,
+        'Content-Disposition': `attachment; filename="${fileBase}.xlsx"`,
       },
     })
   }
@@ -92,7 +131,7 @@ export async function GET(request: NextRequest) {
   return new NextResponse('﻿' + csv, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="stunden_${format(from, 'yyyy-MM-dd')}_${format(to, 'yyyy-MM-dd')}.csv"`,
+      'Content-Disposition': `attachment; filename="${fileBase}.csv"`,
     },
   })
 }

@@ -256,6 +256,7 @@ export default async function SchedulePage({ searchParams }: Props) {
   const firstMondayStr = format(firstMondayNextWeek, 'yyyy-MM-dd')
   const adjacentShifts: Record<string, { hasSundayShift: boolean; hasMondayShift: boolean }> = {}
   for (const s of adjacentShiftsRaw) {
+    if (!s.userId) continue // Nur Schichten mit userId
     const day = berlinDay(s.date)
     if (!adjacentShifts[s.userId]) {
       adjacentShifts[s.userId] = { hasSundayShift: false, hasMondayShift: false }

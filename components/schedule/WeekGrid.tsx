@@ -597,9 +597,9 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                   const hasMondayShift = adjShifts?.hasMondayShift ?? false
                   return (
                     <tr key={user.id}>
-                      <td className={`sticky left-0 z-10 bg-white border-r border-gray-100 px-2 py-2 align-top w-[108px] relative ${
-                        hasSundayShift ? 'border-l-2 border-l-indigo-500' : ''
-                      } ${hasMondayShift ? 'border-r-2 border-r-green-500' : ''}`}>
+                      <td className={`sticky left-0 z-10 bg-white border-gray-100 px-2 py-2 align-top w-[108px] relative ${
+                        hasSundayShift ? 'border-l-4 border-l-blue-500' : 'border-l border-l-gray-100'
+                      } ${hasMondayShift ? 'border-r-4 border-r-green-500' : 'border-r border-r-gray-100'}`}>
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => setEditEmployeeId(user.id)}
@@ -921,10 +921,10 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                 const hasMondayShift = adjShifts?.hasMondayShift ?? false
                 return (
                   <tr key={user.id} className="group">
-                    <td className={`px-3 py-3 align-top bg-white border-l-[3px] border-r-[3px] ${
-                      hasSundayShift ? 'border-l-indigo-500' : 'border-l-transparent'
+                    <td className={`px-3 py-3 align-top bg-white ${
+                      hasSundayShift ? 'border-l-4 border-l-blue-500' : 'border-l border-l-gray-100'
                     } ${
-                      hasMondayShift ? 'border-r-green-500' : 'border-r-transparent'
+                      hasMondayShift ? 'border-r-4 border-r-green-500' : 'border-r border-r-gray-100'
                     }`}>
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0 text-xs font-semibold text-gray-600">

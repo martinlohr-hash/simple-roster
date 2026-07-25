@@ -629,8 +629,9 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                         const cellShifts = getShiftsForCell(user.id, day)
                         const onVacation = isOnVacation(user.id, day)
                         const dateStr = format(day, 'yyyy-MM-dd')
+                        const isSunday = di === 6
                         return (
-                          <td key={di} className={`p-1 align-middle text-center min-w-[52px] ${isConfirmed(dateStr) ? 'bg-gray-100/70 opacity-60' : ''}`}>
+                          <td key={di} className={`p-1 align-middle text-center min-w-[52px] ${isConfirmed(dateStr) ? 'bg-gray-100/70 opacity-60' : ''} ${isSunday && hasMondayShift ? 'border-r-4 border-r-green-500' : ''}`}>
                             {onVacation ? (
                               <span className="text-[9px] font-semibold text-emerald-600 uppercase tracking-tight">
                                 Urlaub
@@ -920,10 +921,8 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                 const hasSundayShift = adjShifts?.hasSundayShift ?? false
                 const hasMondayShift = adjShifts?.hasMondayShift ?? false
                 return (
-                  <tr key={user.id} className="group" style={{
-                    boxShadow: `${hasSundayShift ? 'inset 4px 0 0 #3b82f6' : ''} ${hasMondayShift ? 'inset -4px 0 0 #22c55e' : ''}`.trim()
-                  }}>
-                    <td className="px-3 py-3 align-top bg-white">
+                  <tr key={user.id} className="group">
+                    <td className={`px-3 py-3 align-top bg-white border-l-4 ${hasSundayShift ? 'border-l-blue-500' : 'border-l-gray-100'}`}>
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0 text-xs font-semibold text-gray-600">
                           {initials}
@@ -955,8 +954,9 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                       const cellShifts = getShiftsForCell(user.id, day)
                       const dateStr = format(day, 'yyyy-MM-dd')
                       const onVacation = isOnVacation(user.id, day)
+                      const isSunday = di === 6
                       return (
-                        <td key={di} className={`p-0 align-top ${isConfirmed(dateStr) ? 'bg-gray-100/70' : ''}`}>
+                        <td key={di} className={`p-0 align-top ${isConfirmed(dateStr) ? 'bg-gray-100/70' : ''} ${isSunday && hasMondayShift ? 'border-r-4 border-r-green-500' : ''}`}>
                           <DropCell id={`${user.id}__${dateStr}`}>
                             <div className={`flex flex-col gap-1 p-1.5 min-h-[56px] ${isConfirmed(dateStr) ? 'opacity-60' : ''}`}>
                               {onVacation && (

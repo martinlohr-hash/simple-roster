@@ -37,6 +37,7 @@ export default async function SchedulePage({ searchParams }: Props) {
   // Nachbartage für visuelle Indikatoren (Sonntag Vorgängerwoche, Montag nächste Woche)
   const lastSunday = addDays(weekStart, -1)
   const firstMondayNextWeek = weekEnd // weekEnd ist bereits Montag der nächsten Woche
+  const dayAfterMonday = addDays(firstMondayNextWeek, 1)
 
   const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(weekStart, i)
@@ -100,7 +101,7 @@ export default async function SchedulePage({ searchParams }: Props) {
       where: {
         OR: [
           { date: { gte: lastSunday, lt: weekStart } },
-          { date: { gte: firstMondayNextWeek, lt: addDays(firstMondayNextWeek, 1) } },
+          { date: { gte: firstMondayNextWeek, lt: dayAfterMonday } },
         ],
         userId: { not: null },
       },
@@ -255,13 +256,14 @@ export default async function SchedulePage({ searchParams }: Props) {
   const firstMondayStr = format(firstMondayNextWeek, 'yyyy-MM-dd')
   const adjacentShifts: Record<string, { hasSundayShift: boolean; hasMondayShift: boolean }> = {}
   for (const s of adjacentShiftsRaw) {
-    const day = s.date.toISOString().slice(0, 10)
+    const day = berlinDay(s.date)
     if (!adjacentShifts[s.userId]) {
       adjacentShifts[s.userId] = { hasSundayShift: false, hasMondayShift: false }
     }
     if (day === lastSundayStr) adjacentShifts[s.userId].hasSundayShift = true
     if (day === firstMondayStr) adjacentShifts[s.userId].hasMondayShift = true
   }
+  console.log('[DEBUG] Adjacent shifts:', { lastSundayStr, firstMondayStr, adjacentShiftsRaw: adjacentShiftsRaw.length, adjacentShifts })
 
   const suggestions = computeSuggestions({
     shifts: shifts.map((s) => ({

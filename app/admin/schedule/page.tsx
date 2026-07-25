@@ -34,6 +34,10 @@ export default async function SchedulePage({ searchParams }: Props) {
   const prevWeek = addDays(weekStart, -7)
   const nextWeek = addDays(weekStart, 7)
 
+  // Nachbartage für visuelle Indikatoren (Sonntag Vorgängerwoche, Montag nächste Woche)
+  const lastSunday = addDays(weekStart, -1)
+  const firstMondayNextWeek = addDays(weekEnd, 1)
+
   const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(weekStart, i)
     return format(d, 'yyyy-MM-dd')
@@ -49,7 +53,7 @@ export default async function SchedulePage({ searchParams }: Props) {
   const monthEndStr = format(addMonths(startOfMonth(monthAnchor), 1), 'yyyy-MM-dd')
   const monthLabel = format(monthAnchor, 'MMMM', { locale: de })
 
-  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations, timesheetReleases, dayActuals, unplannedTimeEntries, calendarEvents, funnelEvents, unconfirmedDays, monthShifts] = await Promise.all([
+  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations, timesheetReleases, dayActuals, unplannedTimeEntries, calendarEvents, funnelEvents, unconfirmedDays, monthShifts, adjacentShiftsRaw] = await Promise.all([
     prisma.shift.findMany({
       where: { date: { gte: weekStart, lt: weekEnd } },
       include: { user: true, location: true, timeEntry: true },
@@ -91,6 +95,16 @@ export default async function SchedulePage({ searchParams }: Props) {
     prisma.shift.findMany({
       where: { date: { gte: new Date(monthStartStr), lt: new Date(monthEndStr) }, userId: { not: null } },
       select: { userId: true, date: true, startTime: true, endTime: true },
+    }),
+    prisma.shift.findMany({
+      where: {
+        OR: [
+          { date: { gte: lastSunday, lt: weekStart } },
+          { date: { gte: weekEnd, lte: firstMondayNextWeek } },
+        ],
+        userId: { not: null },
+      },
+      select: { userId: true, date: true },
     }),
   ])
 
@@ -236,6 +250,19 @@ export default async function SchedulePage({ searchParams }: Props) {
     checkoutAt: e.checkoutAt?.toISOString() ?? null,
   }))
 
+  // Nachbar-Schicht-Indikatoren (Sonntag/Montag): Map von userId → { hasSundayShift, hasMondayShift }
+  const lastSundayStr = format(lastSunday, 'yyyy-MM-dd')
+  const firstMondayStr = format(firstMondayNextWeek, 'yyyy-MM-dd')
+  const adjacentShifts: Record<string, { hasSundayShift: boolean; hasMondayShift: boolean }> = {}
+  for (const s of adjacentShiftsRaw) {
+    const day = s.date.toISOString().slice(0, 10)
+    if (!adjacentShifts[s.userId]) {
+      adjacentShifts[s.userId] = { hasSundayShift: false, hasMondayShift: false }
+    }
+    if (day === lastSundayStr) adjacentShifts[s.userId].hasSundayShift = true
+    if (day === firstMondayStr) adjacentShifts[s.userId].hasMondayShift = true
+  }
+
   const suggestions = computeSuggestions({
     shifts: shifts.map((s) => ({
       id: s.id,
@@ -333,6 +360,7 @@ export default async function SchedulePage({ searchParams }: Props) {
           status: a.status as 'PENDING' | 'ASSIGNED' | 'REJECTED',
           user: a.user,
         }))}
+        adjacentShifts={adjacentShifts}
         holidays={holidaysMap}
         isSuperAdmin={viewerIsSuperAdmin}
         monthInfo={{ label: monthLabel, start: monthStartStr, end: monthEndStr, outsideHours: monthOutsideHours }}

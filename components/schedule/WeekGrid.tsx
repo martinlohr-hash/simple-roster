@@ -92,6 +92,7 @@ type Props = {
   dayStats: Record<string, DayStat>
   unplannedEntries: UnplannedEntryData[]
   monthInfo?: MonthInfo
+  adjacentShifts?: Record<string, { hasSundayShift: boolean; hasMondayShift: boolean }>
 }
 
 export type MonthInfo = {
@@ -130,7 +131,7 @@ function getInitials(name: string): string {
     .join('')
 }
 
-export default function WeekGrid({ shifts: serverShifts, users, locations, weekStart, weekStartStr, dayNotes, calendarEvents, funnelEvents, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays, isSuperAdmin, dayStats, unplannedEntries, monthInfo }: Props) {
+export default function WeekGrid({ shifts: serverShifts, users, locations, weekStart, weekStartStr, dayNotes, calendarEvents, funnelEvents, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays, isSuperAdmin, dayStats, unplannedEntries, monthInfo, adjacentShifts }: Props) {
   const router = useRouter()
   // Optimistische Sicht auf die Schichten: Drag/Resize wird sofort angezeigt,
   // der Server-Roundtrip läuft im Hintergrund. Schlägt die Action fehl (oder
@@ -591,9 +592,14 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                         : light === 'yellow'
                           ? 'bg-yellow-500'
                           : 'bg-green-500'
+                  const adjShifts = adjacentShifts?.[user.id]
+                  const hasSundayShift = adjShifts?.hasSundayShift ?? false
+                  const hasMondayShift = adjShifts?.hasMondayShift ?? false
                   return (
                     <tr key={user.id}>
-                      <td className="sticky left-0 z-10 bg-white border-r border-gray-100 px-2 py-2 align-top w-[108px]">
+                      <td className={`sticky left-0 z-10 bg-white border-r border-gray-100 px-2 py-2 align-top w-[108px] relative ${
+                        hasSundayShift ? 'border-l-2 border-l-indigo-500' : ''
+                      } ${hasMondayShift ? 'border-r-2 border-r-green-500' : ''}`}>
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => setEditEmployeeId(user.id)}
@@ -910,8 +916,15 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                 const weekHours = getWeekHours(user.id)
                 const light = getLight(weekHours, user.maxHoursWeek)
                 const initials = getInitials(user.name)
+                const adjShifts = adjacentShifts?.[user.id]
+                const hasSundayShift = adjShifts?.hasSundayShift ?? false
+                const hasMondayShift = adjShifts?.hasMondayShift ?? false
                 return (
-                  <tr key={user.id} className="group">
+                  <tr key={user.id} className={`group relative border-l-[3px] border-r-[3px] ${
+                    hasSundayShift ? 'border-l-indigo-500' : 'border-l-transparent'
+                  } ${
+                    hasMondayShift ? 'border-r-green-500' : 'border-r-transparent'
+                  }`}>
                     <td className="px-3 py-3 align-top bg-white">
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0 text-xs font-semibold text-gray-600">

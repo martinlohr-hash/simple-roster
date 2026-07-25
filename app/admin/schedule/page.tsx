@@ -36,7 +36,7 @@ export default async function SchedulePage({ searchParams }: Props) {
 
   // Nachbartage für visuelle Indikatoren (Sonntag Vorgängerwoche, Montag nächste Woche)
   const lastSunday = addDays(weekStart, -1)
-  const firstMondayNextWeek = addDays(weekEnd, 1)
+  const firstMondayNextWeek = weekEnd // weekEnd ist bereits Montag der nächsten Woche
 
   const weekDates = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(weekStart, i)
@@ -100,7 +100,7 @@ export default async function SchedulePage({ searchParams }: Props) {
       where: {
         OR: [
           { date: { gte: lastSunday, lt: weekStart } },
-          { date: { gte: weekEnd, lte: firstMondayNextWeek } },
+          { date: { gte: firstMondayNextWeek, lt: addDays(firstMondayNextWeek, 1) } },
         ],
         userId: { not: null },
       },

@@ -597,9 +597,9 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                   const hasMondayShift = adjShifts?.hasMondayShift ?? false
                   return (
                     <tr key={user.id}>
-                      <td className={`sticky left-0 z-10 bg-white border-gray-100 px-2 py-2 align-top w-[108px] relative ${
-                        hasSundayShift ? 'border-l-4 border-l-blue-500' : 'border-l border-l-gray-100'
-                      } ${hasMondayShift ? 'border-r-4 border-r-green-500' : 'border-r border-r-gray-100'}`}>
+                      <td className={`sticky left-0 z-10 bg-white border-gray-100 px-2 py-2 align-top w-[108px] relative transition-all ${
+                        hasSundayShift ? 'bg-blue-100 border-l-4 border-l-blue-600' : 'border-l border-l-gray-100'
+                      } ${hasMondayShift ? 'bg-green-50 border-r-4 border-r-green-600' : 'border-r border-r-gray-100'}`}>
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => setEditEmployeeId(user.id)}

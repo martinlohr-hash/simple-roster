@@ -105,7 +105,7 @@ export default async function SchedulePage({ searchParams }: Props) {
         ],
         userId: { not: null },
       },
-      select: { userId: true, date: true },
+      select: { userId: true, date: true, locationId: true, location: { select: { color: true } } },
     }),
   ])
 
@@ -251,20 +251,25 @@ export default async function SchedulePage({ searchParams }: Props) {
     checkoutAt: e.checkoutAt?.toISOString() ?? null,
   }))
 
-  // Nachbar-Schicht-Indikatoren (Sonntag/Montag): Map von userId → { hasSundayShift, hasMondayShift }
+  // Nachbar-Schicht-Indikatoren (Sonntag/Montag): Map von userId → { hasSundayShift, sundayColor, hasMondayShift, mondayColor }
   const lastSundayStr = format(lastSunday, 'yyyy-MM-dd')
   const firstMondayStr = format(firstMondayNextWeek, 'yyyy-MM-dd')
-  const adjacentShifts: Record<string, { hasSundayShift: boolean; hasMondayShift: boolean }> = {}
+  const adjacentShifts: Record<string, { hasSundayShift: boolean; sundayColor?: string; hasMondayShift: boolean; mondayColor?: string }> = {}
   for (const s of adjacentShiftsRaw) {
     if (!s.userId) continue // Nur Schichten mit userId
     const day = berlinDay(s.date)
     if (!adjacentShifts[s.userId]) {
       adjacentShifts[s.userId] = { hasSundayShift: false, hasMondayShift: false }
     }
-    if (day === lastSundayStr) adjacentShifts[s.userId].hasSundayShift = true
-    if (day === firstMondayStr) adjacentShifts[s.userId].hasMondayShift = true
+    if (day === lastSundayStr) {
+      adjacentShifts[s.userId].hasSundayShift = true
+      adjacentShifts[s.userId].sundayColor = s.location.color
+    }
+    if (day === firstMondayStr) {
+      adjacentShifts[s.userId].hasMondayShift = true
+      adjacentShifts[s.userId].mondayColor = s.location.color
+    }
   }
-  console.log('[DEBUG] Adjacent shifts:', { lastSundayStr, firstMondayStr, adjacentShiftsRaw: adjacentShiftsRaw.length, adjacentShifts })
 
   const suggestions = computeSuggestions({
     shifts: shifts.map((s) => ({

@@ -92,7 +92,7 @@ type Props = {
   dayStats: Record<string, DayStat>
   unplannedEntries: UnplannedEntryData[]
   monthInfo?: MonthInfo
-  adjacentShifts?: Record<string, { hasSundayShift: boolean; hasMondayShift: boolean }>
+  adjacentShifts?: Record<string, { hasSundayShift: boolean; sundayColor?: string; hasMondayShift: boolean; mondayColor?: string }>
 }
 
 export type MonthInfo = {
@@ -631,8 +631,19 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                         const dateStr = format(day, 'yyyy-MM-dd')
                         const isMonday = di === 0
                         const isSunday = di === 6
+                        const sundayColor = adjShifts?.sundayColor
+                        const mondayColor = adjShifts?.mondayColor
                         return (
-                          <td key={di} className={`p-1 align-middle text-center min-w-[52px] ${isConfirmed(dateStr) ? 'bg-gray-100/70 opacity-60' : ''} ${isMonday && hasSundayShift ? 'border-l-4 border-l-blue-500' : ''} ${isSunday && hasMondayShift ? 'border-r-4 border-r-green-500' : ''}`}>
+                          <td key={di} className="p-1 align-middle text-center min-w-[52px]" style={{
+                            borderLeftWidth: isMonday && hasSundayShift ? '4px' : undefined,
+                            borderLeftColor: sundayColor,
+                            borderLeftStyle: isMonday && hasSundayShift ? 'solid' : undefined,
+                            borderRightWidth: isSunday && hasMondayShift ? '4px' : undefined,
+                            borderRightColor: mondayColor,
+                            borderRightStyle: isSunday && hasMondayShift ? 'solid' : undefined,
+                            backgroundColor: isConfirmed(dateStr) ? 'rgba(229, 231, 235, 0.7)' : undefined,
+                            opacity: isConfirmed(dateStr) ? 0.6 : undefined,
+                          }}>
                             {onVacation ? (
                               <span className="text-[9px] font-semibold text-emerald-600 uppercase tracking-tight">
                                 Urlaub
@@ -957,8 +968,18 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                       const onVacation = isOnVacation(user.id, day)
                       const isMonday = di === 0
                       const isSunday = di === 6
+                      const sundayColor = adjShifts?.sundayColor
+                      const mondayColor = adjShifts?.mondayColor
                       return (
-                        <td key={di} className={`p-0 align-top ${isConfirmed(dateStr) ? 'bg-gray-100/70' : ''} ${isMonday && hasSundayShift ? 'border-l-4 border-l-blue-500' : ''} ${isSunday && hasMondayShift ? 'border-r-4 border-r-green-500' : ''}`}>
+                        <td key={di} className="p-0 align-top" style={{
+                          borderLeftWidth: isMonday && hasSundayShift ? '4px' : undefined,
+                          borderLeftColor: sundayColor,
+                          borderLeftStyle: isMonday && hasSundayShift ? 'solid' : undefined,
+                          borderRightWidth: isSunday && hasMondayShift ? '4px' : undefined,
+                          borderRightColor: mondayColor,
+                          borderRightStyle: isSunday && hasMondayShift ? 'solid' : undefined,
+                          backgroundColor: isConfirmed(dateStr) ? 'rgba(229, 231, 235, 0.7)' : undefined,
+                        }}>
                           <DropCell id={`${user.id}__${dateStr}`}>
                             <div className={`flex flex-col gap-1 p-1.5 min-h-[56px] ${isConfirmed(dateStr) ? 'opacity-60' : ''}`}>
                               {onVacation && (

@@ -920,12 +920,12 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                 const hasSundayShift = adjShifts?.hasSundayShift ?? false
                 const hasMondayShift = adjShifts?.hasMondayShift ?? false
                 return (
-                  <tr key={user.id} className={`group relative border-l-[3px] border-r-[3px] ${
-                    hasSundayShift ? 'border-l-indigo-500' : 'border-l-transparent'
-                  } ${
-                    hasMondayShift ? 'border-r-green-500' : 'border-r-transparent'
-                  }`}>
-                    <td className="px-3 py-3 align-top bg-white">
+                  <tr key={user.id} className="group">
+                    <td className={`px-3 py-3 align-top bg-white border-l-[3px] border-r-[3px] ${
+                      hasSundayShift ? 'border-l-indigo-500' : 'border-l-transparent'
+                    } ${
+                      hasMondayShift ? 'border-r-green-500' : 'border-r-transparent'
+                    }`}>
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0 text-xs font-semibold text-gray-600">
                           {initials}

@@ -133,6 +133,7 @@ function getInitials(name: string): string {
 
 export default function WeekGrid({ shifts: serverShifts, users, locations, weekStart, weekStartStr, dayNotes, calendarEvents, funnelEvents, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays, isSuperAdmin, dayStats, unplannedEntries, monthInfo, adjacentShifts }: Props) {
   const router = useRouter()
+  console.log('[WeekGrid] adjacentShifts:', adjacentShifts)
   // Optimistische Sicht auf die Schichten: Drag/Resize wird sofort angezeigt,
   // der Server-Roundtrip läuft im Hintergrund. Schlägt die Action fehl (oder
   // kommt der neue Server-Stand), setzt React automatisch zurück.
@@ -444,6 +445,10 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
 
   return (
     <>
+      {/* DEBUG */}
+      <div className="bg-red-100 p-2 text-xs font-mono">
+        DEBUG adjacentShifts: {JSON.stringify(adjacentShifts)}
+      </div>
       {/* ─── MOBILE VIEW ──────────────────────────────────────────── */}
       <div className="md:hidden flex flex-col bg-white">
         {/* Header */}

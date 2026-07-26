@@ -56,13 +56,13 @@ export default function ShiftBlock({ shift, onDelete, onDuplicate, onEdit, previ
       suppressHydrationWarning
     >
       <div className="px-2.5 py-2 pb-3">
-        <div className={`font-semibold text-sm leading-tight ${hasCompletedTimeEntry ? 'opacity-75' : ''}`}>
+        <div className="font-semibold text-sm leading-tight">
           {displayStartTime} –{' '}
           <span className={isResizing ? 'bg-black/10 rounded px-0.5' : ''}>{displayActualEndTime}</span>
-          {hasCompletedTimeEntry && <span className="text-[9px] font-normal ml-1 opacity-60">(Ist)</span>}
+          {hasCompletedTimeEntry && <span className="text-[9px] font-normal ml-1">(Ist)</span>}
         </div>
         {hasCompletedTimeEntry && (
-          <div className="text-[10px] truncate mt-0.5 text-white/70 opacity-60">
+          <div className="text-[10px] mt-1 text-white/90 leading-snug">
             Plan: {shift.startTime} – {displayEndTime}
           </div>
         )}

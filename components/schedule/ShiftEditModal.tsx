@@ -42,22 +42,34 @@ export default function ShiftEditModal({ shift, locations, users, onClose, onSav
   const [istSaved, setIstSaved] = useState(false)
 
   async function saveIstZeiten() {
-    if (!shift.timeEntry) return
     setIstError(null)
     setIstSaved(false)
     if (!istVon) {
-      setIstError('Beginn fehlt')
+      setIstError('Beginn erforderlich')
       return
     }
     setSavingIst(true)
     try {
-      unwrap(await adminUpdateTimeEntry({
-        id: shift.timeEntry.id,
-        date: dateStr,
-        checkin: istVon,
-        checkout: istBis || undefined,
-        locationId,
-      }))
+      if (shift.timeEntry) {
+        // Existierender Eintrag aktualisieren
+        unwrap(await adminUpdateTimeEntry({
+          id: shift.timeEntry.id,
+          date: dateStr,
+          checkin: istVon,
+          checkout: istBis || undefined,
+          locationId,
+        }))
+      } else {
+        // Neuen Eintrag anlegen
+        const { adminCreateTimeEntry } = await import('@/app/actions/timesheets')
+        unwrap(await adminCreateTimeEntry({
+          userId: shift.userId!,
+          locationId,
+          date: dateStr,
+          checkin: istVon,
+          checkout: istBis,
+        }))
+      }
       setIstSaved(true)
       await new Promise(r => setTimeout(r, 600))
       router.refresh()
@@ -165,10 +177,10 @@ export default function ShiftEditModal({ shift, locations, users, onClose, onSav
             <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
           )}
 
-          {shift.timeEntry && (
+          {!isUnassigned && (
             <div className="border-t border-gray-100 pt-3 mt-1">
               <p className="text-xs font-medium text-gray-700 mb-1.5 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Ist-Zeiten (gestempelt)
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Ist-Zeiten {shift.timeEntry ? '(gestempelt)' : '(nachtragen)'}
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -190,7 +202,7 @@ export default function ShiftEditModal({ shift, locations, users, onClose, onSav
                   />
                 </div>
               </div>
-              {!istBis && <p className="text-[11px] text-amber-600 mt-1">Kein Ende gestempelt – bitte nachtragen, sonst zählt die Schicht nicht.</p>}
+              {!istBis && <p className="text-[11px] text-amber-600 mt-1">Ende erforderlich – sonst zählt die Schicht nicht.</p>}
               {istError && <p className="text-xs text-red-600 mt-1.5">{istError}</p>}
               <button
                 type="button"

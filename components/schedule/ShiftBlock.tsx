@@ -31,6 +31,11 @@ export default function ShiftBlock({ shift, onDelete, onDuplicate, onEdit, previ
   const displayEndTime = previewEndTime ?? shift.endTime
   const isResizing = !!previewEndTime
 
+  // Zeige Ist-Zeiten wenn vorhanden und abgeschlossen, sonst geplante Zeiten
+  const hasCompletedTimeEntry = shift.timeEntry?.checkoutAt
+  const displayStartTime = hasCompletedTimeEntry ? fmtTime(shift.timeEntry.checkinAt) : shift.startTime
+  const displayActualEndTime = hasCompletedTimeEntry ? fmtTime(shift.timeEntry.checkoutAt) : displayEndTime
+
   return (
     <div
       ref={setNodeRef}
@@ -51,10 +56,16 @@ export default function ShiftBlock({ shift, onDelete, onDuplicate, onEdit, previ
       suppressHydrationWarning
     >
       <div className="px-2.5 py-2 pb-3">
-        <div className="font-semibold text-sm leading-tight">
-          {shift.startTime} –{' '}
-          <span className={isResizing ? 'bg-black/10 rounded px-0.5' : ''}>{displayEndTime}</span>
+        <div className={`font-semibold text-sm leading-tight ${hasCompletedTimeEntry ? 'opacity-75' : ''}`}>
+          {displayStartTime} –{' '}
+          <span className={isResizing ? 'bg-black/10 rounded px-0.5' : ''}>{displayActualEndTime}</span>
+          {hasCompletedTimeEntry && <span className="text-[9px] font-normal ml-1 opacity-60">(Ist)</span>}
         </div>
+        {hasCompletedTimeEntry && (
+          <div className="text-[10px] truncate mt-0.5 text-white/70 opacity-60">
+            Plan: {shift.startTime} – {displayEndTime}
+          </div>
+        )}
         {isUnassigned ? (
           <>
             <div className="flex items-center gap-1 mt-0.5">
@@ -66,10 +77,9 @@ export default function ShiftBlock({ shift, onDelete, onDuplicate, onEdit, previ
         ) : (
           <div className="text-[10px] truncate mt-0.5 text-white/70">{shift.location.name}</div>
         )}
-        {!isUnassigned && shift.timeEntry && (
+        {!isUnassigned && shift.timeEntry && !hasCompletedTimeEntry && (
           <div className="mt-1 inline-flex items-center rounded bg-black/20 px-1 py-0.5 text-[10px] font-semibold leading-none text-white">
-            Ist {fmtTime(shift.timeEntry.checkinAt)}
-            {shift.timeEntry.checkoutAt ? `–${fmtTime(shift.timeEntry.checkoutAt)}` : '– läuft'}
+            Ist {fmtTime(shift.timeEntry.checkinAt)} – läuft
           </div>
         )}
       </div>

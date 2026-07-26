@@ -81,6 +81,7 @@ export async function adminUpdateTimeEntry(input: UpdateInput): Promise<Timeshee
   })
 
   revalidatePath('/admin/timesheets')
+  revalidatePath('/admin/schedule')
   return {}
 }
 

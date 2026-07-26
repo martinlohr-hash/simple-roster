@@ -59,7 +59,9 @@ export default function ShiftEditModal({ shift, locations, users, onClose, onSav
         locationId,
       }))
       setIstSaved(true)
+      await new Promise(r => setTimeout(r, 600))
       router.refresh()
+      onClose()
     } catch (err) {
       setIstError(err instanceof Error ? err.message : 'Fehler')
     } finally {

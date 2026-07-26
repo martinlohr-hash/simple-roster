@@ -32,9 +32,9 @@ export default function ShiftBlock({ shift, onDelete, onDuplicate, onEdit, previ
   const isResizing = !!previewEndTime
 
   // Zeige Ist-Zeiten wenn vorhanden und abgeschlossen, sonst geplante Zeiten
-  const hasCompletedTimeEntry = shift.timeEntry?.checkoutAt
-  const displayStartTime = hasCompletedTimeEntry ? fmtTime(shift.timeEntry.checkinAt) : shift.startTime
-  const displayActualEndTime = hasCompletedTimeEntry ? fmtTime(shift.timeEntry.checkoutAt) : displayEndTime
+  const hasCompletedTimeEntry = !!(shift.timeEntry && shift.timeEntry.checkoutAt)
+  const displayStartTime = hasCompletedTimeEntry && shift.timeEntry ? fmtTime(shift.timeEntry.checkinAt) : shift.startTime
+  const displayActualEndTime = hasCompletedTimeEntry && shift.timeEntry ? fmtTime(shift.timeEntry.checkoutAt!) : displayEndTime
 
   return (
     <div

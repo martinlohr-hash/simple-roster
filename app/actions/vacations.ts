@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
-import { isAdmin } from '@/lib/session'
+import { isAdmin, isSuperAdmin } from '@/lib/session'
 import { calcWorkdays, calcVacationRemaining } from '@/lib/vacation'
 
 export async function createVacationRequest(formData: FormData): Promise<{ error?: string }> {
@@ -109,4 +109,69 @@ export async function deleteVacation(id: string): Promise<void> {
 
   revalidatePath('/admin/vacations')
   revalidatePath('/admin/schedule')
+}
+
+export async function updateVacationRequest(id: string, formData: FormData): Promise<{ error?: string }> {
+  const session = await getSession()
+  if (!session || !isSuperAdmin(session.role)) return { error: 'Keine Berechtigung' }
+
+  const newStartDate = new Date(formData.get('startDate') as string)
+  const newEndDate = new Date(formData.get('endDate') as string)
+  const newNote = (formData.get('note') as string) || null
+
+  if (isNaN(newStartDate.getTime()) || isNaN(newEndDate.getTime())) return { error: 'Ungültiges Datum' }
+  if (newEndDate < newStartDate) return { error: 'Enddatum muss nach dem Startdatum liegen' }
+
+  const newWorkdays = calcWorkdays(newStartDate, newEndDate)
+  if (newWorkdays === 0) return { error: 'Kein Werktag im gewählten Zeitraum' }
+
+  const existing = await prisma.vacationRequest.findUnique({
+    where: { id },
+    include: { user: { select: { vacationDaysPerYear: true, startDate: true } } },
+  })
+  if (!existing) return { error: 'Urlaubseintrag nicht gefunden' }
+
+  // Re-validate remaining days if workdays increased
+  if (newWorkdays > existing.workdays) {
+    const allVacations = await prisma.vacationRequest.findMany({
+      where: { userId: existing.userId, status: { not: 'REJECTED' }, id: { not: id } },
+    })
+    const remaining = calcVacationRemaining(existing.user, allVacations)
+    const additional = newWorkdays - existing.workdays
+    if (additional > remaining) {
+      return { error: `Nicht genug Resturlaub für die Erhöhung. Verfügbar: ${remaining} Tage, zusätzlich erforderlich: ${additional} Tage.` }
+    }
+  }
+
+  // Create history entry
+  await prisma.vacationRequestHistory.create({
+    data: {
+      vacationId: id,
+      changedBy: session.userId,
+      changeType: 'UPDATED',
+      oldStartDate: existing.startDate,
+      newStartDate,
+      oldEndDate: existing.endDate,
+      newEndDate,
+      oldWorkdays: existing.workdays,
+      newWorkdays,
+      oldNote: existing.note,
+      newNote,
+    },
+  })
+
+  // Update vacation
+  await prisma.vacationRequest.update({
+    where: { id },
+    data: {
+      startDate: newStartDate,
+      endDate: newEndDate,
+      workdays: newWorkdays,
+      note: newNote,
+    },
+  })
+
+  revalidatePath('/admin/vacations')
+  revalidatePath('/admin/schedule')
+  return {}
 }

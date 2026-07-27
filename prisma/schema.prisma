@@ -147,6 +147,7 @@ model User {
   shiftApplications    ShiftApplication[]
   vacationRequests     VacationRequest[]    @relation("VacationEmployee")
   reviewedVacations    VacationRequest[]    @relation("VacationReviewer")
+  vacationHistory      VacationRequestHistory[] @relation("VacationHistory")
   insight              EmployeeInsight?     @relation("InsightSubject")
   authoredInsights     EmployeeInsight[]    @relation("InsightAuthor")
   onboardingDeliveries OnboardingDelivery[]
@@ -325,6 +326,26 @@ model VacationRequest {
   reviewer    User?          @relation("VacationReviewer", fields: [reviewedBy], references: [id])
   reviewedAt  DateTime?
   createdAt   DateTime       @default(now())
+  history     VacationRequestHistory[]
+}
+
+// Audit-Log für Urlaubs-Änderungen (wer hat was wann geändert).
+model VacationRequestHistory {
+  id            String    @id @default(cuid())
+  vacationId    String
+  vacation      VacationRequest @relation(fields: [vacationId], references: [id], onDelete: Cascade)
+  changedBy     String
+  changedByUser User      @relation("VacationHistory", fields: [changedBy], references: [id])
+  changeType    String    // "CREATED", "UPDATED", "APPROVED", "REJECTED"
+  oldStartDate  DateTime?
+  newStartDate  DateTime?
+  oldEndDate    DateTime?
+  newEndDate    DateTime?
+  oldWorkdays   Int?
+  newWorkdays   Int?
+  oldNote       String?
+  newNote       String?
+  changedAt     DateTime  @default(now())
 }
 
 // Vertrauliche Team-Intelligence-Einschätzung pro Mitarbeiter.

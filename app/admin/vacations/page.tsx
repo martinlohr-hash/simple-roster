@@ -1,11 +1,17 @@
 import { prisma } from '@/lib/db'
+import { getSession } from '@/app/actions/auth'
 import { calcVacationEntitlement, calcVacationUsed } from '@/lib/vacation'
 import VacationsClient from './VacationsClient'
 
 export default async function VacationsPage() {
+  const session = await getSession()
+
   const [vacationRequests, users] = await Promise.all([
     prisma.vacationRequest.findMany({
-      include: { user: { select: { id: true, name: true, vacationDaysPerYear: true, startDate: true } } },
+      include: {
+        user: { select: { id: true, name: true, vacationDaysPerYear: true, startDate: true } },
+        history: { orderBy: { changedAt: 'desc' }, include: { changedByUser: { select: { name: true } } } },
+      },
       orderBy: { createdAt: 'desc' },
     }),
     prisma.user.findMany({
@@ -38,12 +44,28 @@ export default async function VacationsPage() {
       note: v.note,
       createdAt: v.createdAt.toISOString(),
       remaining,
+      history: v.history.map((h) => ({
+        id: h.id,
+        changeType: h.changeType,
+        oldWorkdays: h.oldWorkdays,
+        newWorkdays: h.newWorkdays,
+        oldStartDate: h.oldStartDate?.toISOString() ?? null,
+        newStartDate: h.newStartDate?.toISOString() ?? null,
+        oldEndDate: h.oldEndDate?.toISOString() ?? null,
+        newEndDate: h.newEndDate?.toISOString() ?? null,
+        changedByName: h.changedByUser.name,
+        changedAt: h.changedAt.toISOString(),
+      })),
     }
   })
 
   return (
     <div className="p-6 max-w-5xl">
-      <VacationsClient vacations={vacations} employees={users} />
+      <VacationsClient
+        vacations={vacations}
+        employees={users}
+        isSuperAdmin={session?.role === 'SUPER_ADMIN'}
+      />
     </div>
   )
 }

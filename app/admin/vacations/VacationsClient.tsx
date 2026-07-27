@@ -1,9 +1,22 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { approveVacation, rejectVacation, deleteVacation, createVacationAdmin } from '@/app/actions/vacations'
+import { approveVacation, rejectVacation, deleteVacation, createVacationAdmin, updateVacationRequest } from '@/app/actions/vacations'
 import { format } from 'date-fns'
 import { de } from 'date-fns/locale'
+
+type HistoryEntry = {
+  id: string
+  changeType: string
+  oldWorkdays: number | null
+  newWorkdays: number | null
+  oldStartDate: string | null
+  newStartDate: string | null
+  oldEndDate: string | null
+  newEndDate: string | null
+  changedByName: string
+  changedAt: string
+}
 
 type VacationRow = {
   id: string
@@ -16,6 +29,7 @@ type VacationRow = {
   note: string | null
   createdAt: string
   remaining: number
+  history: HistoryEntry[]
 }
 
 type Employee = { id: string; name: string }
@@ -33,12 +47,17 @@ function fmt(dateStr: string) {
 export default function VacationsClient({
   vacations,
   employees,
+  isSuperAdmin = false,
 }: {
   vacations: VacationRow[]
   employees: Employee[]
+  isSuperAdmin?: boolean
 }) {
   const [pending, startTransition] = useTransition()
   const [showModal, setShowModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showHistory, setShowHistory] = useState<string | null>(null)
+  const [editingVacation, setEditingVacation] = useState<VacationRow | null>(null)
   const [modalError, setModalError] = useState<string | null>(null)
   const [modalPending, startModalTransition] = useTransition()
 
@@ -63,6 +82,26 @@ export default function VacationsClient({
         setModalError(result.error)
       } else {
         setShowModal(false)
+      }
+    })
+  }
+
+  function openEditModal(vacation: VacationRow) {
+    setEditingVacation(vacation)
+    setShowEditModal(true)
+    setModalError(null)
+  }
+
+  function handleEditSubmit(formData: FormData) {
+    if (!editingVacation) return
+    setModalError(null)
+    startModalTransition(async () => {
+      const result = await updateVacationRequest(editingVacation.id, formData)
+      if (result.error) {
+        setModalError(result.error)
+      } else {
+        setShowEditModal(false)
+        setEditingVacation(null)
       }
     })
   }
@@ -122,7 +161,7 @@ export default function VacationsClient({
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500 max-w-[200px] truncate">{v.note || '–'}</td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5 justify-end">
+                      <div className="flex items-center gap-1.5 justify-end flex-wrap">
                         {v.status === 'PENDING' && (
                           <>
                             <button
@@ -151,13 +190,34 @@ export default function VacationsClient({
                           </button>
                         )}
                         {v.status === 'APPROVED' && (
-                          <button
-                            onClick={() => handleReject(v.id)}
-                            disabled={pending}
-                            className="px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 rounded-lg hover:bg-red-100 disabled:opacity-50 transition"
-                          >
-                            Zurückziehen
-                          </button>
+                          <>
+                            {isSuperAdmin && (
+                              <button
+                                onClick={() => openEditModal(v)}
+                                disabled={pending}
+                                className="px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50 transition"
+                                title="Urlaubstage korrigieren (Admin-Funktion)"
+                              >
+                                ✎ Bearbeiten
+                              </button>
+                            )}
+                            {v.history.length > 0 && (
+                              <button
+                                onClick={() => setShowHistory(showHistory === v.id ? null : v.id)}
+                                className="px-2.5 py-1 text-xs font-medium bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+                                title="Änderungsverlauf"
+                              >
+                                📋 Verlauf
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleReject(v.id)}
+                              disabled={pending}
+                              className="px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 rounded-lg hover:bg-red-100 disabled:opacity-50 transition"
+                            >
+                              Zurückziehen
+                            </button>
+                          </>
                         )}
                         <button
                           onClick={() => handleDelete(v.id)}
@@ -168,6 +228,29 @@ export default function VacationsClient({
                           ✕
                         </button>
                       </div>
+                      {showHistory === v.id && v.history.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-100 space-y-2 text-xs">
+                          {v.history.map((h) => (
+                            <div key={h.id} className="bg-blue-50 rounded px-2 py-1.5 text-gray-700">
+                              <div className="font-medium">{h.changeType === 'UPDATED' ? 'Korrigiert' : h.changeType}</div>
+                              <div className="text-gray-600 mt-0.5">
+                                {h.oldWorkdays !== h.newWorkdays && (
+                                  <div>Tage: {h.oldWorkdays} → {h.newWorkdays}</div>
+                                )}
+                                {h.oldStartDate !== h.newStartDate && (
+                                  <div>Von: {fmt(h.oldStartDate!)} → {fmt(h.newStartDate!)}</div>
+                                )}
+                                {h.oldEndDate !== h.newEndDate && (
+                                  <div>Bis: {fmt(h.oldEndDate!)} → {fmt(h.newEndDate!)}</div>
+                                )}
+                              </div>
+                              <div className="text-gray-500 mt-1">
+                                von {h.changedByName}, {fmt(h.changedAt)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )
@@ -225,6 +308,83 @@ export default function VacationsClient({
                   className="flex-1 py-2 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition"
                 >
                   {modalPending ? 'Wird eingetragen…' : 'Eintragen'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && editingVacation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-[2px]">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
+              <h2 className="text-base font-semibold text-gray-900">Urlaub korrigieren</h2>
+              <button onClick={() => { setShowEditModal(false); setEditingVacation(null) }} className="text-gray-400 hover:text-gray-600 transition text-lg leading-none">✕</button>
+            </div>
+            <form action={handleEditSubmit} className="px-6 py-5 space-y-4">
+              <div className="bg-blue-50 rounded-lg px-3 py-2 text-xs text-blue-700">
+                ⚠️ Änderungen werden protokolliert und sind in der Historie sichtbar.
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Mitarbeiter</label>
+                <div className="px-3 py-2 bg-gray-50 rounded-lg text-sm font-medium text-gray-900 border border-gray-200">
+                  {editingVacation.userName}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Von</label>
+                  <input
+                    type="date"
+                    name="startDate"
+                    required
+                    defaultValue={editingVacation.startDate.split('T')[0]}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Bis</label>
+                  <input
+                    type="date"
+                    name="endDate"
+                    required
+                    defaultValue={editingVacation.endDate.split('T')[0]}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Notiz (optional)</label>
+                <input
+                  type="text"
+                  name="note"
+                  placeholder="z.B. Sommerurlaub"
+                  defaultValue={editingVacation.note || ''}
+                  className={inputClass}
+                />
+              </div>
+              <div className="bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-600">
+                <div className="font-medium text-gray-700 mb-1">Aktuell: {editingVacation.workdays} Tage</div>
+                <div>Resturlaub: {editingVacation.remaining} Tage</div>
+              </div>
+              {modalError && (
+                <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{modalError}</p>
+              )}
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setShowEditModal(false); setEditingVacation(null) }}
+                  className="flex-1 py-2 px-4 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  type="submit"
+                  disabled={modalPending}
+                  className="flex-1 py-2 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition"
+                >
+                  {modalPending ? 'Wird gespeichert…' : 'Speichern'}
                 </button>
               </div>
             </form>

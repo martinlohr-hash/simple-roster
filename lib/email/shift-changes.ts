@@ -14,12 +14,20 @@ export interface ShiftChange {
 
 export function buildShiftChangesEmail(
   changes: ShiftChange[],
-  user: { firstName: string | null; lastName: string | null }
+  user: { firstName: string | null; lastName: string | null },
+  dashboardUrl: string = 'http://localhost:3000'
 ) {
   const firstName = user.firstName || 'Kolleg*in'
   const subject = changes.length === 1
     ? `Dein Dienstplan: ${changes[0].action === 'assigned' ? 'Neue' : 'Geänderte'} Schicht`
     : `Dein Dienstplan: ${changes.length} Änderungen`
+
+  // Link zur Woche der ersten Schicht
+  const firstDate = new Date(changes[0].date)
+  const monday = new Date(firstDate)
+  monday.setDate(monday.getDate() - (monday.getDay() || 7) + 1)
+  const weekParam = monday.toISOString().split('T')[0]
+  const scheduleLink = `${dashboardUrl}/employee/schedule?week=${weekParam}`
 
   const changesHtml = changes
     .map(c => {
@@ -54,7 +62,13 @@ export function buildShiftChangesEmail(
     <table style="width: 100%; margin: 20px 0; border-collapse: collapse;">
       ${changesHtml}
     </table>
-    <p>Schau gleich in dein Dashboard, um alle Details zu sehen.</p>
+    <p style="margin-top: 20px;">
+      <a href="${scheduleLink}"
+         style="display: inline-block; padding: 12px 24px; background-color: #059669; color: white;
+                 text-decoration: none; border-radius: 6px; font-weight: bold;">
+        Zum Dienstplan
+      </a>
+    </p>
   `
 
   const text = `Hallo ${firstName},
@@ -77,7 +91,7 @@ ${changes
   })
   .join('\n')}
 
-Schau gleich in dein Dashboard, um alle Details zu sehen.
+Dienstplan ansehen: ${scheduleLink}
   `
 
   return { subject, html, text }

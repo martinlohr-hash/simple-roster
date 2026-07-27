@@ -86,6 +86,8 @@ export async function sendPendingEmails() {
 
   const results = { sent: 0, failed: 0, skipped: 0 }
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
   for (const item of pending) {
     try {
       if (item.type === 'shifts' && item.metadata && typeof item.metadata === 'object' && 'changes' in item.metadata) {
@@ -93,7 +95,7 @@ export async function sendPendingEmails() {
         const emailContent = buildShiftChangesEmail(changes, {
           firstName: item.user.firstName || item.user.name.split(' ')[0],
           lastName: item.user.lastName || item.user.name.split(' ').pop() || '',
-        })
+        }, baseUrl)
 
         await sendMail({
           to: item.user.email,

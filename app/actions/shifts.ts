@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
 import { isAdmin } from '@/lib/session'
+import { queueShiftEmail } from '@/lib/mail/queue'
 
 // Fachliche Fehler als Rückgabewert statt throw: geworfene Errors werden von
 // Next.js in Production maskiert und kämen beim Nutzer nie an.
@@ -24,7 +25,7 @@ export async function createShift(data: {
     if (conflict) return { error: conflict }
   }
 
-  await prisma.shift.create({
+  const shift = await prisma.shift.create({
     data: {
       userId: data.userId ?? null,
       locationId: data.locationId,
@@ -32,7 +33,21 @@ export async function createShift(data: {
       startTime: data.startTime,
       endTime: data.endTime,
     },
+    include: { location: { select: { name: true } } },
   })
+
+  // Queue E-Mail an MA, wenn zugewiesen
+  if (shift.userId) {
+    await queueShiftEmail(shift.userId, [{
+      shiftId: shift.id,
+      action: 'assigned',
+      date: shift.date.toISOString().split('T')[0],
+      startTime: shift.startTime,
+      endTime: shift.endTime,
+      location: shift.location.name,
+    }])
+  }
+
   revalidatePath('/admin/schedule')
   return {}
 }
@@ -41,8 +56,12 @@ export async function updateShift(id: string, data: { userId?: string | null; da
   const session = await getSession()
   if (!session || !isAdmin(session.role)) return { error: 'Keine Berechtigung' }
 
-  const existing = await prisma.shift.findUnique({ where: { id } })
+  const existing = await prisma.shift.findUnique({
+    where: { id },
+    include: { location: { select: { name: true } } },
+  })
   if (!existing) return { error: 'Schicht nicht gefunden' }
+
   const effectiveUserId = data.userId !== undefined ? data.userId : existing.userId
   const effectiveDate = data.date
     ? new Date(data.date).toISOString().slice(0, 10)
@@ -61,7 +80,7 @@ export async function updateShift(id: string, data: { userId?: string | null; da
     if (conflict) return { error: conflict }
   }
 
-  await prisma.shift.update({
+  const updated = await prisma.shift.update({
     where: { id },
     data: {
       ...(data.userId !== undefined && { userId: data.userId }),
@@ -70,7 +89,56 @@ export async function updateShift(id: string, data: { userId?: string | null; da
       ...(data.endTime && { endTime: data.endTime }),
       ...(data.locationId && { locationId: data.locationId }),
     },
+    include: { location: { select: { name: true } } },
   })
+
+  // Queue E-Mails an betroffene MA
+  const usersToNotify = new Set<string>()
+
+  // Wenn alte/neue UserID unterschiedlich sind: beide benachrichtigen
+  if (existing.userId && existing.userId !== effectiveUserId) {
+    usersToNotify.add(existing.userId) // alte Schicht entfernt
+  }
+  if (effectiveUserId) {
+    usersToNotify.add(effectiveUserId) // neue/geänderte Schicht
+  }
+
+  for (const userId of usersToNotify) {
+    const isNewAssignment = !existing.userId && userId === effectiveUserId
+    const isRemoved = existing.userId === userId && !effectiveUserId
+    const isChanged = existing.userId === userId && (
+      existing.startTime !== effectiveStart
+      || existing.endTime !== effectiveEnd
+      || existing.date.toISOString().split('T')[0] !== effectiveDate
+    )
+
+    if (isNewAssignment) {
+      // neue Zuweisung
+      await queueShiftEmail(userId, [{
+        shiftId: id,
+        action: 'assigned',
+        date: effectiveDate,
+        startTime: effectiveStart,
+        endTime: effectiveEnd,
+        location: updated.location.name,
+      }])
+    } else if (isChanged && existing.userId === userId) {
+      // Änderung an bestehender Schicht
+      await queueShiftEmail(userId, [{
+        shiftId: id,
+        action: 'changed',
+        date: effectiveDate,
+        startTime: effectiveStart,
+        endTime: effectiveEnd,
+        location: updated.location.name,
+        oldStartTime: existing.startTime,
+        oldEndTime: existing.endTime,
+        oldLocation: existing.location.name,
+      }])
+    }
+    // isRemoved: keine Mail nötig (Schicht wurde entfernt)
+  }
+
   revalidatePath('/admin/schedule')
   return {}
 }

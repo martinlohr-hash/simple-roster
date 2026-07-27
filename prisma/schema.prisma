@@ -151,6 +151,7 @@ model User {
   insight              EmployeeInsight?     @relation("InsightSubject")
   authoredInsights     EmployeeInsight[]    @relation("InsightAuthor")
   onboardingDeliveries OnboardingDelivery[]
+  pendingEmails        PendingEmail[]
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 }
@@ -394,4 +395,22 @@ model OnboardingDelivery {
   step      OnboardingStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
 
   @@unique([userId, stepId])
+}
+
+// Ausstehende E-Mails mit Verzögerung (Debounce für Schicht-Änderungen).
+// type="shifts" → mehrere Schicht-Änderungen/Zuweisungen werden gebündelt pro MA.
+// type="week_released" → Wochen-Freigabe sofort versendet.
+model PendingEmail {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // "shifts" | "week_released"
+  shiftIds    String[] @default([]) // nur für type="shifts": Schicht-IDs
+  metadata    Json?    // { changes: [{ shiftId, action: "assigned"|"changed", oldTime?, newTime?, location? }], weekStart? }
+  scheduledFor DateTime // Versand frühestens zu diesem Zeitpunkt
+  sentAt      DateTime? // Timestamp wenn versendet
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sentAt])
+  @@index([scheduledFor, sentAt])
 }

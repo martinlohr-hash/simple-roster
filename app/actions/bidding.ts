@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getSession } from '@/app/actions/auth'
 import { isAdmin } from '@/lib/session'
 import { prisma } from '@/lib/db'
+import { queueWeekReleasedEmail } from '@/lib/mail/queue'
 
 function utcMonday(date: Date): Date {
   const utcDay = date.getUTCDay() // 0=Sun, 1=Mon, ..., 6=Sat
@@ -19,6 +20,22 @@ export async function revokeWeekRelease(weekStart: string): Promise<void> {
 
   await prisma.weekRelease.deleteMany({ where: { weekStart: monday } })
 
+  // Lösche ausstehende week_released-Mails für diese Woche (falls noch nicht versendet)
+  const pending = await prisma.pendingEmail.findMany({
+    where: { type: 'week_released', sentAt: null },
+  })
+  const weekEnd = new Date(monday)
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + 7)
+
+  for (const p of pending) {
+    if (p.metadata && typeof p.metadata === 'object' && 'weekStart' in p.metadata) {
+      const pWeekStart = new Date((p.metadata as Record<string, unknown>).weekStart as string)
+      if (pWeekStart.getTime() === monday.getTime()) {
+        await prisma.pendingEmail.delete({ where: { id: p.id } })
+      }
+    }
+  }
+
   revalidatePath('/admin/schedule')
   revalidatePath('/employee/open-shifts')
 }
@@ -30,11 +47,16 @@ export async function releaseWeek(weekStart: string): Promise<void> {
   // Parse as UTC midnight to avoid local-timezone drift
   const monday = utcMonday(new Date(weekStart + 'T00:00:00.000Z'))
 
-  await prisma.weekRelease.upsert({
+  const release = await prisma.weekRelease.upsert({
     where: { weekStart: monday },
     update: {},
     create: { weekStart: monday, releasedBy: session.userId },
   })
+
+  // Queue E-Mails an alle MA
+  if (release.id) { // neu erstellt
+    await queueWeekReleasedEmail(session.userId, monday)
+  }
 
   revalidatePath('/admin/schedule')
   revalidatePath('/employee/open-shifts')

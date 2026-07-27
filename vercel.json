@@ -3,6 +3,10 @@
     {
       "path": "/api/onboarding-drip",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/send-pending-emails",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

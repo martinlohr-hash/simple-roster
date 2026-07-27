@@ -145,6 +145,7 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
   const [resizingShift, setResizingShift] = useState<{ id: string; previewEndTime: string } | null>(null)
   const [modalCell, setModalCell] = useState<{ userId: string | null; date: string } | null>(null)
   const [editShift, setEditShift] = useState<ShiftData | null>(null)
+  const [deleteShiftConfirm, setDeleteShiftConfirm] = useState<ShiftData | null>(null)
   const [filterLocationId, setFilterLocationId] = useState<string | null>(null)
   const [dragError, setDragError] = useState<string | null>(null)
   const [releasing, setReleasing] = useState(false)
@@ -386,6 +387,14 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
   )
 
   async function handleDelete(id: string) {
+    const shiftToDelete = shifts.find((s) => s.id === id)
+    if (shiftToDelete) {
+      setDeleteShiftConfirm(shiftToDelete)
+    }
+  }
+
+  async function confirmDelete(id: string) {
+    setDeleteShiftConfirm(null)
     unwrap(await deleteShift(id))
   }
 
@@ -1090,6 +1099,90 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
           locations={locations}
           onClose={() => setEditEntry(null)}
         />
+      )}
+
+      {deleteShiftConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-[2px]">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
+              <h2 className="text-base font-semibold text-gray-900">Schicht wirklich löschen?</h2>
+              <button onClick={() => setDeleteShiftConfirm(null)} className="text-gray-400 hover:text-gray-600 transition text-lg leading-none">✕</button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div className="bg-red-50 rounded-lg px-3 py-2">
+                <div className="text-sm font-medium text-red-900">
+                  {format(new Date(deleteShiftConfirm.date), 'EEEE, d. MMMM', { locale: de })}
+                </div>
+                <div className="text-xs text-red-700 mt-0.5">
+                  {deleteShiftConfirm.startTime} – {deleteShiftConfirm.endTime} · {deleteShiftConfirm.location.name}
+                </div>
+                {deleteShiftConfirm.user && (
+                  <div className="text-xs text-red-700 mt-1 font-medium">Zugewiesen: {deleteShiftConfirm.user.name}</div>
+                )}
+              </div>
+
+              {/* Bewerber auf dieser Schicht */}
+              {(() => {
+                const applicants = applications.filter((a) => a.shiftId === deleteShiftConfirm.id && a.status === 'PENDING')
+                return applicants.length > 0 ? (
+                  <div>
+                    <div className="text-xs font-semibold text-gray-600 mb-1.5">Bewerber auf dieser Schicht:</div>
+                    <div className="space-y-1">
+                      {applicants.map((app) => (
+                        <div key={app.id} className="text-xs bg-blue-50 rounded px-2 py-1 text-blue-700 font-medium">
+                          ✓ {app.user.name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null
+              })()}
+
+              {/* Andere Schichten am gleichen Tag */}
+              {(() => {
+                const otherShifts = shifts.filter((s) => s.date === deleteShiftConfirm.date && s.id !== deleteShiftConfirm.id && !s.userId)
+                const withApplicants = otherShifts.filter((s) =>
+                  applications.some((a) => a.shiftId === s.id && a.status === 'PENDING')
+                )
+                return withApplicants.length > 0 ? (
+                  <div>
+                    <div className="text-xs font-semibold text-gray-600 mb-1.5">Andere Schichten an diesem Tag mit Bewerbern:</div>
+                    <div className="space-y-2">
+                      {withApplicants.map((shift) => {
+                        const apps = applications.filter((a) => a.shiftId === shift.id && a.status === 'PENDING')
+                        return (
+                          <div key={shift.id} className="text-xs bg-amber-50 rounded px-2 py-1 border border-amber-200">
+                            <div className="font-medium text-amber-900">{shift.startTime} – {shift.endTime}</div>
+                            <div className="text-amber-700 text-[11px] mt-0.5">
+                              {apps.map((a) => a.user.name).join(', ')}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : null
+              })()}
+
+              <div className="flex gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteShiftConfirm(null)}
+                  className="flex-1 py-2 px-4 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 transition"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => confirmDelete(deleteShiftConfirm.id)}
+                  className="flex-1 py-2 px-4 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition"
+                >
+                  Löschen
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

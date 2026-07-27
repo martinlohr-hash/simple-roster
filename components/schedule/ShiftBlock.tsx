@@ -4,16 +4,22 @@ import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { ShiftData } from './WeekGrid'
 
+type ApplicationData = {
+  id: string
+  status: 'PENDING' | 'ASSIGNED' | 'REJECTED'
+  user: { name: string }
+}
+
 type Props = {
   shift: ShiftData
   onDelete: (id: string) => void
   onDuplicate: (id: string) => void
   onEdit: (shift: ShiftData) => void
   previewEndTime?: string
-  applicationCount?: number
+  applications?: ApplicationData[]
 }
 
-export default function ShiftBlock({ shift, onDelete, onDuplicate, onEdit, previewEndTime, applicationCount = 0 }: Props) {
+export default function ShiftBlock({ shift, onDelete, onDuplicate, onEdit, previewEndTime, applications = [] }: Props) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: shift.id,
   })
@@ -103,12 +109,16 @@ export default function ShiftBlock({ shift, onDelete, onDuplicate, onEdit, previ
         </svg>
       </button>
 
-      {isUnassigned && applicationCount > 0 ? (
+      {isUnassigned && applications.length > 0 ? (
         <span
-          className="absolute -top-2 -right-2 min-w-[1.25rem] h-5 px-1 bg-amber-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center shadow pointer-events-none"
-          aria-label={`${applicationCount} Bewerbung${applicationCount !== 1 ? 'en' : ''}`}
+          className="absolute -top-2 -right-2 min-h-5 px-1.5 py-0.5 bg-amber-500 rounded-full text-white text-[8px] font-bold flex items-center justify-center shadow pointer-events-none whitespace-nowrap"
+          aria-label={`${applications.length} Bewerbung${applications.length !== 1 ? 'en' : ''}`}
+          title={applications.map((a) => a.user.name).join(', ')}
         >
-          {applicationCount}
+          {applications.map((a) => {
+            const parts = a.user.name.trim().split(/\s+/)
+            return (parts[0]?.[0] ?? '?') + (parts[1]?.[0] ?? '')
+          }).join(' ')}
         </span>
       ) : (
         <button

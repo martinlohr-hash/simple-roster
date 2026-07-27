@@ -909,7 +909,7 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                                 onDuplicate={handleDuplicate}
                                 onEdit={handleEdit}
                                 previewEndTime={resizingShift?.id === shift.id ? resizingShift.previewEndTime : undefined}
-                                applicationCount={applications.filter((a) => a.shiftId === shift.id && a.status === 'PENDING').length}
+                                applications={applications.filter((a) => a.shiftId === shift.id && a.status === 'PENDING')}
                               />
                             ))}
                             <button
@@ -995,7 +995,7 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                                   onDuplicate={handleDuplicate}
                                   onEdit={handleEdit}
                                   previewEndTime={resizingShift?.id === shift.id ? resizingShift.previewEndTime : undefined}
-                                  applicationCount={applications.filter((a) => a.shiftId === shift.id && a.status === 'PENDING').length}
+                                  applications={applications.filter((a) => a.shiftId === shift.id && a.status === 'PENDING')}
                                 />
                               ))}
                               {getUnplannedForCell(user.id, dateStr).map((entry) => (

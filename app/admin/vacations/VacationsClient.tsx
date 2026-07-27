@@ -161,20 +161,20 @@ export default function VacationsClient({
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500 max-w-[200px] truncate">{v.note || '–'}</td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5 justify-end flex-wrap">
+                      <div className="flex items-center gap-1 justify-end">
                         {v.status === 'PENDING' && (
                           <>
                             <button
                               onClick={() => handleApprove(v.id)}
                               disabled={pending}
-                              className="px-2.5 py-1 text-xs font-medium bg-green-50 text-green-700 rounded-lg hover:bg-green-100 disabled:opacity-50 transition"
+                              className="px-2.5 py-1 text-xs font-medium bg-green-50 text-green-700 rounded-lg hover:bg-green-100 disabled:opacity-50 transition whitespace-nowrap"
                             >
                               Genehmigen
                             </button>
                             <button
                               onClick={() => handleReject(v.id)}
                               disabled={pending}
-                              className="px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 rounded-lg hover:bg-red-100 disabled:opacity-50 transition"
+                              className="px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 rounded-lg hover:bg-red-100 disabled:opacity-50 transition whitespace-nowrap"
                             >
                               Ablehnen
                             </button>
@@ -184,36 +184,38 @@ export default function VacationsClient({
                           <button
                             onClick={() => handleApprove(v.id)}
                             disabled={pending}
-                            className="px-2.5 py-1 text-xs font-medium bg-green-50 text-green-700 rounded-lg hover:bg-green-100 disabled:opacity-50 transition"
+                            className="px-2.5 py-1 text-xs font-medium bg-green-50 text-green-700 rounded-lg hover:bg-green-100 disabled:opacity-50 transition whitespace-nowrap"
                           >
-                            Doch genehmigen
+                            Genehmigen
                           </button>
                         )}
                         {v.status === 'APPROVED' && (
                           <>
                             {isSuperAdmin && (
-                              <button
-                                onClick={() => openEditModal(v)}
-                                disabled={pending}
-                                className="px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50 transition"
-                                title="Urlaubstage korrigieren (Admin-Funktion)"
-                              >
-                                ✎ Bearbeiten
-                              </button>
-                            )}
-                            {v.history.length > 0 && (
-                              <button
-                                onClick={() => setShowHistory(showHistory === v.id ? null : v.id)}
-                                className="px-2.5 py-1 text-xs font-medium bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-                                title="Änderungsverlauf"
-                              >
-                                📋 Verlauf
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => openEditModal(v)}
+                                  disabled={pending}
+                                  className="px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded disabled:opacity-50 transition whitespace-nowrap"
+                                  title="Urlaubstage korrigieren"
+                                >
+                                  ✎ Bearbeiten
+                                </button>
+                                {v.history.length > 0 && (
+                                  <button
+                                    onClick={() => setShowHistory(showHistory === v.id ? null : v.id)}
+                                    className="px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded transition whitespace-nowrap"
+                                    title="Änderungsverlauf anzeigen"
+                                  >
+                                    📋 Verlauf
+                                  </button>
+                                )}
+                              </>
                             )}
                             <button
                               onClick={() => handleReject(v.id)}
                               disabled={pending}
-                              className="px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700 rounded-lg hover:bg-red-100 disabled:opacity-50 transition"
+                              className="px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50 rounded disabled:opacity-50 transition whitespace-nowrap"
                             >
                               Zurückziehen
                             </button>
@@ -222,18 +224,18 @@ export default function VacationsClient({
                         <button
                           onClick={() => handleDelete(v.id)}
                           disabled={pending}
-                          className="px-2 py-1 text-xs font-medium text-gray-400 hover:text-red-500 disabled:opacity-50 transition"
+                          className="px-1.5 py-1 text-xs text-gray-400 hover:text-red-600 disabled:opacity-50 transition"
                           title="Löschen"
                         >
                           ✕
                         </button>
                       </div>
                       {showHistory === v.id && v.history.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-gray-100 space-y-2 text-xs">
+                        <div className="mt-2 pt-2 border-t border-gray-100 space-y-1 text-xs">
                           {v.history.map((h) => (
-                            <div key={h.id} className="bg-blue-50 rounded px-2 py-1.5 text-gray-700">
-                              <div className="font-medium">{h.changeType === 'UPDATED' ? 'Korrigiert' : h.changeType}</div>
-                              <div className="text-gray-600 mt-0.5">
+                            <div key={h.id} className="bg-blue-50 rounded px-2 py-1 text-gray-700">
+                              <div className="font-medium text-blue-700">Korrigiert von {h.changedByName}, {fmt(h.changedAt)}</div>
+                              <div className="text-gray-600 text-xs mt-0.5">
                                 {h.oldWorkdays !== h.newWorkdays && (
                                   <div>Tage: {h.oldWorkdays} → {h.newWorkdays}</div>
                                 )}
@@ -243,9 +245,6 @@ export default function VacationsClient({
                                 {h.oldEndDate !== h.newEndDate && (
                                   <div>Bis: {fmt(h.oldEndDate!)} → {fmt(h.newEndDate!)}</div>
                                 )}
-                              </div>
-                              <div className="text-gray-500 mt-1">
-                                von {h.changedByName}, {fmt(h.changedAt)}
                               </div>
                             </div>
                           ))}

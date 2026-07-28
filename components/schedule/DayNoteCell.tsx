@@ -6,11 +6,10 @@ import { upsertDayNote } from '@/app/actions/dayNotes'
 type Props = {
   date: string
   initialContent: string
-  calendarEvents?: string[]
   funnelEvents?: string[]
 }
 
-export default function DayNoteCell({ date, initialContent, calendarEvents = [], funnelEvents = [] }: Props) {
+export default function DayNoteCell({ date, initialContent, funnelEvents = [] }: Props) {
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(initialContent)
   const [saved, setSaved] = useState(initialContent)
@@ -60,30 +59,10 @@ export default function DayNoteCell({ date, initialContent, calendarEvents = [],
       </div>
     ) : null
 
-  const calBadges =
-    calendarEvents.length > 0 ? (
-      <div className="flex flex-col gap-1 px-1.5 pt-1">
-        {calendarEvents.map((title, i) => (
-          <div
-            key={i}
-            title={`Google Kalender: ${title}`}
-            className="flex items-start gap-1.5 bg-blue-50 border border-blue-200 rounded-md px-2 py-1 shadow-sm"
-          >
-            <svg className="w-3 h-3 text-blue-500 mt-px shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <rect x="3" y="4" width="18" height="17" rx="2" />
-              <path d="M3 9h18M8 2v4M16 2v4" strokeLinecap="round" />
-            </svg>
-            <p className="text-[11px] font-medium text-blue-800 leading-snug break-words">{title}</p>
-          </div>
-        ))}
-      </div>
-    ) : null
-
   if (editing) {
     return (
       <div>
         {eventBadges}
-        {calBadges}
         <div className="px-1.5 py-1">
         <textarea
           ref={textareaRef}
@@ -103,7 +82,6 @@ export default function DayNoteCell({ date, initialContent, calendarEvents = [],
   return (
     <div>
       {eventBadges}
-      {calBadges}
       <div
         onClick={() => setEditing(true)}
         className="px-1.5 py-1 min-h-[32px] cursor-text group/note"

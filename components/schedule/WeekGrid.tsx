@@ -79,7 +79,6 @@ type Props = {
   weekStart: Date
   weekStartStr: string
   dayNotes: Record<string, string>
-  calendarEvents?: Record<string, string[]>
   funnelEvents?: Record<string, string[]>
   coverageRules: CoverageRuleData[]
   prevWeekHref: string
@@ -131,7 +130,7 @@ function getInitials(name: string): string {
     .join('')
 }
 
-export default function WeekGrid({ shifts: serverShifts, users, locations, weekStart, weekStartStr, dayNotes, calendarEvents, funnelEvents, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays, isSuperAdmin, dayStats, unplannedEntries, monthInfo, adjacentShifts }: Props) {
+export default function WeekGrid({ shifts: serverShifts, users, locations, weekStart, weekStartStr, dayNotes, funnelEvents, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays, isSuperAdmin, dayStats, unplannedEntries, monthInfo, adjacentShifts }: Props) {
   const router = useRouter()
   // Optimistische Sicht auf die Schichten: Drag/Resize wird sofort angezeigt,
   // der Server-Roundtrip läuft im Hintergrund. Schlägt die Action fehl (oder
@@ -882,7 +881,7 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                   const dateStr = format(day, 'yyyy-MM-dd')
                   return (
                     <td key={i} className="p-0 align-top border-l border-gray-100 first:border-l-0">
-                      <DayNoteCell key={dateStr} date={dateStr} initialContent={dayNotes[dateStr] ?? ''} calendarEvents={calendarEvents?.[dateStr] ?? []} funnelEvents={funnelEvents?.[dateStr] ?? []} />
+                      <DayNoteCell key={dateStr} date={dateStr} initialContent={dayNotes[dateStr] ?? ''} funnelEvents={funnelEvents?.[dateStr] ?? []} />
                     </td>
                   )
                 })}

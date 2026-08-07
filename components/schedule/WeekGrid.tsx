@@ -162,8 +162,27 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
   async function toggleDayRelease(dateStr: string, released: boolean) {
     setBusyDay(dateStr)
     try {
-      if (released) unwrap(await unreleaseDay(dateStr))
-      else unwrap(await releaseDay(dateStr))
+      if (released) {
+        unwrap(await unreleaseDay(dateStr))
+      } else {
+        let res = await releaseDay(dateStr)
+        if (res.missingStamps && res.missingStamps.length > 0) {
+          const list = res.missingStamps
+            .map((m) => `– ${m.name}: ${m.hours.toFixed(2).replace('.', ',')} Std.`)
+            .join('\n')
+          const proceed = window.confirm(
+            `Diese Schichten sind vorbei, haben aber keinen Stempel:\n\n${list}\n\n` +
+              `Ohne Korrektur fehlen diese Stunden im Lohn-Export! Bitte erst per Schicht-Klick ` +
+              `nachtragen ("Ist-Zeiten"), oder OK für trotzdem freigeben.`,
+          )
+          if (!proceed) {
+            setBusyDay(null)
+            return
+          }
+          res = await releaseDay(dateStr, true)
+        }
+        unwrap(res)
+      }
       router.refresh()
     } catch (e) {
       setDragError(e instanceof Error ? e.message : 'Freigabe fehlgeschlagen')

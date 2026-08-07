@@ -192,7 +192,23 @@ function ReleaseBar({
     setError('')
     setBusy(true)
     try {
-      unwrap(await releaseDay(day))
+      let res = await releaseDay(day)
+      if (res.missingStamps && res.missingStamps.length > 0) {
+        const list = res.missingStamps
+          .map((m) => `– ${m.name}: ${m.hours.toFixed(2).replace('.', ',')} Std.`)
+          .join('\n')
+        const proceed = confirm(
+          `Diese Schichten sind vorbei, haben aber keinen Stempel:\n\n${list}\n\n` +
+            `Ohne Korrektur fehlen diese Stunden im Lohn-Export! Bitte erst per Schicht-Klick ` +
+            `nachtragen ("Ist-Zeiten"), oder OK für trotzdem freigeben.`,
+        )
+        if (!proceed) {
+          setBusy(false)
+          return
+        }
+        res = await releaseDay(day, true)
+      }
+      unwrap(res)
       onDone()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fehler')

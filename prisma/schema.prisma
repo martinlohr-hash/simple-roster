@@ -152,6 +152,7 @@ model User {
   authoredInsights     EmployeeInsight[]    @relation("InsightAuthor")
   onboardingDeliveries OnboardingDelivery[]
   pendingEmails        PendingEmail[]
+  payrollAdjustments   PayrollAdjustment[]
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 }
@@ -395,6 +396,26 @@ model OnboardingDelivery {
   step      OnboardingStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
 
   @@unique([userId, stepId])
+}
+
+// Manuelle Nachbesserung der Ist-Stunden im kumulierten Lohn-Export (z. B. vergessener
+// Stempel, Bonus, Kürzung) – mit Pflicht-Begründung, damit das Lohnbüro nachvollziehen
+// kann, warum die Zahl vom reinen Stempel-Wert abweicht. Fest an einen Export-Zeitraum
+// gebunden (periodFrom/periodTo = "yyyy-MM-dd" Europe/Berlin, identisch zu den Grenzen
+// des jeweiligen Lohn-Exports), damit eine Korrektur nicht versehentlich in einen
+// späteren Zeitraum durchschlägt.
+model PayrollAdjustment {
+  id         String   @id @default(cuid())
+  userId     String
+  periodFrom String
+  periodTo   String
+  hours      Float    // Delta, kann negativ sein
+  reason     String
+  createdBy  String?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([periodFrom, periodTo])
 }
 
 // Ausstehende E-Mails mit Verzögerung (Debounce für Schicht-Änderungen).

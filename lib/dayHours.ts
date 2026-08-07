@@ -77,7 +77,7 @@ export function berlinDay(d: Date): string {
 }
 
 /** Aktuelle Berliner Uhrzeit als "HH:MM" (für Vergleich mit Schicht-Endzeiten). */
-function berlinTime(d: Date): string {
+export function berlinTime(d: Date): string {
   return new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Berlin',
     hour: '2-digit',
@@ -196,6 +196,61 @@ export async function computeDayHours(day: string): Promise<{ hours: number; ent
   const stats = await computeDaysStats([day])
   const s = stats[day]
   return { hours: s.actual, entries: s.entries }
+}
+
+export type MissingStampShift = { userId: string; name: string; hours: number }
+
+/**
+ * Beendete Schichten eines Tages ohne jeden Stempel (offen oder abgeschlossen),
+ * Admins ausgenommen. computeDaysStats() zählt solche Schichten zwar als
+ * Fallback in die ANGEZEIGTEN Ist-Stunden (Dienstplan-Footer, Freigabe-Snapshot),
+ * aber der Lohn-Export liest ausschließlich echte TimeEntry-Zeilen aus der DB –
+ * ohne echten Stempel fehlen die Stunden dort komplett. Für die Freigabe-Warnung.
+ */
+export async function getMissingStampShifts(day: string): Promise<MissingStampShift[]> {
+  const now = new Date()
+  const todayStr = berlinDay(now)
+  const nowTime = berlinTime(now)
+
+  const windowStart = new Date(`${day}T00:00:00Z`)
+  windowStart.setUTCDate(windowStart.getUTCDate() - 1)
+  const windowEnd = new Date(`${day}T00:00:00Z`)
+  windowEnd.setUTCDate(windowEnd.getUTCDate() + 2)
+
+  const [entries, shifts] = await Promise.all([
+    prisma.timeEntry.findMany({
+      where: { checkinAt: { gte: windowStart, lt: windowEnd } },
+      select: { userId: true, checkinAt: true, user: { select: { role: true } } },
+    }),
+    prisma.shift.findMany({
+      where: { date: new Date(`${day}T00:00:00Z`), status: { not: 'CANCELLED' }, userId: { not: null } },
+      select: {
+        userId: true,
+        startTime: true,
+        endTime: true,
+        user: { select: { name: true, role: true } },
+      },
+    }),
+  ])
+
+  const stampedUserIds = new Set(
+    entries.filter((e) => !isAdminRole(e.user.role) && berlinDay(e.checkinAt) === day).map((e) => e.userId),
+  )
+
+  const byUser = new Map<string, MissingStampShift>()
+  for (const s of shifts) {
+    if (!s.userId || !s.user || isAdminRole(s.user.role)) continue
+    if (stampedUserIds.has(s.userId)) continue
+    // Über-Mitternacht-Schichten (Ende <= Start) enden erst am Folgetag.
+    const endDay = timeToMinutes(s.endTime) <= timeToMinutes(s.startTime) ? nextDayStr(day) : day
+    const ended = endDay < todayStr || (endDay === todayStr && s.endTime <= nowTime)
+    if (!ended) continue
+    const cur = byUser.get(s.userId) ?? { userId: s.userId, name: s.user.name, hours: 0 }
+    cur.hours += shiftDurationHours(s.startTime, s.endTime)
+    byUser.set(s.userId, cur)
+  }
+
+  return [...byUser.values()]
 }
 
 /**

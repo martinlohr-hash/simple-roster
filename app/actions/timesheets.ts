@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { fromZonedTime } from 'date-fns-tz'
 import { prisma } from '@/lib/db'
 import { requireAdmin, getSession } from '@/app/actions/auth'
-import { computeDayHours } from '@/lib/dayHours'
+import { computeDayHours, getMissingStampShifts, type MissingStampShift } from '@/lib/dayHours'
 
 // Fachliche Fehler als Rückgabewert statt throw: geworfene Errors werden von
 // Next.js in Production maskiert und kämen beim Nutzer nie an.
@@ -98,13 +98,29 @@ export async function adminDeleteTimeEntry(id: string): Promise<TimesheetActionR
   return {}
 }
 
+export type ReleaseDayResult = TimesheetActionResult & { missingStamps?: MissingStampShift[] }
+
 /**
  * Gibt einen Tag frei: friert die aktuellen Tages-Gesamtstunden als Snapshot ein.
  * Nur freigegebene Tage werden in die Auswertungs-Tabelle synchronisiert.
+ *
+ * Vor der Freigabe wird geprüft, ob beendete Schichten ganz ohne Stempel existieren
+ * (MA hat vergessen sich ein-/auszustempeln). Solche Stunden landen zwar noch im
+ * angezeigten Ist-Wert (Fallback in computeDayHours), aber NICHT im Lohn-Export
+ * (der liest nur echte TimeEntry-Zeilen) – ohne diese Warnung würde ein MA für
+ * geleistete Arbeit nie bezahlt. Ohne `force` wird die Freigabe daher blockiert
+ * und die betroffenen MA/Stunden zurückgegeben, damit der Admin entweder den
+ * Stempel nachträgt (Schicht-Klick → „Ist-Zeiten") oder die Freigabe bewusst
+ * mit `force: true` bestätigt.
  */
-export async function releaseDay(day: string): Promise<TimesheetActionResult> {
+export async function releaseDay(day: string, force = false): Promise<ReleaseDayResult> {
   await requireAdmin()
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { error: 'Ungültiger Tag.' }
+
+  if (!force) {
+    const missing = await getMissingStampShifts(day)
+    if (missing.length > 0) return { missingStamps: missing }
+  }
 
   const session = await getSession()
   const { hours, entries } = await computeDayHours(day)

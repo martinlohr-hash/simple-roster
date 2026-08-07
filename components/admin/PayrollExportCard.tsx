@@ -1,8 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { addPayrollAdjustment, deletePayrollAdjustment } from '@/app/actions/payrollAdjustments'
+import { unwrap } from '@/lib/actionResult'
 
-type Row = { id: string; name: string; hours: number; planBased?: boolean }
+type Adjustment = { id: string; hours: number; reason: string; createdBy: string | null; createdAt: string }
+type Row = { id: string; name: string; baseHours: number; adjustments: Adjustment[]; planBased?: boolean }
 
 type Props = {
   rows: Row[]
@@ -17,15 +21,26 @@ const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm f
 const de = (n: number) =>
   n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+function totalHoursOf(r: Row): number {
+  return r.baseHours + r.adjustments.reduce((sum, a) => sum + a.hours, 0)
+}
+
 export default function PayrollExportCard({ rows, from, to, fromLabel, toLabel }: Props) {
+  const router = useRouter()
+  const totals = new Map(rows.map((r) => [r.id, parseFloat(totalHoursOf(r).toFixed(2))]))
   const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(rows.filter((r) => r.hours > 0).map((r) => r.id))
+    () => new Set(rows.filter((r) => (totals.get(r.id) ?? 0) > 0).map((r) => r.id))
   )
   const [tips, setTips] = useState('')
+  const [adjustRow, setAdjustRow] = useState<string | null>(null)
+  const [adjustHours, setAdjustHours] = useState('')
+  const [adjustReason, setAdjustReason] = useState('')
+  const [adjustError, setAdjustError] = useState('')
+  const [adjustBusy, setAdjustBusy] = useState(false)
 
   const tipsNum = parseFloat(tips) || 0
   const selRows = rows.filter((r) => selected.has(r.id))
-  const totalHours = selRows.reduce((sum, r) => sum + r.hours, 0)
+  const totalHours = selRows.reduce((sum, r) => sum + (totals.get(r.id) ?? 0), 0)
   const allSelected = selected.size === rows.length
 
   // Gleiche Verteilung wie die API: anteilig nach Stunden, letzte Zeile erhält den Rundungsrest
@@ -33,9 +48,10 @@ export default function PayrollExportCard({ rows, from, to, fromLabel, toLabel }
   if (tipsNum > 0 && totalHours > 0) {
     let assigned = 0
     selRows.forEach((r, i) => {
+      const h = totals.get(r.id) ?? 0
       const share = i === selRows.length - 1
         ? parseFloat((tipsNum - assigned).toFixed(2))
-        : parseFloat(((r.hours / totalHours) * tipsNum).toFixed(2))
+        : parseFloat(((h / totalHours) * tipsNum).toFixed(2))
       assigned += share
       tipShares.set(r.id, share)
     })
@@ -52,6 +68,46 @@ export default function PayrollExportCard({ rows, from, to, fromLabel, toLabel }
 
   const toggleAll = () => {
     setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id)))
+  }
+
+  const openAdjust = (id: string | null) => {
+    setAdjustRow(id)
+    setAdjustHours('')
+    setAdjustReason('')
+    setAdjustError('')
+  }
+
+  const saveAdjust = async (userId: string) => {
+    setAdjustError('')
+    const hours = parseFloat(adjustHours.replace(',', '.'))
+    if (!Number.isFinite(hours) || hours === 0) {
+      setAdjustError('Bitte eine Stunden-Korrektur ungleich 0 angeben.')
+      return
+    }
+    if (!adjustReason.trim()) {
+      setAdjustError('Begründung ist erforderlich.')
+      return
+    }
+    setAdjustBusy(true)
+    try {
+      unwrap(await addPayrollAdjustment({ userId, periodFrom: from, periodTo: to, hours, reason: adjustReason.trim() }))
+      setAdjustRow(null)
+      router.refresh()
+    } catch (e) {
+      setAdjustError(e instanceof Error ? e.message : 'Fehler')
+    } finally {
+      setAdjustBusy(false)
+    }
+  }
+
+  const removeAdjust = async (id: string) => {
+    if (!confirm('Korrektur wirklich löschen?')) return
+    try {
+      unwrap(await deletePayrollAdjustment(id))
+      router.refresh()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Fehler beim Löschen')
+    }
   }
 
   return (
@@ -88,39 +144,136 @@ export default function PayrollExportCard({ rows, from, to, fromLabel, toLabel }
                 <th className="px-3 py-2 text-left font-medium">Name</th>
                 <th className="px-3 py-2 text-right font-medium">Ist-Stunden</th>
                 <th className="px-3 py-2 text-right font-medium">Trinkgeld (€)</th>
+                <th className="px-3 py-2 text-right font-medium w-8" />
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => {
                 const isSelected = selected.has(r.id)
+                const total = totals.get(r.id) ?? 0
+                const hasAdjustments = r.adjustments.length > 0
                 return (
-                  <tr
-                    key={r.id}
-                    onClick={() => toggle(r.id)}
-                    className={`border-t border-gray-100 cursor-pointer ${isSelected ? '' : 'text-gray-400'}`}
-                  >
-                    <td className="px-3 py-2">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggle(r.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="rounded"
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      {r.name}
-                      {r.planBased && (
-                        <span className="ml-1.5 text-[10px] font-medium text-blue-600 bg-blue-50 rounded px-1 py-0.5 align-middle">
-                          Plan
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{de(r.hours)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      {isSelected && tipShares.has(r.id) ? de(tipShares.get(r.id)!) : '–'}
-                    </td>
-                  </tr>
+                  <Fragment key={r.id}>
+                    <tr
+                      onClick={() => toggle(r.id)}
+                      className={`border-t border-gray-100 cursor-pointer ${isSelected ? '' : 'text-gray-400'}`}
+                    >
+                      <td className="px-3 py-2">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggle(r.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="rounded"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        {r.name}
+                        {r.planBased && (
+                          <span className="ml-1.5 text-[10px] font-medium text-blue-600 bg-blue-50 rounded px-1 py-0.5 align-middle">
+                            Plan
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {de(total)}
+                        {hasAdjustments && (
+                          <span className="ml-1 text-[10px] font-medium text-amber-600 bg-amber-50 rounded px-1 py-0.5 align-middle">
+                            korrigiert
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {isSelected && tipShares.has(r.id) ? de(tipShares.get(r.id)!) : '–'}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {!r.planBased && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openAdjust(adjustRow === r.id ? null : r.id)
+                            }}
+                            className="text-xs text-indigo-600 hover:text-indigo-800"
+                            title="Stunden korrigieren"
+                          >
+                            ±Std.
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                    {hasAdjustments && (
+                      <tr className="border-t border-gray-50 bg-amber-50/40 text-xs text-gray-600">
+                        <td className="px-3 py-1.5" />
+                        <td className="px-3 py-1.5" colSpan={4}>
+                          <ul className="space-y-0.5">
+                            {r.adjustments.map((a) => (
+                              <li key={a.id} className="flex items-center gap-2">
+                                <span className="tabular-nums font-medium">
+                                  {a.hours > 0 ? '+' : ''}{de(a.hours)} Std.
+                                </span>
+                                <span className="truncate">{a.reason}</span>
+                                <span className="text-gray-400">
+                                  ({a.createdAt}{a.createdBy ? `, ${a.createdBy}` : ''})
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    removeAdjust(a.id)
+                                  }}
+                                  className="ml-auto text-gray-400 hover:text-red-600"
+                                  title="Korrektur löschen"
+                                >
+                                  ×
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </td>
+                      </tr>
+                    )}
+                    {adjustRow === r.id && (
+                      <tr className="border-t border-gray-50 bg-indigo-50/40">
+                        <td className="px-3 py-2" />
+                        <td className="px-3 py-2" colSpan={4}>
+                          <div className="flex flex-wrap items-start gap-2" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="number"
+                              step="0.25"
+                              placeholder="± Std."
+                              value={adjustHours}
+                              onChange={(e) => setAdjustHours(e.target.value)}
+                              className={`${inputClass} w-24`}
+                            />
+                            <input
+                              type="text"
+                              placeholder="Begründung (Pflicht, erscheint im Export)"
+                              value={adjustReason}
+                              onChange={(e) => setAdjustReason(e.target.value)}
+                              className={`${inputClass} flex-1 min-w-[200px]`}
+                            />
+                            <button
+                              type="button"
+                              disabled={adjustBusy}
+                              onClick={() => saveAdjust(r.id)}
+                              className="px-3 py-2 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                              Speichern
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAdjustRow(null)}
+                              className="px-3 py-2 text-xs text-gray-500 hover:text-gray-700"
+                            >
+                              Abbrechen
+                            </button>
+                          </div>
+                          {adjustError && <p className="text-xs text-red-600 mt-1">{adjustError}</p>}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 )
               })}
             </tbody>
@@ -132,6 +285,7 @@ export default function PayrollExportCard({ rows, from, to, fromLabel, toLabel }
                 <td className="px-3 py-2 text-right tabular-nums">
                   {tipsNum > 0 && totalHours > 0 ? de(tipsNum) : '–'}
                 </td>
+                <td className="px-3 py-2" />
               </tr>
             </tfoot>
           </table>
@@ -156,7 +310,10 @@ export default function PayrollExportCard({ rows, from, to, fromLabel, toLabel }
             Wird anteilig nach Stunden auf die ausgewählten MA verteilt.
             MA ohne Stunden im Zeitraum erscheinen nicht in der Datei.
             Bei <span className="font-medium">Plan</span>-Personen zählen die geplanten
-            Schichten, sonst die bestätigten Stempelzeiten.
+            Schichten, sonst die bestätigten Stempelzeiten. Mit
+            <span className="font-medium"> ±Std.</span> lässt sich die Stundenzahl mit
+            Begründung korrigieren (z. B. vergessener Stempel) — die Begründung erscheint
+            als eigene Spalte im Export.
           </p>
         </div>
 
@@ -173,7 +330,8 @@ export default function PayrollExportCard({ rows, from, to, fromLabel, toLabel }
       </form>
 
       <p className="text-xs text-gray-400 mt-4">
-        Spalten: Name · Ist-Stunden · Stundenlohn · NK-Quote · Lohnkosten · Trinkgeld
+        Spalten: Name · Ist-Stunden · Stundenlohn · NK-Quote · Lohnkosten · Begründung
+        (nur bei Korrekturen) · Trinkgeld
       </p>
     </div>
   )

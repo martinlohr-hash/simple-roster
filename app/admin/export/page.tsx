@@ -11,7 +11,10 @@ export default async function ExportPage() {
   const payrollFrom = new Date(now.getFullYear(), now.getMonth() - 1, 21)
   const payrollTo = new Date(now.getFullYear(), now.getMonth(), 20)
 
-  const [users, locations, payrollEntries, payrollShifts] = await Promise.all([
+  const payrollFromStr = format(payrollFrom, 'yyyy-MM-dd')
+  const payrollToStr = format(payrollTo, 'yyyy-MM-dd')
+
+  const [users, locations, payrollEntries, payrollShifts, adjustments] = await Promise.all([
     prisma.user.findMany({ orderBy: { name: 'asc' } }),
     prisma.location.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.timeEntry.findMany({
@@ -29,6 +32,10 @@ export default async function ExportPage() {
       },
       select: { userId: true, startTime: true, endTime: true },
     }),
+    prisma.payrollAdjustment.findMany({
+      where: { periodFrom: payrollFromStr, periodTo: payrollToStr },
+      orderBy: { createdAt: 'asc' },
+    }),
   ])
 
   // Admins gehen mit ihren GEPLANTEN Schichten in den Lohn-Export ein, nicht mit Stempelzeiten
@@ -44,11 +51,22 @@ export default async function ExportPage() {
     const hours = shiftDurationHours(s.startTime, s.endTime)
     hoursByUser.set(s.userId, (hoursByUser.get(s.userId) ?? 0) + hours)
   }
+  const adjustmentsByUser = new Map<string, typeof adjustments>()
+  for (const a of adjustments) {
+    adjustmentsByUser.set(a.userId, [...(adjustmentsByUser.get(a.userId) ?? []), a])
+  }
   const payrollRows = users.map((u) => ({
     id: u.id,
     name: u.name,
-    hours: parseFloat((hoursByUser.get(u.id) ?? 0).toFixed(2)),
+    baseHours: parseFloat((hoursByUser.get(u.id) ?? 0).toFixed(2)),
     planBased: adminIds.has(u.id),
+    adjustments: (adjustmentsByUser.get(u.id) ?? []).map((a) => ({
+      id: a.id,
+      hours: a.hours,
+      reason: a.reason,
+      createdBy: a.createdBy,
+      createdAt: format(a.createdAt, 'dd.MM.yyyy'),
+    })),
   }))
 
   const defaultFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
@@ -74,8 +92,8 @@ export default async function ExportPage() {
 
       <PayrollExportCard
         rows={payrollRows}
-        from={format(payrollFrom, 'yyyy-MM-dd')}
-        to={format(payrollTo, 'yyyy-MM-dd')}
+        from={payrollFromStr}
+        to={payrollToStr}
         fromLabel={format(payrollFrom, 'dd.MM.yyyy')}
         toLabel={format(payrollTo, 'dd.MM.yyyy')}
       />

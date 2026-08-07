@@ -68,14 +68,17 @@ export async function GET(request: NextRequest) {
         })
       : []
 
-    const byUser = new Map<string, { name: string; hourlyRate: number; overheadPercent: number; hours: number }>()
+    type Agg = { userId: string; name: string; hourlyRate: number; overheadPercent: number; hours: number; adjReasons: string[] }
+    const byUser = new Map<string, Agg>()
     for (const e of entries) {
       if (adminIds.has(e.userId)) continue
       const agg = byUser.get(e.userId) ?? {
+        userId: e.userId,
         name: e.user.name,
         hourlyRate: e.user.hourlyRate,
         overheadPercent: e.user.overheadPercent,
         hours: 0,
+        adjReasons: [],
       }
       agg.hours += calcHours(e.checkinAt, e.checkoutAt!)
       byUser.set(e.userId, agg)
@@ -83,14 +86,47 @@ export async function GET(request: NextRequest) {
     for (const s of adminShifts) {
       const u = adminUsers.find((a) => a.id === s.userId)!
       const agg = byUser.get(u.id) ?? {
+        userId: u.id,
         name: u.name,
         hourlyRate: u.hourlyRate,
         overheadPercent: u.overheadPercent,
         hours: 0,
+        adjReasons: [],
       }
       agg.hours += shiftDurationHours(s.startTime, s.endTime)
       byUser.set(u.id, agg)
     }
+
+    // Manuelle Lohn-Korrekturen für exakt diesen Zeitraum (z. B. vergessener Stempel,
+    // mit Pflicht-Begründung fürs Lohnbüro). Admins bleiben außen vor, die gehen
+    // ohnehin über Plan-Stunden ein.
+    const periodFrom = formatBerlin(from, 'yyyy-MM-dd')
+    const periodTo = formatBerlin(to, 'yyyy-MM-dd')
+    const adjustments = await prisma.payrollAdjustment.findMany({
+      where: {
+        periodFrom,
+        periodTo,
+        ...(userIds.length > 0 ? { userId: { in: userIds } } : {}),
+      },
+      include: { user: { select: { name: true, hourlyRate: true, overheadPercent: true } } },
+    })
+    let hasAdjustments = false
+    for (const adj of adjustments) {
+      if (adminIds.has(adj.userId)) continue
+      hasAdjustments = true
+      const agg = byUser.get(adj.userId) ?? {
+        userId: adj.userId,
+        name: adj.user.name,
+        hourlyRate: adj.user.hourlyRate,
+        overheadPercent: adj.user.overheadPercent,
+        hours: 0,
+        adjReasons: [],
+      }
+      agg.hours += adj.hours
+      agg.adjReasons.push(adj.reason)
+      byUser.set(adj.userId, agg)
+    }
+
     const aggs = [...byUser.values()].sort((a, b) => a.name.localeCompare(b.name, 'de'))
     const totalHours = aggs.reduce((sum, a) => sum + a.hours, 0)
     // Letzte Zeile bekommt den Rest, damit die Summe exakt dem eingegebenen Trinkgeld entspricht
@@ -103,14 +139,16 @@ export async function GET(request: NextRequest) {
           : parseFloat(((a.hours / totalHours) * tips).toFixed(2))
         assignedTips += tipShare
       }
-      return {
+      const row: Record<string, unknown> = {
         Name: a.name,
         'Ist-Stunden': parseFloat(a.hours.toFixed(2)),
         'Stundenlohn (€)': a.hourlyRate,
         'NK-Quote (%)': a.overheadPercent,
         'Lohnkosten (€)': parseFloat(calcLaborCost(a.hours, a.hourlyRate, a.overheadPercent).toFixed(2)),
-        'Trinkgeld (€)': tipShare,
       }
+      if (hasAdjustments) row['Begründung (Korrektur)'] = a.adjReasons.join(' / ')
+      row['Trinkgeld (€)'] = tipShare
+      return row
     })
   } else {
     const totalHours = tips > 0

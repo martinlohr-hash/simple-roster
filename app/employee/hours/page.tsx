@@ -1,29 +1,27 @@
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
 import { redirect } from 'next/navigation'
 import { calcHours, getTrafficLight } from '@/lib/calculations'
+import { berlinDay, berlinWeekBounds, berlinMonthBounds, formatBerlin } from '@/lib/dayHours'
 
 export default async function HoursPage() {
   const session = await getSession()
   if (!session) redirect('/login')
 
-  const now = new Date()
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 })
-  const weekEnd = endOfWeek(now, { weekStartsOn: 1 })
-  const monthStart = startOfMonth(now)
-  const monthEnd = endOfMonth(now)
+  const todayStr = berlinDay(new Date())
+  const { start: weekStart, end: weekEnd } = berlinWeekBounds(todayStr)
+  const { start: monthStart, end: monthEnd } = berlinMonthBounds(todayStr)
 
   const [user, weekEntries, monthEntries] = await Promise.all([
     prisma.user.findUnique({ where: { id: session.userId } }),
     prisma.timeEntry.findMany({
-      where: { userId: session.userId, checkinAt: { gte: weekStart, lte: weekEnd }, checkoutAt: { not: null } },
+      where: { userId: session.userId, checkinAt: { gte: weekStart, lt: weekEnd }, checkoutAt: { not: null } },
       include: { location: true },
       orderBy: { checkinAt: 'desc' },
     }),
     prisma.timeEntry.findMany({
-      where: { userId: session.userId, checkinAt: { gte: monthStart, lte: monthEnd }, checkoutAt: { not: null } },
+      where: { userId: session.userId, checkinAt: { gte: monthStart, lt: monthEnd }, checkoutAt: { not: null } },
       include: { location: true },
     }),
   ])
@@ -47,7 +45,7 @@ export default async function HoursPage() {
         <div className="px-4 py-3 border-b border-gray-100">
           <h2 className="text-sm font-medium text-gray-900">Diese Woche</h2>
           <p className="text-xs text-gray-400 mt-0.5">
-            {format(weekStart, 'd. MMM', { locale: de })} – {format(weekEnd, 'd. MMM', { locale: de })}
+            {formatBerlin(weekStart, 'd. MMM', { locale: de })} – {formatBerlin(new Date(weekEnd.getTime() - 1), 'd. MMM', { locale: de })}
           </p>
         </div>
         {weekEntries.length === 0 ? (
@@ -60,10 +58,10 @@ export default async function HoursPage() {
                 <div key={entry.id} className="px-4 py-3 flex items-center justify-between">
                   <div>
                     <div className="text-sm font-medium text-gray-900">
-                      {format(entry.checkinAt, 'EEEE, d. MMM', { locale: de })}
+                      {formatBerlin(entry.checkinAt, 'EEEE, d. MMM', { locale: de })}
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5">
-                      {format(entry.checkinAt, 'HH:mm')} – {format(entry.checkoutAt!, 'HH:mm')} · {entry.location.name}
+                      {formatBerlin(entry.checkinAt, 'HH:mm')} – {formatBerlin(entry.checkoutAt!, 'HH:mm')} · {entry.location.name}
                     </div>
                   </div>
                   <div className="text-sm font-medium text-gray-900">{hours.toFixed(2)}h</div>

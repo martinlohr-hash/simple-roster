@@ -1,6 +1,6 @@
-import { startOfDay, endOfDay, parseISO, format } from 'date-fns'
 import { prisma } from '@/lib/db'
 import { calcHours } from '@/lib/calculations'
+import { berlinDay, berlinDayBounds, formatBerlin } from '@/lib/dayHours'
 import TimesheetEditor from '@/components/admin/TimesheetEditor'
 
 type Props = {
@@ -9,10 +9,8 @@ type Props = {
 
 export default async function TimesheetsPage({ searchParams }: Props) {
   const sp = await searchParams
-  const dateStr = sp.date || format(new Date(), 'yyyy-MM-dd')
-  const day = parseISO(dateStr)
-  const dayStart = startOfDay(day)
-  const dayEnd = endOfDay(day)
+  const dateStr = sp.date || berlinDay(new Date())
+  const { start: dayStart, end: dayEnd } = berlinDayBounds(dateStr)
 
   const [entries, users, locations, release] = await Promise.all([
     prisma.timeEntry.findMany({
@@ -40,8 +38,8 @@ export default async function TimesheetsPage({ searchParams }: Props) {
     userName: e.user.name,
     locationId: e.locationId,
     locationName: e.location.name,
-    checkin: format(e.checkinAt, 'HH:mm'),
-    checkout: e.checkoutAt ? format(e.checkoutAt, 'HH:mm') : '',
+    checkin: formatBerlin(e.checkinAt, 'HH:mm'),
+    checkout: e.checkoutAt ? formatBerlin(e.checkoutAt, 'HH:mm') : '',
     hours: e.checkoutAt ? calcHours(e.checkinAt, e.checkoutAt) : null,
   }))
 

@@ -1,4 +1,6 @@
 import { cache } from 'react'
+import type { Locale } from 'date-fns'
+import { fromZonedTime, formatInTimeZone } from 'date-fns-tz'
 import { prisma } from '@/lib/db'
 import { calcHours } from '@/lib/calculations'
 import { timeToMinutes, shiftDurationHours } from '@/lib/timeUtils'
@@ -8,6 +10,60 @@ function nextDayStr(day: string): string {
   const d = new Date(`${day}T00:00:00Z`)
   d.setUTCDate(d.getUTCDate() + 1)
   return d.toISOString().slice(0, 10)
+}
+
+/**
+ * Formatiert einen Zeitstempel in Berliner Ortszeit (DST-sicher). Ersetzt
+ * date-fns `format()`, das die Server-Zeitzone nutzt (Vercel = UTC, zeigt
+ * sonst falsche Uhrzeiten/Daten in Prod).
+ */
+export function formatBerlin(
+  d: Date,
+  fmt: string,
+  options?: { locale?: Locale },
+): string {
+  return formatInTimeZone(d, 'Europe/Berlin', fmt, options)
+}
+
+/** UTC-Grenzen [start, end] eines Berliner Kalendertags ("yyyy-MM-dd"). */
+export function berlinDayBounds(day: string): { start: Date; end: Date } {
+  return {
+    start: fromZonedTime(`${day}T00:00:00`, 'Europe/Berlin'),
+    end: fromZonedTime(`${day}T23:59:59.999`, 'Europe/Berlin'),
+  }
+}
+
+/** ISO-Wochentag (1=Mo…7=So) eines "yyyy-MM-dd"-Tags, DST-unabhängig. */
+function isoWeekday(day: string): number {
+  const wd = new Date(`${day}T00:00:00Z`).getUTCDay()
+  return wd === 0 ? 7 : wd
+}
+
+function addDaysStr(day: string, n: number): string {
+  const d = new Date(`${day}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Montag–Sonntag-Woche eines Berliner Kalendertags, als UTC-Grenzen [start, end). */
+export function berlinWeekBounds(day: string): { start: Date; end: Date } {
+  const startStr = addDaysStr(day, 1 - isoWeekday(day))
+  const endStr = addDaysStr(startStr, 7)
+  return {
+    start: fromZonedTime(`${startStr}T00:00:00`, 'Europe/Berlin'),
+    end: fromZonedTime(`${endStr}T00:00:00`, 'Europe/Berlin'),
+  }
+}
+
+/** Kalendermonat eines Berliner Kalendertags, als UTC-Grenzen [start, end). */
+export function berlinMonthBounds(day: string): { start: Date; end: Date } {
+  const [y, m] = day.split('-').map(Number)
+  const startStr = `${y}-${String(m).padStart(2, '0')}-01`
+  const endStr = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`
+  return {
+    start: fromZonedTime(`${startStr}T00:00:00`, 'Europe/Berlin'),
+    end: fromZonedTime(`${endStr}T00:00:00`, 'Europe/Berlin'),
+  }
 }
 
 /** Berliner Kalendertag eines Zeitstempels als "yyyy-MM-dd" (DST-sicher via Intl). */

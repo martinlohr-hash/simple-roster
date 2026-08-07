@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { fromZonedTime } from 'date-fns-tz'
 import { prisma } from '@/lib/db'
 import { requireAdmin, getSession } from '@/app/actions/auth'
 import { computeDayHours } from '@/lib/dayHours'
@@ -9,11 +10,13 @@ import { computeDayHours } from '@/lib/dayHours'
 // Next.js in Production maskiert und kämen beim Nutzer nie an.
 export type TimesheetActionResult = { error?: string }
 
-/** Baut aus "yyyy-MM-dd" + "HH:mm" ein Date in der Server-Zeitzone (= Anzeige-Zeitzone). */
+/**
+ * Baut aus "yyyy-MM-dd" + "HH:mm" den passenden UTC-Zeitpunkt für Europe/Berlin.
+ * `new Date(y, m-1, d, hh, mm)` nutzt sonst die Server-Zeitzone (Vercel = UTC),
+ * wodurch eingegebene Zeiten in Prod um 1-2h verschoben gespeichert wurden.
+ */
 function combineDateTime(dateStr: string, timeStr: string): Date {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  const [hh, mm] = timeStr.split(':').map(Number)
-  return new Date(y, m - 1, d, hh, mm, 0, 0)
+  return fromZonedTime(`${dateStr}T${timeStr}:00`, 'Europe/Berlin')
 }
 
 type CreateInput = {

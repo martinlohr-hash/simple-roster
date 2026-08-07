@@ -4,7 +4,7 @@ import { decrypt, isAdmin } from '@/lib/session'
 import { prisma } from '@/lib/db'
 import { calcHours, calcLaborCost } from '@/lib/calculations'
 import { shiftDurationHours } from '@/lib/timeUtils'
-import { format, parseISO, endOfDay, startOfDay } from 'date-fns'
+import { berlinDay, berlinDayBounds, formatBerlin } from '@/lib/dayHours'
 import * as XLSX from 'xlsx'
 
 export async function GET(request: NextRequest) {
@@ -16,8 +16,9 @@ export async function GET(request: NextRequest) {
   }
 
   const sp = request.nextUrl.searchParams
-  const from = startOfDay(parseISO(sp.get('from') || new Date().toISOString().split('T')[0]))
-  const to = endOfDay(parseISO(sp.get('to') || new Date().toISOString().split('T')[0]))
+  const todayStr = berlinDay(new Date())
+  const from = berlinDayBounds(sp.get('from') || todayStr).start
+  const to = berlinDayBounds(sp.get('to') || todayStr).end
   const fmt = sp.get('format') || 'csv'
   const locationId = sp.get('locationId') || undefined
   const userIds = sp.getAll('userId').filter((id) => id !== 'all')
@@ -28,9 +29,9 @@ export async function GET(request: NextRequest) {
     ? (await prisma.location.findUnique({ where: { id: locationId }, select: { name: true } }))?.name ?? 'Unbekannt'
     : 'Alle Standorte'
 
-  const dateRange = `${format(from, 'dd.MM.yyyy')} – ${format(to, 'dd.MM.yyyy')}`
+  const dateRange = `${formatBerlin(from, 'dd.MM.yyyy')} – ${formatBerlin(to, 'dd.MM.yyyy')}`
   const title = `Simple Sandwich Hamburg GmbH - ${summary ? 'Lohn-Export kumuliert' : 'Stundenexport'} (${dateRange}) - ${locationName}`
-  const fileBase = `${summary ? 'lohn' : 'stunden'}_${format(from, 'yyyy-MM-dd')}_${format(to, 'yyyy-MM-dd')}`
+  const fileBase = `${summary ? 'lohn' : 'stunden'}_${formatBerlin(from, 'yyyy-MM-dd')}_${formatBerlin(to, 'yyyy-MM-dd')}`
 
   const entries = await prisma.timeEntry.findMany({
     where: {
@@ -124,11 +125,11 @@ export async function GET(request: NextRequest) {
         : null
       const row: Record<string, unknown> = {
         Name: e.user.name,
-        Datum: format(e.checkinAt, 'dd.MM.yyyy'),
+        Datum: formatBerlin(e.checkinAt, 'dd.MM.yyyy'),
         'Geplant Von': e.shift?.startTime || '',
         'Geplant Bis': e.shift?.endTime || '',
-        Einstempeln: format(e.checkinAt, 'HH:mm'),
-        Ausstempeln: format(e.checkoutAt!, 'HH:mm'),
+        Einstempeln: formatBerlin(e.checkinAt, 'HH:mm'),
+        Ausstempeln: formatBerlin(e.checkoutAt!, 'HH:mm'),
         'Ist-Stunden': parseFloat(hours.toFixed(2)),
         Standort: e.location.name,
         'Stundenlohn (€)': e.user.hourlyRate,

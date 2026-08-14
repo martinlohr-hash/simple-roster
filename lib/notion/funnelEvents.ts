@@ -28,11 +28,18 @@ const BOOKED_STATUS = new Set([
 
 const TTL_MS = 10 * 60 * 1000 // 10 min — Buchungen ändern sich selten, vermeidet Fetch-Spam
 
+// Live-URL der SMPL-Funnel-App (siehe project_smpl_funnel Memory). Deep-Link
+// öffnet dort direkt den Event-Drawer der Anfrage (?event=<notion-page-id>).
+const DEFAULT_FUNNEL_APP_URL = 'https://smpl-funnel-zeta.vercel.app'
+
 export function isFunnelConfigured(): boolean {
   return Boolean(process.env.NOTION_FUNNEL_TOKEN?.trim())
 }
 
+export type BookedEvent = { label: string; url: string }
+
 type NotionPage = {
+  id: string
   properties?: {
     Name?: { title?: { plain_text: string }[] }
     Status?: { status?: { name?: string } | null }
@@ -80,9 +87,14 @@ async function queryBooked(from: string, to: string): Promise<NotionPage[]> {
   return pages
 }
 
-function buildMap(pages: NotionPage[], dates: string[]): Record<string, string[]> {
-  const map: Record<string, string[]> = {}
+function funnelAppUrl(): string {
+  return (process.env.FUNNEL_APP_URL?.trim() || DEFAULT_FUNNEL_APP_URL).replace(/\/$/, '')
+}
+
+function buildMap(pages: NotionPage[], dates: string[]): Record<string, BookedEvent[]> {
+  const map: Record<string, BookedEvent[]> = {}
   for (const d of dates) map[d] = []
+  const appUrl = funnelAppUrl()
   for (const p of pages) {
     const props = p.properties || {}
     const status = (props.Status?.status?.name || '').trim()
@@ -92,21 +104,22 @@ function buildMap(pages: NotionPage[], dates: string[]): Record<string, string[]
     const name = text(props.Name?.title)
     if (!name) continue
     const startzeit = text(props.Startzeit?.rich_text)
-    map[day].push(startzeit ? `${name} · ${startzeit} Uhr` : name)
+    const label = startzeit ? `${name} · ${startzeit} Uhr` : name
+    map[day].push({ label, url: `${appUrl}/?event=${p.id}` })
   }
   return map
 }
 
 // ---- Mini-TTL-Cache (best effort pro Server-Instanz) ----
-let cache: { at: number; key: string; data: Record<string, string[]> } | null = null
+let cache: { at: number; key: string; data: Record<string, BookedEvent[]> } | null = null
 
 /**
  * Gebuchte Funnel-Events (Status ab „Bestätigt") für die gegebenen Tage (yyyy-MM-dd).
  * Liefert immer ein vollständiges Map-Objekt (auch leere Listen) und wirft NIE —
  * ein Notion-Ausfall darf den Wochenplaner nicht blockieren.
  */
-export async function getBookedEventsForDates(dates: string[]): Promise<Record<string, string[]>> {
-  const empty: Record<string, string[]> = {}
+export async function getBookedEventsForDates(dates: string[]): Promise<Record<string, BookedEvent[]>> {
+  const empty: Record<string, BookedEvent[]> = {}
   for (const d of dates) empty[d] = []
   if (!isFunnelConfigured() || dates.length === 0) return empty
 

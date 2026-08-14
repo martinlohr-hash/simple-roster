@@ -19,6 +19,7 @@ import DropCell from './DropCell'
 import CreateShiftModal from './CreateShiftModal'
 import ShiftEditModal from './ShiftEditModal'
 import DayNoteCell from './DayNoteCell'
+import type { BookedEvent } from '@/lib/notion/funnelEvents'
 import UnplannedBlock, { type UnplannedEntryData } from './UnplannedBlock'
 import TimeEntryEditModal from './TimeEntryEditModal'
 import Link from 'next/link'
@@ -79,7 +80,7 @@ type Props = {
   weekStart: Date
   weekStartStr: string
   dayNotes: Record<string, string>
-  funnelEvents?: Record<string, string[]>
+  funnelEvents?: Record<string, BookedEvent[]>
   coverageRules: CoverageRuleData[]
   prevWeekHref: string
   nextWeekHref: string

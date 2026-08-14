@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { upsertDayNote } from '@/app/actions/dayNotes'
+import type { BookedEvent } from '@/lib/notion/funnelEvents'
 
 type Props = {
   date: string
   initialContent: string
-  funnelEvents?: string[]
+  funnelEvents?: BookedEvent[]
 }
 
 export default function DayNoteCell({ date, initialContent, funnelEvents = [] }: Props) {
@@ -43,18 +44,22 @@ export default function DayNoteCell({ date, initialContent, funnelEvents = [] }:
   const eventBadges =
     funnelEvents.length > 0 ? (
       <div className="flex flex-col gap-1 px-1.5 pt-1">
-        {funnelEvents.map((title, i) => (
-          <div
+        {funnelEvents.map((ev, i) => (
+          <a
             key={i}
-            title={`Gebuchtes Event (Funnel): ${title}`}
-            className="flex items-start gap-1.5 bg-green-50 border border-green-200 rounded-md px-2 py-1 shadow-sm"
+            href={ev.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            title={`Im Funnel öffnen: ${ev.label}`}
+            className="flex items-start gap-1.5 bg-green-50 border border-green-200 rounded-md px-2 py-1 shadow-sm hover:bg-green-100 hover:border-green-300 transition-colors"
           >
             <svg className="w-3 h-3 text-green-600 mt-px shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path d="M5 21V7l7-4 7 4v14M5 21h14M9 21v-4h6v4" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M12 3v4" strokeLinecap="round" />
             </svg>
-            <p className="text-[11px] font-medium text-green-800 leading-snug break-words">{title}</p>
-          </div>
+            <p className="text-[11px] font-medium text-green-800 leading-snug break-words">{ev.label}</p>
+          </a>
         ))}
       </div>
     ) : null

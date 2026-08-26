@@ -76,7 +76,7 @@ export type RecipeBlock =
 
 export type RecipeDetail = RecipeSummary & { blocks: RecipeBlock[] }
 
-export type GroupedRecipes = { sandwiches: RecipeSummary[]; sauces: RecipeSummary[] }
+export type GroupedRecipes = { sandwiches: RecipeSummary[]; sauces: RecipeSummary[]; drinks: RecipeSummary[] }
 
 // ---- Notion-Rohtypen (nur was wir brauchen) ----
 type NotionRichText = { plain_text: string; annotations?: { bold?: boolean }; href?: string | null }
@@ -126,7 +126,8 @@ function toRuns(rt?: NotionRichText[]): RichRun[] {
 /**
  * Lädt die für Mitarbeiter relevanten Rezepte: aktuelle Sandwiches (Kategorie
  * „Sandwich", nicht archiviert, OHNE NEW-Tag = der Notion-View „Sandwiches aktuell")
- * plus Saucen/Dips (Kategorie „Sauce/Dip", nicht archiviert).
+ * plus Saucen/Dips (Kategorie „Sauce/Dip", nicht archiviert) plus Getränke
+ * (Kategorie „Getränke", nicht archiviert).
  */
 export async function listRecipes(): Promise<GroupedRecipes> {
   return cached('recipes:list', LIST_TTL_MS, async () => {
@@ -137,6 +138,7 @@ export async function listRecipes(): Promise<GroupedRecipes> {
           or: [
             { property: 'Kategorie', multi_select: { contains: 'Sandwich' } },
             { property: 'Kategorie', multi_select: { contains: 'Sauce/Dip' } },
+            { property: 'Kategorie', multi_select: { contains: 'Getränke' } },
           ],
         },
       ],
@@ -160,7 +162,8 @@ export async function listRecipes(): Promise<GroupedRecipes> {
       .filter((r) => r.categories.includes('Sandwich') && !r.tags.includes('NEW'))
       .sort(byName)
     const sauces = all.filter((r) => r.categories.includes('Sauce/Dip')).sort(byName)
-    return { sandwiches, sauces }
+    const drinks = all.filter((r) => r.categories.includes('Getränke')).sort(byName)
+    return { sandwiches, sauces, drinks }
   })
 }
 

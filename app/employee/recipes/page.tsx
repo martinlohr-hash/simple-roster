@@ -12,7 +12,7 @@ function Badge({ children, tone = 'gray' }: { children: React.ReactNode; tone?: 
   return <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${tones[tone]}`}>{children}</span>
 }
 
-function RecipeCard({ r }: { r: RecipeSummary }) {
+function RecipeCard({ r, placeholder = '🥪' }: { r: RecipeSummary; placeholder?: string }) {
   return (
     <Link
       href={`/employee/recipes/${r.id.replace(/-/g, '')}`}
@@ -23,7 +23,7 @@ function RecipeCard({ r }: { r: RecipeSummary }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={r.coverUrl} alt={r.name} className="w-full h-full object-cover" loading="lazy" />
         ) : (
-          <span className="text-3xl">🥪</span>
+          <span className="text-3xl">{placeholder}</span>
         )}
       </div>
       <div className="p-3">
@@ -77,7 +77,7 @@ export default async function RecipesPage() {
     )
   }
 
-  const { sandwiches, sauces } = groups
+  const { sandwiches, sauces, drinks } = groups
 
   return (
     <div className="space-y-6">
@@ -109,6 +109,19 @@ export default async function RecipesPage() {
           <div className="grid grid-cols-2 gap-3">
             {sauces.map((r) => (
               <RecipeCard key={r.id} r={r} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {drinks.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
+            Getränke <span className="text-gray-300">· {drinks.length}</span>
+          </h2>
+          <div className="grid grid-cols-2 gap-3">
+            {drinks.map((r) => (
+              <RecipeCard key={r.id} r={r} placeholder="☕" />
             ))}
           </div>
         </section>

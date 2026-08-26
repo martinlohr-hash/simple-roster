@@ -74,12 +74,17 @@ export default async function SchedulePage({ searchParams }: Props) {
               s.userId !== session.userId &&
               s.user != null,
           )
-          .map((s) => ({ name: s.user!.name })),
+          .map((s) => ({ name: s.user!.name, startTime: s.startTime, endTime: s.endTime })),
       })),
     }
   })
 
   return (
-    <WeekPlanView weekStart={format(weekStart, 'yyyy-MM-dd')} days={days} userName={session.name} />
+    <WeekPlanView
+      weekStart={format(weekStart, 'yyyy-MM-dd')}
+      days={days}
+      userName={session.name}
+      userId={session.userId}
+    />
   )
 }

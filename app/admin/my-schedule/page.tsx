@@ -75,14 +75,19 @@ export default async function AdminMySchedulePage({ searchParams }: Props) {
               s.userId !== session.userId &&
               s.user != null,
           )
-          .map((s) => ({ name: s.user!.name })),
+          .map((s) => ({ name: s.user!.name, startTime: s.startTime, endTime: s.endTime })),
       })),
     }
   })
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
-      <WeekPlanView weekStart={format(weekStart, 'yyyy-MM-dd')} days={days} userName={session.name} />
+      <WeekPlanView
+        weekStart={format(weekStart, 'yyyy-MM-dd')}
+        days={days}
+        userName={session.name}
+        userId={session.userId}
+      />
     </div>
   )
 }

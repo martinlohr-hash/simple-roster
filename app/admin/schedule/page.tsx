@@ -1,13 +1,13 @@
-import { startOfWeek, addDays, format, getISOWeek, getYear, parseISO, startOfMonth, addMonths } from 'date-fns'
+import { startOfWeek, addDays, format, getISOWeek, getYear, getMonth, parseISO, startOfMonth, addMonths } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { redirect } from 'next/navigation'
-import { getBudgetStatus } from '@/lib/calculations'
+import { getBudgetStatus, calcLaborCost } from '@/lib/calculations'
 import { getHamburgHolidays } from '@/lib/vacation'
 import { getBookedEventsForDates } from '@/lib/notion/funnelEvents'
 import { getSession } from '@/app/actions/auth'
 import { isSuperAdmin } from '@/lib/session'
 import { shiftDurationHours } from '@/lib/timeUtils'
-import { computeDaysHours, getUnconfirmedDays, berlinDay } from '@/lib/dayHours'
+import { computeDaysHours, computeDaysUserHours, getUnconfirmedDays, berlinDay } from '@/lib/dayHours'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import WeekGrid from '@/components/schedule/WeekGrid'
@@ -53,7 +53,7 @@ export default async function SchedulePage({ searchParams }: Props) {
   const monthEndStr = format(addMonths(startOfMonth(monthAnchor), 1), 'yyyy-MM-dd')
   const monthLabel = format(monthAnchor, 'MMMM', { locale: de })
 
-  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations, timesheetReleases, dayActuals, unplannedTimeEntries, funnelEvents, unconfirmedDays, monthShifts, adjacentShiftsRaw] = await Promise.all([
+  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations, timesheetReleases, dayActuals, unplannedTimeEntries, funnelEvents, unconfirmedDays, monthShifts, adjacentShiftsRaw, monthBudget, monthReleases] = await Promise.all([
     prisma.shift.findMany({
       where: { date: { gte: weekStart, lt: weekEnd } },
       include: { user: true, location: true, timeEntry: true },
@@ -105,6 +105,10 @@ export default async function SchedulePage({ searchParams }: Props) {
       },
       select: { userId: true, date: true, locationId: true, location: { select: { color: true } } },
     }),
+    prisma.budget.findUnique({
+      where: { period_year_weekOrMonth: { period: 'MONTHLY', year: getYear(monthAnchor), weekOrMonth: getMonth(monthAnchor) + 1 } },
+    }),
+    prisma.timesheetRelease.findMany({ where: { day: { gte: monthStartStr, lt: monthEndStr } } }),
   ])
 
   // Auto-apply default template on empty weeks
@@ -143,6 +147,38 @@ export default async function SchedulePage({ searchParams }: Props) {
   }, 0)
   const budgetActual = weekBudget?.type === 'HOURS' ? plannedHours : plannedCost
   const budgetStatus = weekBudget ? getBudgetStatus(budgetActual, weekBudget.amount) : 'green'
+
+  // Monats-Personalkosten-Balken: für bereits bestätigte (freigegebene) Tage
+  // zählen die Ist-Stunden je Mitarbeiter, für alle anderen Tage des Monats
+  // (v.a. die Zukunft) die geplanten Schicht-Stunden – jeweils zu Lohnkosten
+  // (Stundenlohn + Nebenkosten) verrechnet.
+  const monthReleasedDaySet = new Set(monthReleases.map((r) => r.day))
+  const confirmedUserHours = monthReleasedDaySet.size > 0
+    ? await computeDaysUserHours([...monthReleasedDaySet])
+    : {}
+  let confirmedMonthCost = 0
+  for (const dayHours of Object.values(confirmedUserHours)) {
+    for (const [userId, hours] of Object.entries(dayHours)) {
+      const rates = userRateMap[userId]
+      if (rates) confirmedMonthCost += calcLaborCost(hours, rates.hourlyRate, rates.overheadPercent)
+    }
+  }
+  let plannedRemainingMonthCost = 0
+  for (const s of monthShifts) {
+    if (!s.userId) continue
+    const day = s.date.toISOString().slice(0, 10)
+    if (monthReleasedDaySet.has(day)) continue
+    const rates = userRateMap[s.userId]
+    if (!rates) continue
+    plannedRemainingMonthCost += calcLaborCost(shiftDurationHours(s.startTime, s.endTime), rates.hourlyRate, rates.overheadPercent)
+  }
+  const totalMonthCost = confirmedMonthCost + plannedRemainingMonthCost
+  const hasMonthlyCostTarget = !!monthBudget && monthBudget.type === 'EUROS'
+  const monthCostStatus = hasMonthlyCostTarget ? getBudgetStatus(totalMonthCost, monthBudget!.amount) : 'green'
+  const monthCostPct = hasMonthlyCostTarget && monthBudget!.amount > 0
+    ? Math.min(100, (totalMonthCost / monthBudget!.amount) * 100)
+    : 0
+  const monthCostRemaining = hasMonthlyCostTarget ? monthBudget!.amount - totalMonthCost : 0
 
   const shiftsJson = shifts.map((s) => ({
     id: s.id,
@@ -305,6 +341,45 @@ export default async function SchedulePage({ searchParams }: Props) {
         <h1 className="text-2xl font-bold text-gray-900">Dienstplan</h1>
         <WeekJumper weekStart={format(weekStart, 'yyyy-MM-dd')} />
       </div>
+
+      {hasMonthlyCostTarget ? (
+        <div className="mb-4 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm font-medium text-gray-700">Personalkosten {monthLabel}</div>
+            <Link href="/admin/costs?period=month" className="text-xs text-gray-400 hover:text-gray-600 underline">
+              Ziel bearbeiten
+            </Link>
+          </div>
+          <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
+            <div
+              className={`h-full rounded-full ${
+                monthCostStatus === 'red' ? 'bg-red-500' : monthCostStatus === 'warning' ? 'bg-amber-500' : 'bg-green-500'
+              }`}
+              style={{ width: `${monthCostPct}%` }}
+            />
+          </div>
+          <div className="flex items-baseline justify-between mt-1.5 text-xs text-gray-500">
+            <span>
+              {totalMonthCost.toFixed(0)} € von {monthBudget!.amount.toFixed(0)} € ({monthCostPct.toFixed(0)} %)
+            </span>
+            <span className={monthCostRemaining < 0 ? 'text-red-600 font-medium' : ''}>
+              {monthCostRemaining >= 0
+                ? `noch ${monthCostRemaining.toFixed(0)} € übrig`
+                : `${Math.abs(monthCostRemaining).toFixed(0)} € über Ziel`}
+            </span>
+          </div>
+          <div className="mt-1 text-[11px] text-gray-400">
+            bestätigt: {confirmedMonthCost.toFixed(0)} € · geplant: {plannedRemainingMonthCost.toFixed(0)} €
+          </div>
+        </div>
+      ) : (
+        <div className="mb-4 flex items-center justify-between text-xs text-gray-400 px-1">
+          <span>Kein Monats-Personalkostenziel gesetzt.</span>
+          <Link href="/admin/costs?period=month" className="underline hover:text-gray-600">
+            Ziel festlegen
+          </Link>
+        </div>
+      )}
 
       {weekBudget && budgetStatus !== 'green' && (
         <div className={`mb-4 px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 ${

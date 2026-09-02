@@ -105,10 +105,29 @@ export type DayStat = { actual: number; open: number; entries: number }
  * `actual` = summierte Ist-Stunden, `open` = Anzahl offener Stempel,
  * `entries` = Anzahl beitragender Mitarbeiter (Stempel oder Fallback-Schicht).
  */
+/** Ist-Stunden je Tag + Mitarbeiter (nur Tage/User mit Stunden > 0), für Kostenberechnung mit individuellem Stundenlohn. */
+export type DayUserHours = Record<string, Record<string, number>>
+
 export async function computeDaysStats(days: string[]): Promise<Record<string, DayStat>> {
+  const { perDay } = await computeDaysStatsDetailed(days)
+  return perDay
+}
+
+export async function computeDaysUserHours(days: string[]): Promise<DayUserHours> {
+  const { perUser } = await computeDaysStatsDetailed(days)
+  return perUser
+}
+
+async function computeDaysStatsDetailed(
+  days: string[],
+): Promise<{ perDay: Record<string, DayStat>; perUser: DayUserHours }> {
   const out: Record<string, DayStat> = {}
-  for (const d of days) out[d] = { actual: 0, open: 0, entries: 0 }
-  if (days.length === 0) return out
+  const perUser: DayUserHours = {}
+  for (const d of days) {
+    out[d] = { actual: 0, open: 0, entries: 0 }
+    perUser[d] = {}
+  }
+  if (days.length === 0) return { perDay: out, perUser }
 
   const now = new Date()
   const todayStr = berlinDay(now)
@@ -160,10 +179,11 @@ export async function computeDaysStats(days: string[]): Promise<Record<string, D
   }
 
   for (const d of days) {
-    for (const [, v] of stamp[d]) {
+    for (const [userId, v] of stamp[d]) {
       if (v.hours > 0) {
         out[d].actual += v.hours
         out[d].entries += 1
+        perUser[d][userId] = (perUser[d][userId] ?? 0) + v.hours
       }
       out[d].open += v.open
     }
@@ -185,10 +205,11 @@ export async function computeDaysStats(days: string[]): Promise<Record<string, D
     const h = shiftDurationHours(s.startTime, s.endTime)
     out[day].actual += h
     out[day].entries += 1
+    perUser[day][s.userId] = (perUser[day][s.userId] ?? 0) + h
   }
 
   for (const d of days) out[d].actual = Math.round(out[d].actual * 100) / 100
-  return out
+  return { perDay: out, perUser }
 }
 
 /** Echte Tages-Gesamtstunden eines Berliner Kalendertags (Stempel + Schicht-Fallback). */

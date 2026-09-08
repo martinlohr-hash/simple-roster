@@ -2,7 +2,7 @@ import { cache } from 'react'
 import type { Locale } from 'date-fns'
 import { fromZonedTime, formatInTimeZone } from 'date-fns-tz'
 import { prisma } from '@/lib/db'
-import { calcHours } from '@/lib/calculations'
+import { calcHours, requiredBreakMinutes } from '@/lib/calculations'
 import { timeToMinutes, shiftDurationHours } from '@/lib/timeUtils'
 
 /** Folgetag eines "yyyy-MM-dd"-Strings. */
@@ -121,6 +121,30 @@ export async function computeDaysUserHours(days: string[]): Promise<DayUserHours
 async function computeDaysStatsDetailed(
   days: string[],
 ): Promise<{ perDay: Record<string, DayStat>; perUser: DayUserHours }> {
+  const { perDay, perUser } = await computeDaysStatsRaw(days)
+  if (days.length === 0) return { perDay, perUser }
+
+  // Bestätigte Pausenabzüge (BreakDeduction) ziehen die Ist-Stunden dieses MA an
+  // diesem Tag überall ab – unabhängig vom Freigabe-Status des Tages.
+  const deductions = await prisma.breakDeduction.findMany({
+    where: { day: { in: days } },
+    select: { day: true, userId: true, minutes: true },
+  })
+  for (const bd of deductions) {
+    const cur = perUser[bd.day]?.[bd.userId]
+    if (cur == null) continue
+    const ded = Math.min(cur, bd.minutes / 60)
+    perUser[bd.day][bd.userId] = cur - ded
+    perDay[bd.day].actual -= ded
+  }
+  for (const d of days) perDay[d].actual = Math.round(perDay[d].actual * 100) / 100
+
+  return { perDay, perUser }
+}
+
+async function computeDaysStatsRaw(
+  days: string[],
+): Promise<{ perDay: Record<string, DayStat>; perUser: DayUserHours }> {
   const out: Record<string, DayStat> = {}
   const perUser: DayUserHours = {}
   for (const d of days) {
@@ -217,6 +241,72 @@ export async function computeDayHours(day: string): Promise<{ hours: number; ent
   const stats = await computeDaysStats([day])
   const s = stats[day]
   return { hours: s.actual, entries: s.entries }
+}
+
+/**
+ * Hinterlegte Pausenabzüge je MA innerhalb eines Berliner Kalendertag-Zeitraums
+ * (inklusive), als Minuten-Summe – für Kostenübersicht/Lohn-Export, die Stunden
+ * direkt aus den Stempelzeiten aggregieren statt über computeDaysStats() zu laufen.
+ */
+export async function getBreakMinutesByUser(fromDay: string, toDay: string): Promise<Record<string, number>> {
+  const rows = await prisma.breakDeduction.findMany({
+    where: { day: { gte: fromDay, lte: toDay } },
+    select: { userId: true, minutes: true },
+  })
+  const out: Record<string, number> = {}
+  for (const r of rows) out[r.userId] = (out[r.userId] ?? 0) + r.minutes
+  return out
+}
+
+/**
+ * Hinterlegte Pausenabzüge je (MA, Tag) innerhalb eines Zeitraums – für den
+ * detaillierten Stempel-Export, der pro TimeEntry-Zeile exportiert und den
+ * Abzug dem letzten Eintrag des jeweiligen Tages zuordnen muss.
+ */
+export async function getBreakMinutesByUserAndDay(
+  fromDay: string,
+  toDay: string,
+): Promise<Record<string, number>> {
+  const rows = await prisma.breakDeduction.findMany({
+    where: { day: { gte: fromDay, lte: toDay } },
+    select: { userId: true, day: true, minutes: true },
+  })
+  const out: Record<string, number> = {}
+  for (const r of rows) out[`${r.userId}|${r.day}`] = r.minutes
+  return out
+}
+
+export type SuggestedBreak = { userId: string; name: string; hours: number; minutes: number }
+
+/**
+ * MA, die an diesem Tag laut Rohstunden (vor Pausenabzug) Anspruch auf eine
+ * gesetzliche Pause haben (§4 ArbZG), aber noch keinen passenden Abzug hinterlegt
+ * haben. Wird bei "Tag freigeben" abgefragt, siehe releaseDay().
+ */
+export async function getSuggestedBreaksForDay(day: string): Promise<SuggestedBreak[]> {
+  const [{ perUser }, existing] = await Promise.all([
+    computeDaysStatsRaw([day]),
+    prisma.breakDeduction.findMany({ where: { day }, select: { userId: true, minutes: true } }),
+  ])
+  const existingByUser = new Map(existing.map((e) => [e.userId, e.minutes]))
+  const userIds = Object.keys(perUser[day] ?? {})
+  if (userIds.length === 0) return []
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, name: true },
+  })
+  const nameById = new Map(users.map((u) => [u.id, u.name]))
+
+  const out: SuggestedBreak[] = []
+  for (const userId of userIds) {
+    const hours = perUser[day][userId]
+    const minutes = requiredBreakMinutes(hours)
+    if (minutes === 0) continue
+    if (existingByUser.get(userId) === minutes) continue
+    out.push({ userId, name: nameById.get(userId) ?? userId, hours, minutes })
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name, 'de'))
 }
 
 export type MissingStampShift = { userId: string; name: string; hours: number }

@@ -4,7 +4,7 @@ import { decrypt, isAdmin } from '@/lib/session'
 import { prisma } from '@/lib/db'
 import { calcHours, calcLaborCost } from '@/lib/calculations'
 import { shiftDurationHours } from '@/lib/timeUtils'
-import { berlinDay, berlinDayBounds, formatBerlin } from '@/lib/dayHours'
+import { berlinDay, berlinDayBounds, formatBerlin, getBreakMinutesByUser, getBreakMinutesByUserAndDay } from '@/lib/dayHours'
 import * as XLSX from 'xlsx'
 
 export async function GET(request: NextRequest) {
@@ -43,6 +43,9 @@ export async function GET(request: NextRequest) {
     include: { user: true, location: true, shift: true },
     orderBy: [{ user: { name: 'asc' } }, { checkinAt: 'asc' }],
   })
+
+  const periodFrom = formatBerlin(from, 'yyyy-MM-dd')
+  const periodTo = formatBerlin(to, 'yyyy-MM-dd')
 
   let rows: Record<string, unknown>[]
 
@@ -100,8 +103,6 @@ export async function GET(request: NextRequest) {
     // Manuelle Lohn-Korrekturen für exakt diesen Zeitraum (z. B. vergessener Stempel,
     // mit Pflicht-Begründung fürs Lohnbüro). Admins bleiben außen vor, die gehen
     // ohnehin über Plan-Stunden ein.
-    const periodFrom = formatBerlin(from, 'yyyy-MM-dd')
-    const periodTo = formatBerlin(to, 'yyyy-MM-dd')
     const adjustments = await prisma.payrollAdjustment.findMany({
       where: {
         periodFrom,
@@ -127,6 +128,18 @@ export async function GET(request: NextRequest) {
       byUser.set(adj.userId, agg)
     }
 
+    // Gesetzliche Pausenabzüge (§4 ArbZG, per "Tag freigeben" bestätigt) reduzieren
+    // die Ist-Stunden auch im Lohn-Export, konsistent mit Dienstplan/Kostenübersicht.
+    const breakMinutesByUser = await getBreakMinutesByUser(periodFrom, periodTo)
+    let hasBreakDeductions = false
+    for (const [userId, minutes] of Object.entries(breakMinutesByUser)) {
+      if (adminIds.has(userId)) continue
+      const agg = byUser.get(userId)
+      if (!agg || minutes <= 0) continue
+      agg.hours -= Math.min(agg.hours, minutes / 60)
+      hasBreakDeductions = true
+    }
+
     const aggs = [...byUser.values()].sort((a, b) => a.name.localeCompare(b.name, 'de'))
     const totalHours = aggs.reduce((sum, a) => sum + a.hours, 0)
     // Letzte Zeile bekommt den Rest, damit die Summe exakt dem eingegebenen Trinkgeld entspricht
@@ -147,6 +160,7 @@ export async function GET(request: NextRequest) {
         'Lohnkosten (€)': parseFloat(calcLaborCost(a.hours, a.hourlyRate, a.overheadPercent).toFixed(2)),
       }
       if (hasAdjustments) row['Begründung (Korrektur)'] = a.adjReasons.join(' / ')
+      if (hasBreakDeductions) row['Pausenabzug (Min)'] = breakMinutesByUser[a.userId] ?? 0
       row['Trinkgeld (€)'] = tipShare
       return row
     })
@@ -155,8 +169,31 @@ export async function GET(request: NextRequest) {
       ? entries.reduce((sum, e) => sum + calcHours(e.checkinAt, e.checkoutAt!), 0)
       : 0
 
+    // Gesetzliche Pausenabzüge (§4 ArbZG) sind pro (MA, Tag) hinterlegt, der
+    // Export aber pro Stempel-Zeile – der Abzug wird dem letzten Eintrag des
+    // jeweiligen Tages zugeordnet (spätester Ausstempel-Zeitpunkt).
+    const breakMinutesByUserDay = await getBreakMinutesByUserAndDay(periodFrom, periodTo)
+    const hasBreakDeductions = Object.keys(breakMinutesByUserDay).length > 0
+    const lastEntryIdByUserDay = new Map<string, string>()
+    if (hasBreakDeductions) {
+      const latestCheckoutByKey = new Map<string, Date>()
+      for (const e of entries) {
+        const key = `${e.userId}|${formatBerlin(e.checkinAt, 'yyyy-MM-dd')}`
+        if (!breakMinutesByUserDay[key]) continue
+        const cur = latestCheckoutByKey.get(key)
+        if (!cur || e.checkoutAt! > cur) {
+          latestCheckoutByKey.set(key, e.checkoutAt!)
+          lastEntryIdByUserDay.set(key, e.id)
+        }
+      }
+    }
+
     rows = entries.map((e) => {
-      const hours = calcHours(e.checkinAt, e.checkoutAt!)
+      let hours = calcHours(e.checkinAt, e.checkoutAt!)
+      const day = formatBerlin(e.checkinAt, 'yyyy-MM-dd')
+      const key = `${e.userId}|${day}`
+      const deductedMinutes = lastEntryIdByUserDay.get(key) === e.id ? breakMinutesByUserDay[key] : 0
+      if (deductedMinutes) hours -= Math.min(hours, deductedMinutes / 60)
       const cost = calcLaborCost(hours, e.user.hourlyRate, e.user.overheadPercent)
       const tipShare = tips > 0 && totalHours > 0
         ? parseFloat(((hours / totalHours) * tips).toFixed(2))
@@ -174,6 +211,7 @@ export async function GET(request: NextRequest) {
         'NK-Quote (%)': e.user.overheadPercent,
         'Lohnkosten (€)': parseFloat(cost.toFixed(2)),
       }
+      if (hasBreakDeductions) row['Pausenabzug (Min)'] = deductedMinutes || 0
       if (tips > 0) row['Trinkgeld (€)'] = tipShare
       return row
     })

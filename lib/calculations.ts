@@ -12,6 +12,13 @@ export function calcGrossHourlyCost(hourlyRate: number, overheadPercent: number)
   return hourlyRate * (1 + overheadPercent / 100)
 }
 
+/** Gesetzliche Mindestpause nach §4 ArbZG: 6-9h Arbeit → 30 Min, über 9h → 45 Min. */
+export function requiredBreakMinutes(hours: number): number {
+  if (hours > 9) return 45
+  if (hours >= 6) return 30
+  return 0
+}
+
 export type TrafficLightStatus = 'green' | 'yellow' | 'red'
 
 export function getTrafficLight(actual: number, max: number | null | undefined): TrafficLightStatus {

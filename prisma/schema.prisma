@@ -153,6 +153,7 @@ model User {
   onboardingDeliveries OnboardingDelivery[]
   pendingEmails        PendingEmail[]
   payrollAdjustments   PayrollAdjustment[]
+  breakDeductions      BreakDeduction[]
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
 }
@@ -404,6 +405,21 @@ model OnboardingDelivery {
 // gebunden (periodFrom/periodTo = "yyyy-MM-dd" Europe/Berlin, identisch zu den Grenzen
 // des jeweiligen Lohn-Exports), damit eine Korrektur nicht versehentlich in einen
 // späteren Zeitraum durchschlägt.
+// Gesetzlicher Pausenabzug (§4 ArbZG: 6-9h Arbeit → 30 Min, über 9h → 45 Min),
+// pro Mitarbeiter und Berliner Kalendertag. Wird beim "Tag freigeben" abgefragt
+// und reduziert danach überall die Ist-Stunden dieses MA an diesem Tag.
+model BreakDeduction {
+  id        String   @id @default(cuid())
+  userId    String
+  day       String // "yyyy-MM-dd" Berliner Kalendertag
+  minutes   Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, day])
+  @@index([day])
+}
+
 model PayrollAdjustment {
   id         String   @id @default(cuid())
   userId     String

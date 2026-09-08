@@ -208,6 +208,19 @@ function ReleaseBar({
         }
         res = await releaseDay(day, true)
       }
+      if (res.suggestedBreaks && res.suggestedBreaks.length > 0) {
+        const list = res.suggestedBreaks
+          .map((b) => `– ${b.name}: ${fmtHours(b.hours)} Std. → ${b.minutes} Min. Pause`)
+          .join('\n')
+        const applyBreaks = confirm(
+          `Gesetzliche Pausenzeit (§4 ArbZG) noch nicht abgezogen:\n\n${list}\n\n` +
+            `OK = jetzt abziehen und freigeben, Abbrechen = ohne Abzug freigeben.`,
+        )
+        const breaksMap = applyBreaks
+          ? Object.fromEntries(res.suggestedBreaks.map((b) => [b.userId, b.minutes]))
+          : {}
+        res = await releaseDay(day, true, breaksMap)
+      }
       unwrap(res)
       onDone()
     } catch (e) {

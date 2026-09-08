@@ -189,6 +189,19 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
           }
           res = await releaseDay(dateStr, true)
         }
+        if (res.suggestedBreaks && res.suggestedBreaks.length > 0) {
+          const list = res.suggestedBreaks
+            .map((b) => `– ${b.name}: ${b.hours.toFixed(2).replace('.', ',')} Std. → ${b.minutes} Min. Pause`)
+            .join('\n')
+          const applyBreaks = window.confirm(
+            `Gesetzliche Pausenzeit (§4 ArbZG) noch nicht abgezogen:\n\n${list}\n\n` +
+              `OK = jetzt abziehen und freigeben, Abbrechen = ohne Abzug freigeben.`,
+          )
+          const breaksMap = applyBreaks
+            ? Object.fromEntries(res.suggestedBreaks.map((b) => [b.userId, b.minutes]))
+            : {}
+          res = await releaseDay(dateStr, true, breaksMap)
+        }
         unwrap(res)
       }
       router.refresh()

@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { fromZonedTime } from 'date-fns-tz'
 import { prisma } from '@/lib/db'
 import { requireAdmin, getSession } from '@/app/actions/auth'
-import { computeDayHours, getMissingStampShifts, type MissingStampShift } from '@/lib/dayHours'
+import { computeDayHours, getMissingStampShifts, getSuggestedBreaksForDay, type MissingStampShift, type SuggestedBreak } from '@/lib/dayHours'
 
 // Fachliche Fehler als Rückgabewert statt throw: geworfene Errors werden von
 // Next.js in Production maskiert und kämen beim Nutzer nie an.
@@ -98,7 +98,10 @@ export async function adminDeleteTimeEntry(id: string): Promise<TimesheetActionR
   return {}
 }
 
-export type ReleaseDayResult = TimesheetActionResult & { missingStamps?: MissingStampShift[] }
+export type ReleaseDayResult = TimesheetActionResult & {
+  missingStamps?: MissingStampShift[]
+  suggestedBreaks?: SuggestedBreak[]
+}
 
 /**
  * Gibt einen Tag frei: friert die aktuellen Tages-Gesamtstunden als Snapshot ein.
@@ -112,14 +115,40 @@ export type ReleaseDayResult = TimesheetActionResult & { missingStamps?: Missing
  * und die betroffenen MA/Stunden zurückgegeben, damit der Admin entweder den
  * Stempel nachträgt (Schicht-Klick → „Ist-Zeiten") oder die Freigabe bewusst
  * mit `force: true` bestätigt.
+ *
+ * Danach wird geprüft, ob MA an dem Tag laut Rohstunden Anspruch auf eine
+ * gesetzliche Pause haben (§4 ArbZG, siehe getSuggestedBreaksForDay). Ist das
+ * der Fall und `breaks` wurde noch nicht übergeben, wird die Freigabe erneut
+ * angehalten und die Vorschläge zurückgegeben – der Admin entscheidet dann
+ * (UI: ja = Pausen abziehen, nein = ohne Abzug freigeben) und ruft erneut mit
+ * `breaks` auf (leeres Objekt = bewusst ohne Abzug).
  */
-export async function releaseDay(day: string, force = false): Promise<ReleaseDayResult> {
+export async function releaseDay(
+  day: string,
+  force = false,
+  breaks?: Record<string, number>,
+): Promise<ReleaseDayResult> {
   await requireAdmin()
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { error: 'Ungültiger Tag.' }
 
   if (!force) {
     const missing = await getMissingStampShifts(day)
     if (missing.length > 0) return { missingStamps: missing }
+  }
+
+  if (breaks === undefined) {
+    const suggested = await getSuggestedBreaksForDay(day)
+    if (suggested.length > 0) return { suggestedBreaks: suggested }
+  } else {
+    for (const [userId, minutes] of Object.entries(breaks)) {
+      if (minutes > 0) {
+        await prisma.breakDeduction.upsert({
+          where: { userId_day: { userId, day } },
+          create: { userId, day, minutes },
+          update: { minutes },
+        })
+      }
+    }
   }
 
   const session = await getSession()
@@ -132,6 +161,8 @@ export async function releaseDay(day: string, force = false): Promise<ReleaseDay
   })
 
   revalidatePath('/admin/timesheets')
+  revalidatePath('/admin/schedule')
+  revalidatePath('/admin/costs')
   return {}
 }
 

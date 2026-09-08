@@ -17,6 +17,7 @@ type Entry = {
   checkin: string
   checkout: string
   hours: number | null
+  deductedMinutes?: number
 }
 type Option = { id: string; name: string; primaryLocationId?: string | null }
 type Loc = { id: string; name: string }
@@ -70,6 +71,7 @@ export default function TimesheetEditor({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const totalDeductedMinutes = entries.reduce((sum, e) => sum + (e.deductedMinutes ?? 0), 0)
 
   function goToDate(d: string) {
     startTransition(() => router.push(`/admin/timesheets?date=${d}`))
@@ -122,7 +124,14 @@ export default function TimesheetEditor({
             {release ? 'Snapshot in der Tabelle' : 'erst nach Freigabe in der Tabelle'}
           </div>
         </div>
-        <div className="text-3xl font-semibold text-indigo-900 tabular-nums">{fmtHours(totalHours)} h</div>
+        <div className="text-right">
+          <div className="text-3xl font-semibold text-indigo-900 tabular-nums">{fmtHours(totalHours)} h</div>
+          {totalDeductedMinutes > 0 && (
+            <div className="text-xs text-indigo-700/60 mt-0.5">
+              bereits abzgl. {totalDeductedMinutes} Min. gesetzl. Pause (§4 ArbZG)
+            </div>
+          )}
+        </div>
       </div>
 
       {openCount > 0 && (
@@ -394,7 +403,14 @@ function EntryRow({
         placeholder="–"
         className={`text-sm text-gray-900 border rounded-lg px-2 py-1.5 w-[6.5rem] focus:outline-none focus:ring-2 focus:ring-indigo-500 ${checkout ? 'border-gray-200' : 'border-amber-300 bg-amber-50'}`}
       />
-      <span className="text-sm text-gray-700 text-right tabular-nums w-14">{hours != null ? `${fmtHours(hours)}` : '–'}</span>
+      <span className="text-sm text-gray-700 text-right tabular-nums w-14">
+        {hours != null ? `${fmtHours(hours)}` : '–'}
+        {!!entry.deductedMinutes && (
+          <span className="block text-[10px] text-amber-600 font-normal" title="Gesetzl. Pausenabzug (§4 ArbZG)">
+            −{entry.deductedMinutes} Min Pause
+          </span>
+        )}
+      </span>
       <div className="flex items-center gap-1 justify-end">
         {dirty && (
           <button

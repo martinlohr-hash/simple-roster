@@ -12,7 +12,7 @@ export default async function TimesheetsPage({ searchParams }: Props) {
   const dateStr = sp.date || berlinDay(new Date())
   const { start: dayStart, end: dayEnd } = berlinDayBounds(dateStr)
 
-  const [entries, users, locations, release] = await Promise.all([
+  const [entries, users, locations, release, breakDeductions] = await Promise.all([
     prisma.timeEntry.findMany({
       where: { checkinAt: { gte: dayStart, lte: dayEnd } },
       include: { user: true, location: true },
@@ -24,13 +24,31 @@ export default async function TimesheetsPage({ searchParams }: Props) {
     }),
     prisma.location.findMany({ orderBy: { sortOrder: 'asc' } }),
     prisma.timesheetRelease.findUnique({ where: { day: dateStr } }),
+    prisma.breakDeduction.findMany({ where: { day: dateStr }, select: { userId: true, minutes: true } }),
   ])
 
-  const totalHours = entries.reduce(
+  const rawTotalHours = entries.reduce(
     (sum, e) => (e.checkoutAt ? sum + calcHours(e.checkinAt, e.checkoutAt) : sum),
     0,
   )
   const openCount = entries.filter((e) => !e.checkoutAt).length
+
+  // Gesetzl. Pausenabzug (§4 ArbZG, bei "Tag freigeben" bestätigt) wird dem
+  // letzten Stempel-Eintrag des jeweiligen MA an diesem Tag zugeordnet, damit
+  // er für spätere Prüfungen/Diskussionen sichtbar und nachvollziehbar bleibt.
+  const breakMinutesByUser = new Map(breakDeductions.map((b) => [b.userId, b.minutes]))
+  const lastEntryIdByUser = new Map<string, string>()
+  const latestCheckoutByUser = new Map<string, Date>()
+  for (const e of entries) {
+    if (!e.checkoutAt || !breakMinutesByUser.has(e.userId)) continue
+    const cur = latestCheckoutByUser.get(e.userId)
+    if (!cur || e.checkoutAt > cur) {
+      latestCheckoutByUser.set(e.userId, e.checkoutAt)
+      lastEntryIdByUser.set(e.userId, e.id)
+    }
+  }
+  const totalDeductedHours = breakDeductions.reduce((sum, b) => sum + b.minutes, 0) / 60
+  const totalHours = Math.max(0, rawTotalHours - totalDeductedHours)
 
   const serializedEntries = entries.map((e) => ({
     id: e.id,
@@ -41,6 +59,7 @@ export default async function TimesheetsPage({ searchParams }: Props) {
     checkin: formatBerlin(e.checkinAt, 'HH:mm'),
     checkout: e.checkoutAt ? formatBerlin(e.checkoutAt, 'HH:mm') : '',
     hours: e.checkoutAt ? calcHours(e.checkinAt, e.checkoutAt) : null,
+    deductedMinutes: lastEntryIdByUser.get(e.userId) === e.id ? breakMinutesByUser.get(e.userId) : undefined,
   }))
 
   return (

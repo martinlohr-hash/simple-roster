@@ -31,6 +31,7 @@ import { addMinutesToTime, shiftDurationHours } from '@/lib/timeUtils'
 import CoverageWarningsBar from './CoverageWarningsBar'
 import { computeCoverageWarnings, type CoverageRuleData } from '@/lib/coverage'
 import EmployeeEditModal from '@/components/admin/EmployeeEditModal'
+import { calcGrossHourlyCost } from '@/lib/calculations'
 
 export type ShiftData = {
   id: string
@@ -50,6 +51,8 @@ export type UserData = {
   name: string
   maxHoursWeek: number | null
   maxHoursMonth: number | null
+  hourlyRate: number
+  overheadPercent: number
 }
 
 export type LocationData = {
@@ -120,6 +123,10 @@ function fmtH(h: number): string {
 
 function isoToHHmm(iso: string): string {
   return new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })
+}
+
+function fmtCost(n: number): string {
+  return `${n.toFixed(2).replace('.', ',')} €/h`
 }
 
 function getInitials(name: string): string {
@@ -639,6 +646,9 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                             <div className="text-[11px] font-medium text-gray-900 leading-tight break-words">
                               {user.name}
                             </div>
+                            <div className="text-[10px] text-gray-400">
+                              {fmtCost(calcGrossHourlyCost(user.hourlyRate, user.overheadPercent))}
+                            </div>
                             <div className="flex items-center gap-1 mt-0.5">
                               <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />
                               <span className="text-[10px] text-gray-400">
@@ -975,6 +985,9 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                           >
                             {user.name}
                           </button>
+                          <div className="text-xs text-gray-400">
+                            {fmtCost(calcGrossHourlyCost(user.hourlyRate, user.overheadPercent))}
+                          </div>
                           {user.maxHoursWeek && (
                             <div className="flex items-center gap-1 mt-0.5">
                               <span

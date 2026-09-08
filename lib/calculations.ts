@@ -8,6 +8,10 @@ export function calcLaborCost(hours: number, hourlyRate: number, overheadPercent
   return hours * hourlyRate * (1 + overheadPercent / 100)
 }
 
+export function calcGrossHourlyCost(hourlyRate: number, overheadPercent: number): number {
+  return hourlyRate * (1 + overheadPercent / 100)
+}
+
 export type TrafficLightStatus = 'green' | 'yellow' | 'red'
 
 export function getTrafficLight(actual: number, max: number | null | undefined): TrafficLightStatus {

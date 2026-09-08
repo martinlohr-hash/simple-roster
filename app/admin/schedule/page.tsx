@@ -221,7 +221,14 @@ export default async function SchedulePage({ searchParams }: Props) {
     if (weekDateSet.has(day)) continue
     monthOutsideHours[s.userId] = (monthOutsideHours[s.userId] ?? 0) + shiftDurationHours(s.startTime, s.endTime)
   }
-  const usersJson = displayUsers.map((u) => ({ id: u.id, name: u.name, maxHoursWeek: u.maxHoursWeek, maxHoursMonth: u.maxHoursMonth }))
+  const usersJson = displayUsers.map((u) => ({
+    id: u.id,
+    name: u.name,
+    maxHoursWeek: u.maxHoursWeek,
+    maxHoursMonth: u.maxHoursMonth,
+    hourlyRate: u.hourlyRate,
+    overheadPercent: u.overheadPercent,
+  }))
   const locationsJson = locations.map((l) => ({ id: l.id, name: l.name, color: l.color }))
   const dayNotesMap = Object.fromEntries(dayNotes.map((n) => [n.date, n.content]))
 

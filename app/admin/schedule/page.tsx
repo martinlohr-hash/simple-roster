@@ -19,6 +19,31 @@ type Props = {
   searchParams: Promise<{ week?: string; costMode?: string }>
 }
 
+// Kleiner An/Aus-Schalter Kalendermonat ↔ Abrechnungszeitraum (21.–20.) für den
+// Personalkosten-Balken – bewusst winzig, da nur für den Admin selbst gedacht.
+function CostModeSwitch({ weekStart, costMode }: { weekStart: string; costMode: 'month' | 'billing' }) {
+  const next = costMode === 'billing' ? 'month' : 'billing'
+  return (
+    <Link
+      href={`/admin/schedule?week=${weekStart}&costMode=${next}`}
+      title={
+        costMode === 'billing'
+          ? 'Abrechnungszeitraum (21.–20.) — klicken für Kalendermonat'
+          : 'Kalendermonat — klicken für Abrechnungszeitraum (21.–20.)'
+      }
+      className={`relative inline-flex h-3.5 w-6 shrink-0 items-center rounded-full transition ${
+        costMode === 'billing' ? 'bg-gray-900' : 'bg-gray-300'
+      }`}
+    >
+      <span
+        className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow transition ${
+          costMode === 'billing' ? 'translate-x-2.5' : 'translate-x-0.5'
+        }`}
+      />
+    </Link>
+  )
+}
+
 export default async function SchedulePage({ searchParams }: Props) {
   const [{ week, costMode: costModeParam }, session] = await Promise.all([searchParams, getSession()])
   const costMode = costModeParam === 'billing' ? 'billing' : 'month'
@@ -365,29 +390,13 @@ export default async function SchedulePage({ searchParams }: Props) {
         <WeekJumper weekStart={format(weekStart, 'yyyy-MM-dd')} />
       </div>
 
-      <div className="mb-2 flex items-center gap-1 text-xs">
-        <Link
-          href={`/admin/schedule?week=${format(weekStart, 'yyyy-MM-dd')}&costMode=month`}
-          className={`px-2 py-1 rounded-md transition ${
-            costMode === 'month' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Monat
-        </Link>
-        <Link
-          href={`/admin/schedule?week=${format(weekStart, 'yyyy-MM-dd')}&costMode=billing`}
-          className={`px-2 py-1 rounded-md transition ${
-            costMode === 'billing' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Abrechnung (21.–20.)
-        </Link>
-      </div>
-
       {hasMonthlyCostTarget ? (
         <div className="mb-4 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-medium text-gray-700">Personalkosten {monthLabel}</div>
+            <div className="flex items-center gap-1.5">
+              <div className="text-sm font-medium text-gray-700">Personalkosten {monthLabel}</div>
+              <CostModeSwitch weekStart={format(weekStart, 'yyyy-MM-dd')} costMode={costMode} />
+            </div>
             <Link href={`/admin/costs?period=${costMode}`} className="text-xs text-gray-400 hover:text-gray-600 underline">
               Ziel bearbeiten
             </Link>
@@ -416,7 +425,10 @@ export default async function SchedulePage({ searchParams }: Props) {
         </div>
       ) : (
         <div className="mb-4 flex items-center justify-between text-xs text-gray-400 px-1">
-          <span>Kein Personalkostenziel für {monthLabel} gesetzt.</span>
+          <div className="flex items-center gap-1.5">
+            <span>Kein Personalkostenziel für {monthLabel} gesetzt.</span>
+            <CostModeSwitch weekStart={format(weekStart, 'yyyy-MM-dd')} costMode={costMode} />
+          </div>
           <Link href={`/admin/costs?period=${costMode}`} className="underline hover:text-gray-600">
             Ziel festlegen
           </Link>

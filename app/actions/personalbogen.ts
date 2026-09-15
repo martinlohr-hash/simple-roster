@@ -10,7 +10,7 @@ import { personalbogenPdf } from '@/lib/personalbogen/pdf'
 import { COMPANY } from '@/lib/documents'
 
 // Empfänger = Lohnbüro. Standard fest hinterlegt, per Env überschreibbar.
-const PAYROLL_EMAIL = process.env.PAYROLL_EMAIL || 'info@optilohn.de'
+export const PAYROLL_EMAIL = process.env.PAYROLL_EMAIL || 'info@optilohn.de'
 
 type Result = { ok: true; to: string; sentAt: string } | { error: string }
 
@@ -79,4 +79,44 @@ export async function sendPersonalbogenToPayroll(userId: string): Promise<Result
   revalidatePath(`/admin/employees/${userId}`)
 
   return { ok: true, to: PAYROLL_EMAIL, sentAt: sentAt.toISOString() }
+}
+
+/**
+ * Kurze Abmeldungs-Mail ans Lohnbüro. Wird ausgelöst, wenn ein Admin beim
+ * Speichern der Stammdaten ein (neues/geändertes) Austrittsdatum bestätigt
+ * ("ans Lohnbüro schicken?" – siehe EmployeeForm). Best effort: Fehler landen
+ * nur im Server-Log, blockieren nicht das Speichern des MA.
+ */
+export async function sendExitNoticeToPayroll(name: string, exitDate: Date): Promise<void> {
+  await requireAdmin()
+
+  if (!isMailConfigured()) {
+    console.warn('[exit-notice] E-Mail-Versand nicht konfiguriert (GMAIL_USER/GMAIL_APP_PASSWORD), Abmeldung ans Lohnbüro übersprungen.')
+    return
+  }
+
+  const austritt = format(exitDate, 'dd.MM.yyyy')
+  const subject = `Abmeldung ${name}`
+  const bodyLines = [
+    'Sehr geehrte Damen und Herren,',
+    '',
+    `bitte melden Sie den Mitarbeiter ${name} zum ${austritt} ab.`,
+    '',
+    'Mit freundlichen Grüßen',
+    '',
+    COMPANY.managingDirector,
+    COMPANY.name,
+  ]
+  const text = bodyLines.join('\n')
+  const html =
+    `<div style="font-family:system-ui,Arial,sans-serif;font-size:14px;color:#111;line-height:1.5">` +
+    bodyLines.map((l) => (l === '' ? '<br>' : `<div>${l}</div>`)).join('') +
+    `</div>`
+  const sender = process.env.MAIL_FROM || process.env.GMAIL_USER!
+
+  try {
+    await sendMail({ to: PAYROLL_EMAIL, subject, html, text, replyTo: sender })
+  } catch (err) {
+    console.error('[exit-notice] Abmeldung ans Lohnbüro fehlgeschlagen:', err)
+  }
 }

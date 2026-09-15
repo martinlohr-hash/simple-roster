@@ -9,6 +9,7 @@ import { getSession } from '@/app/actions/auth'
 import { isAdmin, isSuperAdmin } from '@/lib/session'
 import { sendInviteEmail } from '@/lib/email/invite'
 import { parseGermanAddress, composeAddress, deriveGrossSalary, deriveWeeklyWorkTime } from '@/lib/documents'
+import { sendExitNoticeToPayroll } from '@/app/actions/personalbogen'
 
 function parseDays(values: FormDataEntryValue[]): number[] {
   return values
@@ -213,6 +214,14 @@ export async function updateEmployee(id: string, formData: FormData) {
   }
 
   await prisma.user.update({ where: { id }, data })
+
+  // Admin hat beim Speichern bestätigt, dass das (neue/geänderte) Austrittsdatum
+  // ans Lohnbüro gemeldet werden soll (Confirm-Dialog in EmployeeForm).
+  if (formData.get('notifyPayroll') === '1' && endDate) {
+    const nameForMail = fullName || (formData.get('email') as string) || 'Unbekannt'
+    await sendExitNoticeToPayroll(nameForMail, endDate)
+  }
+
   revalidatePath('/admin/employees')
   revalidatePath(`/admin/employees/${id}`)
   redirect(`/admin/employees/${id}?tab=stammdaten`)

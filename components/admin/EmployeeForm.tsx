@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import AvailabilityFields from './AvailabilityFields'
@@ -36,10 +36,31 @@ export default function EmployeeForm({ action, locations, defaults }: Props) {
   const [showPassword, setShowPassword] = useState(false)
   const initialSalaryType = defaults?.monthlyRate != null && defaults.monthlyRate > 0 ? 'monthly' : 'hourly'
   const [salaryType, setSalaryType] = useState<'hourly' | 'monthly'>(initialSalaryType)
+  const notifyPayrollRef = useRef<HTMLInputElement>(null)
+  const originalEndDate = toDateInput(defaults?.endDate)
+
+  // Fragt beim Speichern nach, ob ein NEUES/GEÄNDERTES Austrittsdatum ans
+  // Lohnbüro gemeldet werden soll – confirm() ist synchron, die Antwort landet
+  // im Hidden-Feld, bevor der native Form-Submit weiterläuft (kein
+  // preventDefault/Doppel-Submit nötig).
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    const endDateInput = e.currentTarget.elements.namedItem('endDate') as HTMLInputElement
+    const newEndDate = endDateInput.value
+    let notify = ''
+    if (newEndDate && newEndDate !== originalEndDate) {
+      const displayName = [defaults?.firstName, defaults?.lastName].filter(Boolean).join(' ') || 'diese Person'
+      const displayDate = format(new Date(newEndDate), 'dd.MM.yyyy')
+      notify = confirm(
+        `${displayName} bekommt das Austrittsdatum ${displayDate}. Soll das Lohnbüro automatisch per Mail informiert werden?`,
+      ) ? '1' : ''
+    }
+    if (notifyPayrollRef.current) notifyPayrollRef.current.value = notify
+  }
 
   return (
-    <form action={action} className="space-y-4 bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <form action={action} onSubmit={handleSubmit} className="space-y-4 bg-white rounded-xl border border-gray-200 shadow-sm p-6">
       <input type="hidden" name="salaryType" value={salaryType} />
+      <input type="hidden" name="notifyPayroll" ref={notifyPayrollRef} />
 
       <div className="grid grid-cols-2 gap-4">
         <Field label="Vorname" name="firstName" defaultValue={defaults?.firstName ?? ''} />

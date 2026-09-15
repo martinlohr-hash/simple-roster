@@ -40,6 +40,7 @@ export default function CostsFilter({ locations, defaults }: { locations: Locati
         <option value="week">Diese Woche</option>
         <option value="month">Dieser Monat</option>
         <option value="nextmonth">Nächster Monat</option>
+        <option value="billing">Abrechnung (21.–20.)</option>
         <option value="custom">Benutzerdefiniert</option>
       </select>
       {period === 'custom' && (

@@ -1,4 +1,4 @@
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, parseISO, getISOWeek, getMonth, getYear } from 'date-fns'
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, setDate, startOfDay, endOfDay, parseISO, getISOWeek, getMonth, getYear } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { prisma } from '@/lib/db'
 import { calcHours, calcLaborCost, calcGrossHourlyCost, getTrafficLight } from '@/lib/calculations'
@@ -17,25 +17,37 @@ export default async function CostsPage({ searchParams }: Props) {
   const now = new Date()
 
   let from: Date, to: Date
+  let budgetLabelDate: Date = now
   if (period === 'week') {
     from = startOfWeek(now, { weekStartsOn: 1 })
     to = endOfWeek(now, { weekStartsOn: 1 })
+    budgetLabelDate = from
   } else if (period === 'nextmonth') {
     const next = addMonths(now, 1)
     from = startOfMonth(next)
     to = endOfMonth(next)
+    budgetLabelDate = next
+  } else if (period === 'billing') {
+    // Abrechnungszeitraum: 21. des Vormonats bis 20. des (Melde-)Monats
+    const day = now.getDate()
+    const endMonth = day <= 20 ? now : addMonths(now, 1)
+    from = startOfDay(setDate(addMonths(endMonth, -1), 21))
+    to = endOfDay(setDate(endMonth, 20))
+    budgetLabelDate = endMonth
   } else if (period === 'custom' && sp.from && sp.to) {
     from = parseISO(sp.from)
     to = parseISO(sp.to)
+    budgetLabelDate = from
   } else {
     from = startOfMonth(now)
     to = endOfMonth(now)
+    budgetLabelDate = now
   }
 
-  const showBudget = period === 'week' || period === 'month' || period === 'nextmonth'
+  const showBudget = period === 'week' || period === 'month' || period === 'nextmonth' || period === 'billing'
   const budgetPeriod: 'WEEKLY' | 'MONTHLY' = period === 'week' ? 'WEEKLY' : 'MONTHLY'
-  const budgetYear = getYear(from)
-  const budgetWeekOrMonth = period === 'week' ? getISOWeek(from) : getMonth(from) + 1
+  const budgetYear = getYear(budgetLabelDate)
+  const budgetWeekOrMonth = period === 'week' ? getISOWeek(from) : getMonth(budgetLabelDate) + 1
 
   const [entries, shifts, users, locations, budget, breakMinutesByUser] = await Promise.all([
     prisma.timeEntry.findMany({

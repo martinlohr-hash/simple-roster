@@ -1,4 +1,4 @@
-import { startOfWeek, addDays, format, getISOWeek, getYear, getMonth, parseISO, startOfMonth, addMonths } from 'date-fns'
+import { startOfWeek, addDays, format, getISOWeek, getYear, getMonth, parseISO, startOfMonth, addMonths, setDate } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { redirect } from 'next/navigation'
 import { getBudgetStatus, calcLaborCost } from '@/lib/calculations'
@@ -16,11 +16,12 @@ import SuggestionsPanel from '@/components/schedule/SuggestionsPanel'
 import { computeSuggestions } from '@/lib/suggestions'
 
 type Props = {
-  searchParams: Promise<{ week?: string }>
+  searchParams: Promise<{ week?: string; costMode?: string }>
 }
 
 export default async function SchedulePage({ searchParams }: Props) {
-  const [{ week }, session] = await Promise.all([searchParams, getSession()])
+  const [{ week, costMode: costModeParam }, session] = await Promise.all([searchParams, getSession()])
+  const costMode = costModeParam === 'billing' ? 'billing' : 'month'
   const viewerIsSuperAdmin = isSuperAdmin(session?.role ?? '')
 
   // Nur gültige yyyy-MM-dd akzeptieren – Müll im Query-Param würde als
@@ -46,12 +47,27 @@ export default async function SchedulePage({ searchParams }: Props) {
   const weekYear = getYear(weekStart)
   const weekNumber = getISOWeek(weekStart)
 
-  // Monatsauslastung: maßgeblich ist der Monat, in dem der Donnerstag der Woche liegt
-  // (bei Monatswechsel innerhalb der Woche gewinnt der Monat mit der Mehrheit der Tage)
+  // Personalkosten-Zeitraum: Kalendermonat oder Abrechnungszeitraum (21. des
+  // Vormonats – 20.), umschaltbar. Maßgeblich ist der Monat/Zyklus, in dem der
+  // Donnerstag der angezeigten Woche liegt (bei Wechsel innerhalb der Woche
+  // gewinnt der Monat/Zyklus mit der Mehrheit der Tage).
   const monthAnchor = addDays(weekStart, 3)
-  const monthStartStr = format(startOfMonth(monthAnchor), 'yyyy-MM-dd')
-  const monthEndStr = format(addMonths(startOfMonth(monthAnchor), 1), 'yyyy-MM-dd')
-  const monthLabel = format(monthAnchor, 'MMMM', { locale: de })
+  let monthStartStr: string, monthEndStr: string, monthLabel: string, budgetYear: number, budgetMonthNum: number
+  if (costMode === 'billing') {
+    const day = monthAnchor.getDate()
+    const cycleEndMonth = day <= 20 ? monthAnchor : addMonths(monthAnchor, 1)
+    monthStartStr = format(setDate(addMonths(cycleEndMonth, -1), 21), 'yyyy-MM-dd')
+    monthEndStr = format(setDate(cycleEndMonth, 21), 'yyyy-MM-dd')
+    monthLabel = `21.–20. ${format(cycleEndMonth, 'MMMM', { locale: de })}`
+    budgetYear = getYear(cycleEndMonth)
+    budgetMonthNum = getMonth(cycleEndMonth) + 1
+  } else {
+    monthStartStr = format(startOfMonth(monthAnchor), 'yyyy-MM-dd')
+    monthEndStr = format(addMonths(startOfMonth(monthAnchor), 1), 'yyyy-MM-dd')
+    monthLabel = format(monthAnchor, 'MMMM', { locale: de })
+    budgetYear = getYear(monthAnchor)
+    budgetMonthNum = getMonth(monthAnchor) + 1
+  }
 
   const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations, timesheetReleases, dayActuals, unplannedTimeEntries, funnelEvents, unconfirmedDays, monthShifts, adjacentShiftsRaw, monthBudget, monthReleases] = await Promise.all([
     prisma.shift.findMany({
@@ -106,7 +122,7 @@ export default async function SchedulePage({ searchParams }: Props) {
       select: { userId: true, date: true, locationId: true, location: { select: { color: true } } },
     }),
     prisma.budget.findUnique({
-      where: { period_year_weekOrMonth: { period: 'MONTHLY', year: getYear(monthAnchor), weekOrMonth: getMonth(monthAnchor) + 1 } },
+      where: { period_year_weekOrMonth: { period: 'MONTHLY', year: budgetYear, weekOrMonth: budgetMonthNum } },
     }),
     prisma.timesheetRelease.findMany({ where: { day: { gte: monthStartStr, lt: monthEndStr } } }),
   ])
@@ -349,11 +365,30 @@ export default async function SchedulePage({ searchParams }: Props) {
         <WeekJumper weekStart={format(weekStart, 'yyyy-MM-dd')} />
       </div>
 
+      <div className="mb-2 flex items-center gap-1 text-xs">
+        <Link
+          href={`/admin/schedule?week=${format(weekStart, 'yyyy-MM-dd')}&costMode=month`}
+          className={`px-2 py-1 rounded-md transition ${
+            costMode === 'month' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Monat
+        </Link>
+        <Link
+          href={`/admin/schedule?week=${format(weekStart, 'yyyy-MM-dd')}&costMode=billing`}
+          className={`px-2 py-1 rounded-md transition ${
+            costMode === 'billing' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Abrechnung (21.–20.)
+        </Link>
+      </div>
+
       {hasMonthlyCostTarget ? (
         <div className="mb-4 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
           <div className="flex items-center justify-between mb-2">
             <div className="text-sm font-medium text-gray-700">Personalkosten {monthLabel}</div>
-            <Link href="/admin/costs?period=month" className="text-xs text-gray-400 hover:text-gray-600 underline">
+            <Link href={`/admin/costs?period=${costMode}`} className="text-xs text-gray-400 hover:text-gray-600 underline">
               Ziel bearbeiten
             </Link>
           </div>
@@ -381,8 +416,8 @@ export default async function SchedulePage({ searchParams }: Props) {
         </div>
       ) : (
         <div className="mb-4 flex items-center justify-between text-xs text-gray-400 px-1">
-          <span>Kein Monats-Personalkostenziel gesetzt.</span>
-          <Link href="/admin/costs?period=month" className="underline hover:text-gray-600">
+          <span>Kein Personalkostenziel für {monthLabel} gesetzt.</span>
+          <Link href={`/admin/costs?period=${costMode}`} className="underline hover:text-gray-600">
             Ziel festlegen
           </Link>
         </div>

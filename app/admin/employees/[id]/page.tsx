@@ -13,7 +13,7 @@ export const metadata = { title: 'Mitarbeiter' }
 
 type Props = {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; payrollNotice?: string }>
 }
 
 const d = (v: Date | null) => (v ? v.toISOString().split('T')[0] : null)
@@ -93,6 +93,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
       <EmployeeDetailTabs
         userId={user.id}
         initialTab={initialTab}
+        payrollNotice={sp.payrollNotice === 'sent' || sp.payrollNotice === 'failed' ? sp.payrollNotice : null}
         updateAction={updateEmployee.bind(null, id)}
         locations={locations.map((l) => ({ id: l.id, name: l.name }))}
         employeeDefaults={{

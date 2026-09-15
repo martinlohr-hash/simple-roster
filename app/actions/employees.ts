@@ -216,15 +216,19 @@ export async function updateEmployee(id: string, formData: FormData) {
   await prisma.user.update({ where: { id }, data })
 
   // Admin hat beim Speichern bestätigt, dass das (neue/geänderte) Austrittsdatum
-  // ans Lohnbüro gemeldet werden soll (Confirm-Dialog in EmployeeForm).
+  // ans Lohnbüro gemeldet werden soll (Confirm-Dialog in EmployeeForm). Ergebnis
+  // geht als Query-Param mit, damit die Seite sichtbar rückmeldet, ob die Mail
+  // wirklich raus ist – sonst merkt der Admin einen stillen Fehlschlag nicht.
+  let payrollNotice: 'sent' | 'failed' | null = null
   if (formData.get('notifyPayroll') === '1' && endDate) {
     const nameForMail = fullName || (formData.get('email') as string) || 'Unbekannt'
-    await sendExitNoticeToPayroll(nameForMail, endDate)
+    const result = await sendExitNoticeToPayroll(nameForMail, endDate)
+    payrollNotice = 'ok' in result ? 'sent' : 'failed'
   }
 
   revalidatePath('/admin/employees')
   revalidatePath(`/admin/employees/${id}`)
-  redirect(`/admin/employees/${id}?tab=stammdaten`)
+  redirect(`/admin/employees/${id}?tab=stammdaten${payrollNotice ? `&payrollNotice=${payrollNotice}` : ''}`)
 }
 
 const PAYROLL_TYPES = [

@@ -84,15 +84,15 @@ export async function sendPersonalbogenToPayroll(userId: string): Promise<Result
 /**
  * Kurze Abmeldungs-Mail ans Lohnbüro. Wird ausgelöst, wenn ein Admin beim
  * Speichern der Stammdaten ein (neues/geändertes) Austrittsdatum bestätigt
- * ("ans Lohnbüro schicken?" – siehe EmployeeForm). Best effort: Fehler landen
- * nur im Server-Log, blockieren nicht das Speichern des MA.
+ * ("ans Lohnbüro schicken?" – siehe EmployeeForm). Gibt einen Result zurück
+ * (statt nur zu loggen), damit updateEmployee dem Admin sichtbar rückmelden
+ * kann, ob die Mail wirklich raus ist.
  */
-export async function sendExitNoticeToPayroll(name: string, exitDate: Date): Promise<void> {
+export async function sendExitNoticeToPayroll(name: string, exitDate: Date): Promise<Result> {
   await requireAdmin()
 
   if (!isMailConfigured()) {
-    console.warn('[exit-notice] E-Mail-Versand nicht konfiguriert (GMAIL_USER/GMAIL_APP_PASSWORD), Abmeldung ans Lohnbüro übersprungen.')
-    return
+    return { error: 'E-Mail-Versand ist nicht konfiguriert (GMAIL_USER / GMAIL_APP_PASSWORD fehlen).' }
   }
 
   const austritt = format(exitDate, 'dd.MM.yyyy')
@@ -118,5 +118,8 @@ export async function sendExitNoticeToPayroll(name: string, exitDate: Date): Pro
     await sendMail({ to: PAYROLL_EMAIL, subject, html, text, replyTo: sender })
   } catch (err) {
     console.error('[exit-notice] Abmeldung ans Lohnbüro fehlgeschlagen:', err)
+    return { error: 'Versand fehlgeschlagen. Bitte später erneut versuchen.' }
   }
+
+  return { ok: true, to: PAYROLL_EMAIL, sentAt: new Date().toISOString() }
 }

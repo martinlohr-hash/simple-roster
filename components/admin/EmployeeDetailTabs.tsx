@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import EmployeeForm from './EmployeeForm'
@@ -22,6 +22,7 @@ const TABS: { key: DetailTab; label: string }[] = [
 export default function EmployeeDetailTabs({
   userId,
   initialTab,
+  payrollNotice,
   updateAction,
   locations,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,6 +36,7 @@ export default function EmployeeDetailTabs({
 }: {
   userId: string
   initialTab: DetailTab
+  payrollNotice: 'sent' | 'failed' | null
   updateAction: (formData: FormData) => Promise<void>
   locations: Location[]
   // Vollständiger Prisma-User als EmployeeForm-Defaults (überschüssige Felder werden ignoriert)
@@ -48,6 +50,7 @@ export default function EmployeeDetailTabs({
 }) {
   const router = useRouter()
   const [tab, setTab] = useState<DetailTab>(initialTab)
+  const [notice, setNotice] = useState(payrollNotice)
 
   function select(t: DetailTab) {
     setTab(t)
@@ -55,8 +58,39 @@ export default function EmployeeDetailTabs({
     router.replace(`/admin/employees/${userId}?tab=${t}`, { scroll: false })
   }
 
+  useEffect(() => {
+    // payrollNotice nur einmal aus der URL entfernen, damit ein Reload den
+    // Hinweis nicht erneut anzeigt – Banner selbst bleibt über `notice`-State.
+    if (payrollNotice) router.replace(`/admin/employees/${userId}?tab=${tab}`, { scroll: false })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return (
     <div>
+      {notice && (
+        <div
+          className={`mb-4 flex items-center justify-between gap-3 rounded-lg border px-4 py-2.5 text-sm max-w-xl ${
+            notice === 'sent'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+              : 'border-red-200 bg-red-50 text-red-700'
+          }`}
+        >
+          <span>
+            {notice === 'sent'
+              ? 'Abmeldung ans Lohnbüro wurde verschickt.'
+              : 'Abmeldung ans Lohnbüro konnte nicht verschickt werden. Bitte manuell nachfassen.'}
+          </span>
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            className="shrink-0 opacity-60 hover:opacity-100"
+            aria-label="Hinweis schließen"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Reiter */}
       <div role="tablist" aria-label="Mitarbeiter-Bereiche" className="flex gap-1 mb-5 border-b border-gray-200">
         {TABS.map((t) => {

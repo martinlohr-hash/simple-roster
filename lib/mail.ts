@@ -46,13 +46,18 @@ export type SendMailArgs = {
   attachments?: MailAttachment[]
 }
 
+export type SendMailResult = { messageId: string }
+
 // Verschickt eine E-Mail. Wirft bei Konfigurations-/SMTP-Fehlern — Aufrufer entscheidet,
 // ob das den umgebenden Vorgang (z.B. MA-Anlage) abbrechen soll oder nicht.
 // Hinweis: Gmail-SMTP legt gesendete Nachrichten automatisch im "Gesendet"-Ordner
 // des GMAIL_USER-Kontos ab — dadurch ist der Versand dort nachvollziehbar.
+// Gibt die Message-ID zurück, damit Aufrufer den Versand optional per IMAP im
+// Postausgang verifizieren können (siehe lib/mailVerify.ts).
 export async function sendMail({
   to, subject, html, text, cc, bcc, replyTo, attachments,
-}: SendMailArgs): Promise<void> {
+}: SendMailArgs): Promise<SendMailResult> {
   const from = process.env.MAIL_FROM || process.env.GMAIL_USER!
-  await getTransport().sendMail({ from, to, subject, html, text, cc, bcc, replyTo, attachments })
+  const info = await getTransport().sendMail({ from, to, subject, html, text, cc, bcc, replyTo, attachments })
+  return { messageId: info.messageId }
 }

@@ -19,6 +19,8 @@ type Props = {
 const d = (v: Date | null) => (v ? v.toISOString().split('T')[0] : null)
 
 const VALID_TABS: DetailTab[] = ['stammdaten', 'beschaeftigung', 'dokumente']
+const VALID_PAYROLL_NOTICES = ['sent-confirmed', 'sent-unconfirmed', 'failed'] as const
+type PayrollNotice = (typeof VALID_PAYROLL_NOTICES)[number]
 
 export default async function EmployeeDetailPage({ params, searchParams }: Props) {
   const [{ id }, sp, session] = await Promise.all([params, searchParams, getSession()])
@@ -93,7 +95,11 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
       <EmployeeDetailTabs
         userId={user.id}
         initialTab={initialTab}
-        payrollNotice={sp.payrollNotice === 'sent' || sp.payrollNotice === 'failed' ? sp.payrollNotice : null}
+        payrollNotice={
+          VALID_PAYROLL_NOTICES.includes(sp.payrollNotice as PayrollNotice)
+            ? (sp.payrollNotice as PayrollNotice)
+            : null
+        }
         updateAction={updateEmployee.bind(null, id)}
         locations={locations.map((l) => ({ id: l.id, name: l.name }))}
         employeeDefaults={{

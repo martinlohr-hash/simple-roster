@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { requireAdmin } from '@/app/actions/auth'
 import { prisma } from '@/lib/db'
 import { sendMail, isMailConfigured } from '@/lib/mail'
+import { verifySentInGmail } from '@/lib/mailVerify'
 import { personalbogenFileBase } from '@/lib/personalbogen/export'
 import { personalbogenPdf } from '@/lib/personalbogen/pdf'
 import { COMPANY } from '@/lib/documents'
@@ -12,7 +13,10 @@ import { COMPANY } from '@/lib/documents'
 // Empfänger = Lohnbüro. Standard fest hinterlegt, per Env überschreibbar.
 export const PAYROLL_EMAIL = process.env.PAYROLL_EMAIL || 'info@optilohn.de'
 
-type Result = { ok: true; to: string; sentAt: string } | { error: string }
+// `confirmed` = zweiter Haken: per IMAP im Postausgang bestätigt (nicht nur
+// von SMTP angenommen). Optional, weil ältere Aufrufer (Sofortmeldung) das
+// (noch) nicht prüfen.
+type Result = { ok: true; to: string; sentAt: string; confirmed?: boolean } | { error: string }
 
 /**
  * Schickt den Personalbogen eines MA als Sofortmeldung (Neuanmeldung) an das
@@ -114,12 +118,19 @@ export async function sendExitNoticeToPayroll(name: string, exitDate: Date): Pro
     `</div>`
   const sender = process.env.MAIL_FROM || process.env.GMAIL_USER!
 
+  let messageId: string
   try {
-    await sendMail({ to: PAYROLL_EMAIL, subject, html, text, replyTo: sender })
+    const info = await sendMail({ to: PAYROLL_EMAIL, subject, html, text, replyTo: sender })
+    messageId = info.messageId
   } catch (err) {
     console.error('[exit-notice] Abmeldung ans Lohnbüro fehlgeschlagen:', err)
     return { error: 'Versand fehlgeschlagen. Bitte später erneut versuchen.' }
   }
 
-  return { ok: true, to: PAYROLL_EMAIL, sentAt: new Date().toISOString() }
+  // Zweiter Haken: per IMAP im Postausgang nachschauen, ob die Mail wirklich
+  // gelandet ist. Best effort – ein `false` heißt nur "nicht bestätigt",
+  // nicht "fehlgeschlagen" (der SMTP-Versand oben war ja bereits erfolgreich).
+  const confirmed = await verifySentInGmail(messageId)
+
+  return { ok: true, to: PAYROLL_EMAIL, sentAt: new Date().toISOString(), confirmed }
 }

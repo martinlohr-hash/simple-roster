@@ -36,7 +36,7 @@ export default function EmployeeDetailTabs({
 }: {
   userId: string
   initialTab: DetailTab
-  payrollNotice: 'sent' | 'failed' | null
+  payrollNotice: 'sent-confirmed' | 'sent-unconfirmed' | 'failed' | null
   updateAction: (formData: FormData) => Promise<void>
   locations: Location[]
   // Vollständiger Prisma-User als EmployeeForm-Defaults (überschüssige Felder werden ignoriert)
@@ -70,15 +70,26 @@ export default function EmployeeDetailTabs({
       {notice && (
         <div
           className={`mb-4 flex items-center justify-between gap-3 rounded-lg border px-4 py-2.5 text-sm max-w-xl ${
-            notice === 'sent'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-              : 'border-red-200 bg-red-50 text-red-700'
+            notice === 'failed'
+              ? 'border-red-200 bg-red-50 text-red-700'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-700'
           }`}
         >
-          <span>
-            {notice === 'sent'
-              ? 'Abmeldung ans Lohnbüro wurde verschickt.'
-              : 'Abmeldung ans Lohnbüro konnte nicht verschickt werden. Bitte manuell nachfassen.'}
+          <span className="flex items-center gap-2">
+            {notice !== 'failed' && (
+              <span className="flex gap-0.5 text-base leading-none" aria-hidden="true">
+                <span className="text-emerald-600">✓</span>
+                <span className={notice === 'sent-confirmed' ? 'text-emerald-600' : 'text-emerald-300'}>✓</span>
+              </span>
+            )}
+            <span>
+              {notice === 'sent-confirmed' &&
+                'Abmeldung ans Lohnbüro verschickt und im Postausgang bestätigt.'}
+              {notice === 'sent-unconfirmed' &&
+                'Abmeldung ans Lohnbüro verschickt (im Postausgang noch nicht bestätigt).'}
+              {notice === 'failed' &&
+                'Abmeldung ans Lohnbüro konnte nicht verschickt werden. Bitte manuell nachfassen.'}
+            </span>
           </span>
           <button
             type="button"

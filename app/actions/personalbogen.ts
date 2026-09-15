@@ -9,9 +9,7 @@ import { verifySentInGmail } from '@/lib/mailVerify'
 import { personalbogenFileBase } from '@/lib/personalbogen/export'
 import { personalbogenPdf } from '@/lib/personalbogen/pdf'
 import { COMPANY } from '@/lib/documents'
-
-// Empfänger = Lohnbüro. Standard fest hinterlegt, per Env überschreibbar.
-export const PAYROLL_EMAIL = process.env.PAYROLL_EMAIL || 'info@optilohn.de'
+import { PAYROLL_EMAIL } from '@/lib/company'
 
 // `confirmed` = zweiter Haken: per IMAP im Postausgang bestätigt (nicht nur
 // von SMTP angenommen). Optional, weil ältere Aufrufer (Sofortmeldung) das

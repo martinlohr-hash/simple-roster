@@ -12,6 +12,13 @@ function nextDayStr(day: string): string {
   return d.toISOString().slice(0, 10)
 }
 
+/** Alle "yyyy-MM-dd"-Tage im Bereich [fromDay, toDayExclusive). */
+export function daysInRange(fromDay: string, toDayExclusive: string): string[] {
+  const out: string[] = []
+  for (let d = fromDay; d < toDayExclusive; d = nextDayStr(d)) out.push(d)
+  return out
+}
+
 /**
  * Formatiert einen Zeitstempel in Berliner Ortszeit (DST-sicher). Ersetzt
  * date-fns `format()`, das die Server-Zeitzone nutzt (Vercel = UTC, zeigt

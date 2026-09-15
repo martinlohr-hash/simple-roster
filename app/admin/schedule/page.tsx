@@ -7,7 +7,7 @@ import { getBookedEventsForDates } from '@/lib/notion/funnelEvents'
 import { getSession } from '@/app/actions/auth'
 import { isSuperAdmin } from '@/lib/session'
 import { shiftDurationHours } from '@/lib/timeUtils'
-import { computeDaysHours, computeDaysUserHours, getUnconfirmedDays, berlinDay } from '@/lib/dayHours'
+import { computeDaysHours, computeDaysUserHours, getUnconfirmedDays, berlinDay, daysInRange } from '@/lib/dayHours'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import WeekGrid from '@/components/schedule/WeekGrid'
@@ -94,9 +94,9 @@ export default async function SchedulePage({ searchParams }: Props) {
     budgetMonthNum = getMonth(monthAnchor) + 1
   }
 
-  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations, timesheetReleases, dayActuals, unplannedTimeEntries, funnelEvents, unconfirmedDays, monthShifts, adjacentShiftsRaw, monthBudget, monthReleases] = await Promise.all([
+  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations, timesheetReleases, dayActuals, unplannedTimeEntries, funnelEvents, unconfirmedDays, monthShifts, adjacentShiftsRaw, monthBudget] = await Promise.all([
     prisma.shift.findMany({
-      where: { date: { gte: weekStart, lt: weekEnd } },
+      where: { date: { gte: weekStart, lt: weekEnd }, status: { not: 'CANCELLED' } },
       include: { user: true, location: true, timeEntry: true },
       orderBy: { startTime: 'asc' },
     }),
@@ -133,7 +133,7 @@ export default async function SchedulePage({ searchParams }: Props) {
     getBookedEventsForDates(weekDates),
     getUnconfirmedDays(),
     prisma.shift.findMany({
-      where: { date: { gte: new Date(monthStartStr), lt: new Date(monthEndStr) }, userId: { not: null } },
+      where: { date: { gte: new Date(monthStartStr), lt: new Date(monthEndStr) }, status: { not: 'CANCELLED' }, userId: { not: null } },
       select: { userId: true, date: true, startTime: true, endTime: true },
     }),
     prisma.shift.findMany({
@@ -149,7 +149,6 @@ export default async function SchedulePage({ searchParams }: Props) {
     prisma.budget.findUnique({
       where: { period_year_weekOrMonth: { period: 'MONTHLY', year: budgetYear, weekOrMonth: budgetMonthNum } },
     }),
-    prisma.timesheetRelease.findMany({ where: { day: { gte: monthStartStr, lt: monthEndStr } } }),
   ])
 
   // Auto-apply default template on empty weeks
@@ -189,31 +188,31 @@ export default async function SchedulePage({ searchParams }: Props) {
   const budgetActual = weekBudget?.type === 'HOURS' ? plannedHours : plannedCost
   const budgetStatus = weekBudget ? getBudgetStatus(budgetActual, weekBudget.amount) : 'green'
 
-  // Monats-Personalkosten-Balken: für bereits bestätigte (freigegebene) Tage
-  // zählen die Ist-Stunden je Mitarbeiter, für alle anderen Tage des Monats
-  // (v.a. die Zukunft) die geplanten Schicht-Stunden – jeweils zu Lohnkosten
-  // (Stundenlohn + Nebenkosten) verrechnet.
-  const monthReleasedDaySet = new Set(monthReleases.map((r) => r.day))
-  const confirmedUserHours = monthReleasedDaySet.size > 0
-    ? await computeDaysUserHours([...monthReleasedDaySet])
-    : {}
-  let confirmedMonthCost = 0
-  for (const dayHours of Object.values(confirmedUserHours)) {
+  // Personalkosten-Balken: für bereits VERGANGENE Tage des Zeitraums (inkl. heute)
+  // zählen die echten Ist-Stunden je Mitarbeiter (unabhängig vom Freigabe-Status –
+  // sonst weicht diese Zahl von der Kosten-Übersicht ab, die immer live aus den
+  // Stempeldaten rechnet), für ECHT zukünftige Tage die geplanten Schicht-Stunden
+  // – jeweils zu Lohnkosten (Stundenlohn + Nebenkosten) verrechnet.
+  const todayStr = berlinDay(new Date())
+  const pastDaysInPeriod = daysInRange(monthStartStr, monthEndStr).filter((d) => d <= todayStr)
+  const actualUserHours = pastDaysInPeriod.length > 0 ? await computeDaysUserHours(pastDaysInPeriod) : {}
+  let actualMonthCost = 0
+  for (const dayHours of Object.values(actualUserHours)) {
     for (const [userId, hours] of Object.entries(dayHours)) {
       const rates = userRateMap[userId]
-      if (rates) confirmedMonthCost += calcLaborCost(hours, rates.hourlyRate, rates.overheadPercent)
+      if (rates) actualMonthCost += calcLaborCost(hours, rates.hourlyRate, rates.overheadPercent)
     }
   }
   let plannedRemainingMonthCost = 0
   for (const s of monthShifts) {
     if (!s.userId) continue
     const day = s.date.toISOString().slice(0, 10)
-    if (monthReleasedDaySet.has(day)) continue
+    if (day <= todayStr) continue
     const rates = userRateMap[s.userId]
     if (!rates) continue
     plannedRemainingMonthCost += calcLaborCost(shiftDurationHours(s.startTime, s.endTime), rates.hourlyRate, rates.overheadPercent)
   }
-  const totalMonthCost = confirmedMonthCost + plannedRemainingMonthCost
+  const totalMonthCost = actualMonthCost + plannedRemainingMonthCost
   const hasMonthlyCostTarget = !!monthBudget && monthBudget.type === 'EUROS'
   const monthCostStatus = hasMonthlyCostTarget ? getBudgetStatus(totalMonthCost, monthBudget!.amount) : 'green'
   const monthCostPct = hasMonthlyCostTarget && monthBudget!.amount > 0
@@ -420,7 +419,7 @@ export default async function SchedulePage({ searchParams }: Props) {
             </span>
           </div>
           <div className="mt-1 text-[11px] text-gray-400">
-            bestätigt: {confirmedMonthCost.toFixed(0)} € · geplant: {plannedRemainingMonthCost.toFixed(0)} €
+            Ist: {actualMonthCost.toFixed(0)} € · geplant (Rest): {plannedRemainingMonthCost.toFixed(0)} €
           </div>
         </div>
       ) : (

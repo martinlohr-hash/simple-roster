@@ -1,9 +1,9 @@
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, setDate, startOfDay, endOfDay, parseISO, getISOWeek, getMonth, getYear } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { prisma } from '@/lib/db'
-import { calcHours, calcLaborCost, calcGrossHourlyCost, getTrafficLight } from '@/lib/calculations'
+import { calcLaborCost, getTrafficLight } from '@/lib/calculations'
 import { shiftDurationHours } from '@/lib/timeUtils'
-import { formatBerlin, getBreakMinutesByUser } from '@/lib/dayHours'
+import { formatBerlin, computeDaysUserHours, daysInRangeInclusive } from '@/lib/dayHours'
 import CostsFilter from '@/components/admin/CostsFilter'
 import BudgetProgress from '@/components/admin/BudgetProgress'
 
@@ -49,15 +49,10 @@ export default async function CostsPage({ searchParams }: Props) {
   const budgetYear = getYear(budgetLabelDate)
   const budgetWeekOrMonth = period === 'week' ? getISOWeek(from) : getMonth(budgetLabelDate) + 1
 
-  const [entries, shifts, users, locations, budget, breakMinutesByUser] = await Promise.all([
-    prisma.timeEntry.findMany({
-      where: {
-        checkinAt: { gte: from, lte: to },
-        checkoutAt: { not: null },
-        ...(sp.locationId ? { locationId: sp.locationId } : {}),
-      },
-      include: { user: true, location: true },
-    }),
+  const days = daysInRangeInclusive(formatBerlin(from, 'yyyy-MM-dd'), formatBerlin(to, 'yyyy-MM-dd'))
+
+  const [actualUserHours, shifts, users, locations, budget] = await Promise.all([
+    computeDaysUserHours(days, sp.locationId || undefined),
     prisma.shift.findMany({
       where: {
         date: { gte: from, lte: to },
@@ -83,7 +78,6 @@ export default async function CostsPage({ searchParams }: Props) {
           },
         })
       : Promise.resolve(null),
-    getBreakMinutesByUser(formatBerlin(from, 'yyyy-MM-dd'), formatBerlin(to, 'yyyy-MM-dd')),
   ])
 
   type UserStats = {
@@ -98,23 +92,18 @@ export default async function CostsPage({ searchParams }: Props) {
   for (const user of users) {
     byUser[user.id] = { name: user.name, plannedHours: 0, plannedCost: 0, hours: 0, cost: 0, light: 'green' }
   }
-  for (const e of entries) {
-    const h = calcHours(e.checkinAt, e.checkoutAt!)
-    if (byUser[e.userId]) {
-      byUser[e.userId].hours += h
-      byUser[e.userId].cost += calcLaborCost(h, e.user.hourlyRate, e.user.overheadPercent)
-    }
-  }
   const rateById = new Map(users.map((u) => [u.id, { rate: u.hourlyRate, overhead: u.overheadPercent }]))
-  // Gesetzliche Pausenabzüge (§4 ArbZG, per "Tag freigeben" bestätigt) reduzieren
-  // die Ist-Stunden/-Kosten auch hier, konsistent mit Dienstplan und Export.
-  for (const [userId, minutes] of Object.entries(breakMinutesByUser)) {
-    const stats = byUser[userId]
-    const rates = rateById.get(userId)
-    if (!stats || !rates) continue
-    const dedHours = Math.min(stats.hours, minutes / 60)
-    stats.hours -= dedHours
-    stats.cost -= dedHours * calcGrossHourlyCost(rates.rate, rates.overhead)
+  // Ist-Stunden aus derselben kanonischen Quelle wie Dienstplan/Freigabe/Export
+  // (lib/dayHours.ts) – Stempel + Fallback für unbestempelte beendete Schichten,
+  // Pausenabzüge bereits eingerechnet. Sonst laufen die Zahlen zwischen den
+  // Seiten auseinander.
+  for (const dayHours of Object.values(actualUserHours)) {
+    for (const [userId, hours] of Object.entries(dayHours)) {
+      const rates = rateById.get(userId)
+      if (!byUser[userId] || !rates) continue
+      byUser[userId].hours += hours
+      byUser[userId].cost += calcLaborCost(hours, rates.rate, rates.overhead)
+    }
   }
   for (const s of shifts) {
     if (!s.userId || !byUser[s.userId]) continue

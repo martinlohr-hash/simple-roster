@@ -19,6 +19,11 @@ export function daysInRange(fromDay: string, toDayExclusive: string): string[] {
   return out
 }
 
+/** Alle "yyyy-MM-dd"-Tage im Bereich [fromDay, toDayInclusive]. */
+export function daysInRangeInclusive(fromDay: string, toDayInclusive: string): string[] {
+  return daysInRange(fromDay, nextDayStr(toDayInclusive))
+}
+
 /**
  * Formatiert einen Zeitstempel in Berliner Ortszeit (DST-sicher). Ersetzt
  * date-fns `format()`, das die Server-Zeitzone nutzt (Vercel = UTC, zeigt
@@ -120,15 +125,21 @@ export async function computeDaysStats(days: string[]): Promise<Record<string, D
   return perDay
 }
 
-export async function computeDaysUserHours(days: string[]): Promise<DayUserHours> {
-  const { perUser } = await computeDaysStatsDetailed(days)
+/**
+ * `locationId` filtert Stempel UND Fallback-Schichten auf einen Standort – für
+ * die Kosten-Übersicht (Standort-Filter). Ohne Angabe zählen alle Standorte,
+ * wie bisher (Dienstplan, Freigabe, Export).
+ */
+export async function computeDaysUserHours(days: string[], locationId?: string): Promise<DayUserHours> {
+  const { perUser } = await computeDaysStatsDetailed(days, locationId)
   return perUser
 }
 
 async function computeDaysStatsDetailed(
   days: string[],
+  locationId?: string,
 ): Promise<{ perDay: Record<string, DayStat>; perUser: DayUserHours }> {
-  const { perDay, perUser } = await computeDaysStatsRaw(days)
+  const { perDay, perUser } = await computeDaysStatsRaw(days, locationId)
   if (days.length === 0) return { perDay, perUser }
 
   // Bestätigte Pausenabzüge (BreakDeduction) ziehen die Ist-Stunden dieses MA an
@@ -151,6 +162,7 @@ async function computeDaysStatsDetailed(
 
 async function computeDaysStatsRaw(
   days: string[],
+  locationId?: string,
 ): Promise<{ perDay: Record<string, DayStat>; perUser: DayUserHours }> {
   const out: Record<string, DayStat> = {}
   const perUser: DayUserHours = {}
@@ -172,7 +184,7 @@ async function computeDaysStatsRaw(
 
   const [entries, shifts] = await Promise.all([
     prisma.timeEntry.findMany({
-      where: { checkinAt: { gte: windowStart, lt: windowEnd } },
+      where: { checkinAt: { gte: windowStart, lt: windowEnd }, ...(locationId ? { locationId } : {}) },
       select: {
         userId: true,
         checkinAt: true,
@@ -185,6 +197,7 @@ async function computeDaysStatsRaw(
         date: { in: days.map((d) => new Date(`${d}T00:00:00Z`)) },
         status: { not: 'CANCELLED' },
         userId: { not: null },
+        ...(locationId ? { locationId } : {}),
       },
       select: {
         userId: true,

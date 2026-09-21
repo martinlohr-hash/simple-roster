@@ -330,7 +330,7 @@ export default function PayrollExportCard({ rows, from, to, fromLabel, toLabel }
       </form>
 
       <p className="text-xs text-gray-400 mt-4">
-        Spalten: Name · Ist-Stunden · Stundenlohn · NK-Quote · Lohnkosten · Begründung
+        Spalten: Name · Ist-Stunden · Stundenlohn · Begründung
         (nur bei Korrekturen) · Trinkgeld
       </p>
     </div>

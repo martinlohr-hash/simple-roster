@@ -131,13 +131,11 @@ export async function GET(request: NextRequest) {
     // Gesetzliche Pausenabzüge (§4 ArbZG, per "Tag freigeben" bestätigt) reduzieren
     // die Ist-Stunden auch im Lohn-Export, konsistent mit Dienstplan/Kostenübersicht.
     const breakMinutesByUser = await getBreakMinutesByUser(periodFrom, periodTo)
-    let hasBreakDeductions = false
     for (const [userId, minutes] of Object.entries(breakMinutesByUser)) {
       if (adminIds.has(userId)) continue
       const agg = byUser.get(userId)
       if (!agg || minutes <= 0) continue
       agg.hours -= Math.min(agg.hours, minutes / 60)
-      hasBreakDeductions = true
     }
 
     const aggs = [...byUser.values()].sort((a, b) => a.name.localeCompare(b.name, 'de'))
@@ -156,11 +154,8 @@ export async function GET(request: NextRequest) {
         Name: a.name,
         'Ist-Stunden': parseFloat(a.hours.toFixed(2)),
         'Stundenlohn (€)': a.hourlyRate,
-        'NK-Quote (%)': a.overheadPercent,
-        'Lohnkosten (€)': parseFloat(calcLaborCost(a.hours, a.hourlyRate, a.overheadPercent).toFixed(2)),
       }
       if (hasAdjustments) row['Begründung (Korrektur)'] = a.adjReasons.join(' / ')
-      if (hasBreakDeductions) row['Pausenabzug (Min)'] = breakMinutesByUser[a.userId] ?? 0
       row['Trinkgeld (€)'] = tipShare
       return row
     })

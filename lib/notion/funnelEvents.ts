@@ -1,7 +1,7 @@
 import 'server-only'
 
 // Live-Anbindung an die Notion-DB „💲 SMPL Catering/Event Funnel" (SMPL-Funnel-App).
-// Liefert gebuchte Events (Status ab „🤝 Bestätigt") pro Datum als read-only Hinweise
+// Liefert gebuchte Events (Status ab „🤝 Zugesagt") pro Datum als read-only Hinweise
 // für die Notiz-Zeile im Wochenplaner — damit die Personalplanung anstehende
 // Caterings/Events sieht. Kein DB-Sync (Notion-Muster wie Rezepte/Kalender).
 //
@@ -14,10 +14,12 @@ const NOTION_API = 'https://api.notion.com/v1'
 const NOTION_VERSION = '2025-09-03' // data_sources-Endpoint braucht die neue API-Version
 const DEFAULT_DS_ID = '2b87b6c3-329f-8129-a390-000bb5d8fbc6'
 
-// Status ab „Bestätigt" = Event findet statt. Vergleich über getrimmte Namen,
+// Status ab „Zugesagt" = Event findet statt (Funnel-Status hieß bis 08/2026 "Bestätigt",
+// alter Name bleibt als Fallback für historische Daten). Vergleich über getrimmte Namen,
 // weil die Notion-Optionen Eigenheiten haben (führendes Leerzeichen bei
 // „ 🙌 Abgeschlossen", Tippfehler „Rechung"); beide Schreibweisen abgedeckt.
 const BOOKED_STATUS = new Set([
+  '🤝 Zugesagt',
   '🤝 Bestätigt',
   '💶 Akonto-Rechnung gestellt',
   '🙌 Abgeschlossen',
@@ -114,7 +116,7 @@ function buildMap(pages: NotionPage[], dates: string[]): Record<string, BookedEv
 let cache: { at: number; key: string; data: Record<string, BookedEvent[]> } | null = null
 
 /**
- * Gebuchte Funnel-Events (Status ab „Bestätigt") für die gegebenen Tage (yyyy-MM-dd).
+ * Gebuchte Funnel-Events (Status ab „Zugesagt") für die gegebenen Tage (yyyy-MM-dd).
  * Liefert immer ein vollständiges Map-Objekt (auch leere Listen) und wirft NIE —
  * ein Notion-Ausfall darf den Wochenplaner nicht blockieren.
  */

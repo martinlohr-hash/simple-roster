@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getSession } from '@/app/actions/auth'
 import { isAdmin } from '@/lib/session'
 import { prisma } from '@/lib/db'
-import { queueWeekReleasedEmail } from '@/lib/mail/queue'
+import { queueShiftEmail, queueWeekReleasedEmail } from '@/lib/mail/queue'
 
 function utcMonday(date: Date): Date {
   const utcDay = date.getUTCDay() // 0=Sun, 1=Mon, ..., 6=Sat
@@ -66,11 +66,23 @@ export async function assignShiftToApplicant(shiftId: string, applicantUserId: s
   const session = await getSession()
   if (!session || !isAdmin(session.role)) throw new Error('Keine Berechtigung')
 
-  await prisma.shift.update({ where: { id: shiftId }, data: { userId: applicantUserId } })
+  const shift = await prisma.shift.update({
+    where: { id: shiftId },
+    data: { userId: applicantUserId },
+    include: { location: { select: { name: true } } },
+  })
   await prisma.shiftApplication.updateMany({
     where: { shiftId, userId: applicantUserId },
     data: { status: 'ASSIGNED' },
   })
+  await queueShiftEmail(applicantUserId, [{
+    shiftId: shift.id,
+    action: 'assigned',
+    date: shift.date.toISOString().split('T')[0],
+    startTime: shift.startTime,
+    endTime: shift.endTime,
+    location: shift.location.name,
+  }])
   await prisma.shiftApplication.updateMany({
     where: { shiftId, userId: { not: applicantUserId } },
     data: { status: 'REJECTED' },

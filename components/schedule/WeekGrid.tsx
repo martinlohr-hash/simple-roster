@@ -863,7 +863,7 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
 
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd}>
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-          <table className="w-full border-collapse min-w-[700px]">
+          <table className="w-full table-fixed border-collapse min-w-[1016px]">
             <thead>
               <tr className="border-b border-gray-200">
                 <th scope="col" className="w-44 bg-gray-50/80 px-4 py-3 text-left">

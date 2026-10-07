@@ -56,7 +56,14 @@ function text(runs?: { plain_text: string }[]): string {
   return (runs || []).map((t) => t.plain_text).join('').trim()
 }
 
+// Notion-Datumsfilter vergleicht nur das Startdatum → für Events, die vor der
+// sichtbaren Woche beginnen, aber hineinreichen, großzügig zurückschauen.
+const LOOKBACK_DAYS = 14
+
 async function queryBooked(from: string, to: string): Promise<NotionPage[]> {
+  const back = new Date(`${from}T00:00:00Z`)
+  back.setUTCDate(back.getUTCDate() - LOOKBACK_DAYS)
+  from = back.toISOString().slice(0, 10)
   const token = process.env.NOTION_FUNNEL_TOKEN!.trim()
   const dsId = process.env.NOTION_FUNNEL_DS_ID?.trim() || DEFAULT_DS_ID
   const pages: NotionPage[] = []
@@ -93,6 +100,18 @@ function funnelAppUrl(): string {
   return (process.env.FUNNEL_APP_URL?.trim() || DEFAULT_FUNNEL_APP_URL).replace(/\/$/, '')
 }
 
+// Alle Tage (yyyy-MM-dd) von first bis last inkl.; UTC-Rechnung → DST-sicher.
+function dayRange(first: string, last: string): string[] {
+  const out: string[] = []
+  const d = new Date(`${first}T00:00:00Z`)
+  const end = new Date(`${last}T00:00:00Z`)
+  for (let i = 0; d <= end && i < 31; i++) {
+    out.push(d.toISOString().slice(0, 10))
+    d.setUTCDate(d.getUTCDate() + 1)
+  }
+  return out.length ? out : [first]
+}
+
 function buildMap(pages: NotionPage[], dates: string[]): Record<string, BookedEvent[]> {
   const map: Record<string, BookedEvent[]> = {}
   for (const d of dates) map[d] = []
@@ -101,13 +120,21 @@ function buildMap(pages: NotionPage[], dates: string[]): Record<string, BookedEv
     const props = p.properties || {}
     const status = (props.Status?.status?.name || '').trim()
     if (!BOOKED_STATUS.has(status)) continue
-    const day = (props.Datum?.date?.start || '').slice(0, 10)
-    if (!(day in map)) continue
+    const first = (props.Datum?.date?.start || '').slice(0, 10)
+    if (!first) continue
+    const last = (props.Datum?.date?.end || '').slice(0, 10) || first
     const name = text(props.Name?.title)
     if (!name) continue
     const startzeit = text(props.Startzeit?.rich_text)
-    const label = startzeit ? `${name} · ${startzeit} Uhr` : name
-    map[day].push({ label, url: `${appUrl}/?event=${p.id}` })
+    // Mehrtägige Events: an jedem Tag der Spanne anzeigen (Startzeit nur am ersten Tag)
+    const days = dayRange(first, last)
+    days.forEach((day, i) => {
+      if (!(day in map)) return
+      const label = days.length > 1
+        ? `${name} (Tag ${i + 1}/${days.length})${i === 0 && startzeit ? ` · ${startzeit} Uhr` : ''}`
+        : startzeit ? `${name} · ${startzeit} Uhr` : name
+      map[day].push({ label, url: `${appUrl}/?event=${p.id}` })
+    })
   }
   return map
 }

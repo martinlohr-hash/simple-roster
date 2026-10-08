@@ -7,6 +7,8 @@ import { getSession } from '@/app/actions/auth'
 import { isSuperAdmin } from '@/lib/session'
 import { missingFields } from '@/lib/documents'
 import EmployeeDetailTabs, { type DetailTab } from '@/components/admin/EmployeeDetailTabs'
+import { calcEntitlementForYear } from '@/lib/vacation'
+import { type VacationYear } from '@/components/admin/VacationHistory'
 import { type PersonalbogenUser } from '@/components/admin/PersonalbogenForm'
 
 export const metadata = { title: 'Mitarbeiter' }
@@ -18,17 +20,78 @@ type Props = {
 
 const d = (v: Date | null) => (v ? v.toISOString().split('T')[0] : null)
 
-const VALID_TABS: DetailTab[] = ['stammdaten', 'beschaeftigung', 'dokumente']
+const VALID_TABS: DetailTab[] = ['stammdaten', 'beschaeftigung', 'urlaub', 'dokumente']
 const VALID_PAYROLL_NOTICES = ['sent-confirmed', 'sent-unconfirmed', 'failed'] as const
 type PayrollNotice = (typeof VALID_PAYROLL_NOTICES)[number]
 
 export default async function EmployeeDetailPage({ params, searchParams }: Props) {
   const [{ id }, sp, session] = await Promise.all([params, searchParams, getSession()])
-  const [user, locations] = await Promise.all([
+  const [user, locations, vacations] = await Promise.all([
     prisma.user.findUnique({ where: { id } }),
     prisma.location.findMany({ orderBy: { sortOrder: 'asc' } }),
+    prisma.vacationRequest.findMany({
+      where: { userId: id },
+      orderBy: { startDate: 'asc' },
+      include: {
+        reviewer: { select: { name: true } },
+        history: {
+          where: { changeType: 'UPDATED' },
+          orderBy: { changedAt: 'asc' },
+          include: { changedByUser: { select: { name: true } } },
+        },
+      },
+    }),
   ])
   if (!user) notFound()
+
+  // Urlaubshistorie pro Jahr (Zuordnung nach Startdatum, wie calcVacationUsed): Resturlaub-Verlauf
+  // läuft chronologisch über genehmigte Anträge.
+  const byYear = new Map<number, typeof vacations>()
+  for (const v of vacations) {
+    const y = v.startDate.getFullYear()
+    byYear.set(y, [...(byYear.get(y) ?? []), v])
+  }
+  const vacationYears: VacationYear[] = [...byYear.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([year, list]) => {
+      const entitlement = calcEntitlementForYear(user, year)
+      let used = 0
+      const entries = list.map((v) => {
+        let remainingAfter: number | null = null
+        if (v.status === 'APPROVED') {
+          used += v.workdays
+          remainingAfter = entitlement - used
+        }
+        return {
+          id: v.id,
+          startDate: v.startDate.toISOString(),
+          endDate: v.endDate.toISOString(),
+          workdays: v.workdays,
+          status: v.status as 'PENDING' | 'APPROVED' | 'REJECTED',
+          note: v.note,
+          createdAt: v.createdAt.toISOString(),
+          reviewedAt: v.reviewedAt?.toISOString() ?? null,
+          reviewerName: v.reviewer?.name ?? null,
+          remainingAfter,
+          changes: v.history.map((h) => ({
+            at: h.changedAt.toISOString(),
+            by: h.changedByUser.name,
+            text:
+              h.oldWorkdays !== null && h.newWorkdays !== null && h.oldWorkdays !== h.newWorkdays
+                ? `Korrigiert: ${h.oldWorkdays} → ${h.newWorkdays} Tage`
+                : 'Geändert',
+          })),
+        }
+      })
+      return {
+        year,
+        entitlement,
+        used,
+        remaining: entitlement - used,
+        pending: list.filter((v) => v.status === 'PENDING').reduce((n, v) => n + v.workdays, 0),
+        entries,
+      }
+    })
 
   const initialTab: DetailTab = VALID_TABS.includes(sp.tab as DetailTab)
     ? (sp.tab as DetailTab)
@@ -133,6 +196,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
         contractMissing={missingFields(user, 'arbeitsvertrag')}
         probezeitMissing={missingFields(user, 'kuendigung-probezeit')}
         regulaerMissing={missingFields(user, 'kuendigung-regulaer')}
+        vacationYears={vacationYears}
       />
     </div>
   )

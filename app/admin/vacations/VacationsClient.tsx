@@ -133,7 +133,7 @@ export default function VacationsClient({
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Mitarbeiter</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Zeitraum</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">Tage</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">Resturlaub</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500">Resturlaub (aktuell)</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Notiz</th>
                 <th className="px-4 py-3" />

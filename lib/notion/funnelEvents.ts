@@ -47,6 +47,8 @@ type NotionPage = {
     Status?: { status?: { name?: string } | null }
     Datum?: { date?: { start?: string | null; end?: string | null } | null }
     Startzeit?: { rich_text?: { plain_text: string }[] }
+    Endzeit?: { rich_text?: { plain_text: string }[] }
+    Sandwiches?: { number?: number | null }
   }
 }
 
@@ -54,6 +56,14 @@ type QueryResponse = { results?: NotionPage[]; has_more?: boolean; next_cursor?:
 
 function text(runs?: { plain_text: string }[]): string {
   return (runs || []).map((t) => t.plain_text).join('').trim()
+}
+
+// „18.30 Uhr" → „18:30", „ab 17 Uhr" → „17", „19:00" → „19" (kompakte Zeitspanne fürs Badge)
+function shortTime(raw: string): string {
+  const m = raw.match(/(\d{1,2})(?:[.:](\d{2}))?/)
+  if (!m) return ''
+  const h = String(parseInt(m[1], 10))
+  return m[2] && m[2] !== '00' ? `${h}:${m[2]}` : h
 }
 
 // Notion-Datumsfilter vergleicht nur das Startdatum → für Events, die vor der
@@ -125,14 +135,21 @@ function buildMap(pages: NotionPage[], dates: string[]): Record<string, BookedEv
     const last = (props.Datum?.date?.end || '').slice(0, 10) || first
     const name = text(props.Name?.title)
     if (!name) continue
-    const startzeit = text(props.Startzeit?.rich_text)
+    const von = shortTime(text(props.Startzeit?.rich_text))
+    const bis = shortTime(text(props.Endzeit?.rich_text))
+    const zeit = von && bis ? `${von}-${bis}` : von
+    const pax = props.Sandwiches?.number
     // Mehrtägige Events: an jedem Tag der Spanne anzeigen (Startzeit nur am ersten Tag)
     const days = dayRange(first, last)
     days.forEach((day, i) => {
       if (!(day in map)) return
-      const label = days.length > 1
-        ? `${name} (Tag ${i + 1}/${days.length})${i === 0 && startzeit ? ` · ${startzeit} Uhr` : ''}`
-        : startzeit ? `${name} · ${startzeit} Uhr` : name
+      // Format: „NAME, 19-23, 40 PAX" (Zeit nur am ersten Tag mehrtägiger Events)
+      const parts = [
+        days.length > 1 ? `${name} (Tag ${i + 1}/${days.length})` : name,
+        i === 0 ? zeit : '',
+        pax ? `${pax} PAX` : '',
+      ].filter(Boolean)
+      const label = parts.join(', ')
       map[day].push({ label, url: `${appUrl}/?event=${p.id}` })
     })
   }

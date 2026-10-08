@@ -8,14 +8,16 @@ import PersonalbogenForm, { type PersonalbogenUser } from './PersonalbogenForm'
 import DocumentsLinkForm from './DocumentsLinkForm'
 import DocumentGenerator from './DocumentGenerator'
 import SendToPayrollButton from './SendToPayrollButton'
+import VacationHistory, { type VacationYear } from './VacationHistory'
 
-export type DetailTab = 'stammdaten' | 'beschaeftigung' | 'dokumente'
+export type DetailTab = 'stammdaten' | 'beschaeftigung' | 'urlaub' | 'dokumente'
 
 type Location = { id: string; name: string }
 
 const TABS: { key: DetailTab; label: string }[] = [
   { key: 'stammdaten', label: 'Stammdaten' },
   { key: 'beschaeftigung', label: 'Beschäftigung' },
+  { key: 'urlaub', label: 'Urlaub' },
   { key: 'dokumente', label: 'Dokumente' },
 ]
 
@@ -33,6 +35,7 @@ export default function EmployeeDetailTabs({
   contractMissing,
   probezeitMissing,
   regulaerMissing,
+  vacationYears,
 }: {
   userId: string
   initialTab: DetailTab
@@ -47,6 +50,7 @@ export default function EmployeeDetailTabs({
   contractMissing: string[]
   probezeitMissing: string[]
   regulaerMissing: string[]
+  vacationYears: VacationYear[]
 }) {
   const router = useRouter()
   const [tab, setTab] = useState<DetailTab>(initialTab)
@@ -155,6 +159,12 @@ export default function EmployeeDetailTabs({
             <SendToPayrollButton userId={userId} sentAt={sofortmeldungSentAt} />
           </div>
           <PersonalbogenForm user={personalbogenUser} />
+        </div>
+      )}
+
+      {tab === 'urlaub' && (
+        <div role="tabpanel" className="max-w-4xl">
+          <VacationHistory years={vacationYears} />
         </div>
       )}
 

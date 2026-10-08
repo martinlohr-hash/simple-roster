@@ -109,3 +109,15 @@ export function calcVacationRemaining(
 ): number {
   return calcVacationEntitlement(user) - calcVacationUsed(vacations)
 }
+
+// Anspruch für ein beliebiges Jahr (Eintrittsjahr anteilig, sonst voll) – für die Urlaubshistorie.
+export function calcEntitlementForYear(
+  user: { vacationDaysPerYear: number; startDate: Date | string | null },
+  year: number,
+): number {
+  if (user.vacationDaysPerYear === 0) return 0
+  if (!user.startDate) return user.vacationDaysPerYear
+  const start = new Date(user.startDate)
+  if (start.getFullYear() !== year) return user.vacationDaysPerYear
+  return Math.ceil((user.vacationDaysPerYear * (12 - start.getMonth())) / 12)
+}

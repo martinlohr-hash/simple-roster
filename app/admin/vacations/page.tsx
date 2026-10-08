@@ -6,7 +6,7 @@ import VacationsClient from './VacationsClient'
 export default async function VacationsPage() {
   const session = await getSession()
 
-  const [vacationRequests, users] = await Promise.all([
+  const [vacationRequests, users, balances] = await Promise.all([
     prisma.vacationRequest.findMany({
       include: {
         user: { select: { id: true, name: true, vacationDaysPerYear: true, startDate: true } },
@@ -18,7 +18,12 @@ export default async function VacationsPage() {
       orderBy: { name: 'asc' },
       select: { id: true, name: true },
     }),
+    prisma.vacationYearBalance.findMany({
+      where: { year: new Date().getFullYear() },
+      select: { userId: true, entitlement: true, carryOver: true },
+    }),
   ])
+  const balanceByUser = new Map(balances.map((b) => [b.userId, b]))
 
   // Pre-compute remaining days per user using all non-rejected requests
   const allByUser = new Map<string, typeof vacationRequests>()
@@ -30,7 +35,7 @@ export default async function VacationsPage() {
 
   const vacations = vacationRequests.map((v) => {
     const userVacations = allByUser.get(v.userId) ?? []
-    const entitlement = calcVacationEntitlement(v.user)
+    const entitlement = calcVacationEntitlement(v.user, balanceByUser.get(v.userId))
     const used = calcVacationUsed(userVacations.filter((x) => x.status === 'APPROVED'))
     const remaining = entitlement - used
     return {

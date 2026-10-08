@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
 import { isAdmin, isSuperAdmin } from '@/lib/session'
 import { calcWorkdays, calcVacationRemaining } from '@/lib/vacation'
+import { getCurrentBalance } from '@/lib/vacationBalance'
 
 export async function createVacationRequest(formData: FormData): Promise<{ error?: string }> {
   const session = await getSession()
@@ -29,7 +30,7 @@ export async function createVacationRequest(formData: FormData): Promise<{ error
   const existing = await prisma.vacationRequest.findMany({
     where: { userId: session.userId, status: { not: 'REJECTED' } },
   })
-  const remaining = calcVacationRemaining(user, existing)
+  const remaining = calcVacationRemaining(user, existing, await getCurrentBalance(session.userId))
   if (workdays > remaining) {
     return { error: `Nicht genug Resturlaub. Verfügbar: ${remaining} Tage, beantragt: ${workdays} Tage.` }
   }
@@ -136,7 +137,7 @@ export async function updateVacationRequest(id: string, formData: FormData): Pro
     const allVacations = await prisma.vacationRequest.findMany({
       where: { userId: existing.userId, status: { not: 'REJECTED' }, id: { not: id } },
     })
-    const remaining = calcVacationRemaining(existing.user, allVacations)
+    const remaining = calcVacationRemaining(existing.user, allVacations, await getCurrentBalance(existing.userId))
     const additional = newWorkdays - existing.workdays
     if (additional > remaining) {
       return { error: `Nicht genug Resturlaub für die Erhöhung. Verfügbar: ${remaining} Tage, zusätzlich erforderlich: ${additional} Tage.` }
@@ -173,5 +174,30 @@ export async function updateVacationRequest(id: string, formData: FormData): Pro
 
   revalidatePath('/admin/vacations')
   revalidatePath('/admin/schedule')
+  return {}
+}
+
+
+// Admin: Jahresanspruch + Übertrag eines Mitarbeiters für ein Jahr festschreiben (Urlaub-Reiter der Personalakte).
+export async function saveVacationYearBalance(
+  userId: string,
+  year: number,
+  entitlement: number,
+  carryOver: number,
+): Promise<{ error?: string }> {
+  const session = await getSession()
+  if (!session || !isAdmin(session.role)) return { error: 'Keine Berechtigung' }
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) return { error: 'Ungültiges Jahr' }
+  if (!Number.isInteger(entitlement) || entitlement < 0 || entitlement > 366) return { error: 'Ungültiger Anspruch' }
+  if (!Number.isInteger(carryOver) || carryOver < -366 || carryOver > 366) return { error: 'Ungültiger Übertrag' }
+
+  await prisma.vacationYearBalance.upsert({
+    where: { userId_year: { userId, year } },
+    create: { userId, year, entitlement, carryOver },
+    update: { entitlement, carryOver },
+  })
+  revalidatePath(`/admin/employees/${userId}`)
+  revalidatePath('/admin/vacations')
+  revalidatePath('/employee/vacation')
   return {}
 }

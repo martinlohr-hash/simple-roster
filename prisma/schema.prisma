@@ -146,6 +146,7 @@ model User {
   weekReleases         WeekRelease[]
   shiftApplications    ShiftApplication[]
   vacationRequests     VacationRequest[]    @relation("VacationEmployee")
+  vacationBalances     VacationYearBalance[]
   reviewedVacations    VacationRequest[]    @relation("VacationReviewer")
   vacationHistory      VacationRequestHistory[] @relation("VacationHistory")
   insight              EmployeeInsight?     @relation("InsightSubject")
@@ -330,6 +331,20 @@ model VacationRequest {
   reviewedAt  DateTime?
   createdAt   DateTime       @default(now())
   history     VacationRequestHistory[]
+}
+
+// Eingefrorener Jahresanspruch + Übertrag aus dem Vorjahr pro Mitarbeiter und Jahr.
+// Ohne Zeile gilt der aktuell in den Stammdaten gepflegte Anspruch (ggf. anteilig im Eintrittsjahr).
+// Vergangene Jahre werden beim Ändern von „Urlaubstage pro Jahr" eingefroren, damit sich die Historie nicht verschiebt.
+model VacationYearBalance {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year        Int
+  entitlement Int      // Jahresanspruch (ohne Übertrag)
+  carryOver   Int      @default(0) // Resturlaub aus dem Vorjahr
+  updatedAt   DateTime @updatedAt
+  @@unique([userId, year])
 }
 
 // Audit-Log für Urlaubs-Änderungen (wer hat was wann geändert).

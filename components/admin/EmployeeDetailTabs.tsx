@@ -164,7 +164,15 @@ export default function EmployeeDetailTabs({
 
       {tab === 'urlaub' && (
         <div role="tabpanel" className="max-w-4xl">
-          <VacationHistory years={vacationYears} />
+          <div className="flex justify-end mb-4">
+            <a
+              href={`/api/vacation-export?userId=${userId}`}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+            >
+              Als CSV exportieren
+            </a>
+          </div>
+          <VacationHistory userId={userId} years={vacationYears} />
         </div>
       )}
 

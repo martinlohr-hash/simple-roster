@@ -1,5 +1,6 @@
 'use server'
 
+import { freezePastYears } from '@/lib/vacationBalance'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import bcrypt from 'bcryptjs'
@@ -213,6 +214,8 @@ export async function updateEmployee(id: string, formData: FormData) {
     data.onboardingCompletedAt = null
   }
 
+  // Vergangene Jahre einfrieren, bevor Anspruch/Eintritt sich ändern (stabile Urlaubshistorie)
+  await freezePastYears(id)
   await prisma.user.update({ where: { id }, data })
 
   // Admin hat beim Speichern bestätigt, dass das (neue/geänderte) Austrittsdatum

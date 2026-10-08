@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { getSession } from '@/app/actions/auth'
 import { prisma } from '@/lib/db'
+import { getCurrentBalance } from '@/lib/vacationBalance'
 import { calcVacationEntitlement, calcVacationUsed, calcVacationRemaining } from '@/lib/vacation'
 import VacationForm from './VacationForm'
 
@@ -28,10 +29,11 @@ export default async function EmployeeVacationPage() {
   ])
 
   if (!user) redirect('/login')
+  const balance = await getCurrentBalance(session.userId)
 
-  const entitlement = calcVacationEntitlement(user)
+  const entitlement = calcVacationEntitlement(user, balance)
   const used = calcVacationUsed(vacationRequests)
-  const remaining = calcVacationRemaining(user, vacationRequests)
+  const remaining = calcVacationRemaining(user, vacationRequests, balance)
   const pct = entitlement > 0 ? used / entitlement : 0
   const light = pct >= 1 ? 'red' : pct >= 0.8 ? 'yellow' : 'green'
 

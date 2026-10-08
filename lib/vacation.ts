@@ -74,7 +74,18 @@ export function calcWorkdays(start: Date, end: Date): number {
   return count
 }
 
-export function calcVacationEntitlement(user: {
+// Gespeicherter Jahres-Stand (VacationYearBalance): überschreibt den berechneten Anspruch, Übertrag kommt obendrauf.
+export type YearBalance = { entitlement: number; carryOver: number } | null | undefined
+
+export function calcVacationEntitlement(
+  user: { vacationDaysPerYear: number; startDate: Date | string | null },
+  balance?: YearBalance,
+): number {
+  if (balance) return balance.entitlement + balance.carryOver
+  return baseEntitlement(user)
+}
+
+function baseEntitlement(user: {
   vacationDaysPerYear: number
   startDate: Date | string | null
 }): number {
@@ -106,8 +117,9 @@ export function calcVacationUsed(vacations: VacationRequestLike[]): number {
 export function calcVacationRemaining(
   user: { vacationDaysPerYear: number; startDate: Date | string | null },
   vacations: VacationRequestLike[],
+  balance?: YearBalance,
 ): number {
-  return calcVacationEntitlement(user) - calcVacationUsed(vacations)
+  return calcVacationEntitlement(user, balance) - calcVacationUsed(vacations)
 }
 
 // Anspruch für ein beliebiges Jahr (Eintrittsjahr anteilig, sonst voll) – für die Urlaubshistorie.

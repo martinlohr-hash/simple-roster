@@ -1,3 +1,5 @@
+import VacationYearEditor from './VacationYearEditor'
+
 export type VacationHistoryEntry = {
   id: string
   startDate: string
@@ -15,6 +17,12 @@ export type VacationHistoryEntry = {
 
 export type VacationYear = {
   year: number
+  baseEntitlement: number
+  carryOver: number
+  /** true = Anspruch/Übertrag ist gespeichert (eingefroren), sonst berechnet aus Stammdaten */
+  saved: boolean
+  /** Rest des Vorjahres (Vorschlag für den Übertrag) */
+  prevRemaining: number | null
   entitlement: number
   used: number
   remaining: number
@@ -35,17 +43,17 @@ const STATUS = {
   REJECTED: { label: 'Abgelehnt', cls: 'bg-red-50 text-red-700' },
 } as const
 
-export default function VacationHistory({ years }: { years: VacationYear[] }) {
-  if (years.length === 0) {
-    return <p className="text-sm text-gray-500">Noch keine Urlaubsanträge.</p>
-  }
+export default function VacationHistory({ userId, years }: { userId: string; years: VacationYear[] }) {
   return (
     <div className="space-y-8">
       {years.map((y) => (
         <section key={y.year}>
           <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 mb-3">
             <h2 className="text-base font-semibold text-gray-900">{y.year}</h2>
-            <span className="text-sm text-gray-600">Anspruch <b>{y.entitlement}</b></span>
+            <span className="text-sm text-gray-600">
+              Anspruch <b>{y.baseEntitlement}</b>
+              {y.carryOver !== 0 && <> + Übertrag <b>{y.carryOver}</b> = <b>{y.entitlement}</b></>}
+            </span>
             <span className="text-sm text-gray-600">genommen <b>{y.used}</b></span>
             <span className={`text-sm ${y.remaining < 0 ? 'text-red-600' : 'text-gray-600'}`}>
               Rest <b>{y.remaining}</b>
@@ -53,6 +61,15 @@ export default function VacationHistory({ years }: { years: VacationYear[] }) {
             {y.pending > 0 && <span className="text-sm text-amber-700">{y.pending} Tage beantragt, noch offen</span>}
           </div>
 
+          <VacationYearEditor
+            key={`${y.year}-${y.baseEntitlement}-${y.carryOver}`}
+            userId={userId}
+            year={y.year}
+            baseEntitlement={y.baseEntitlement}
+            carryOver={y.carryOver}
+            saved={y.saved}
+            prevRemaining={y.prevRemaining}
+          />
           <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
             <table className="w-full text-sm min-w-[720px]">
               <thead className="bg-gray-50 text-xs font-semibold text-gray-500">
@@ -67,10 +84,13 @@ export default function VacationHistory({ years }: { years: VacationYear[] }) {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 <tr className="text-gray-500">
-                  <td className="px-4 py-2" colSpan={2}>Jahresanspruch</td>
+                  <td className="px-4 py-2" colSpan={2}>Jahresanspruch{y.carryOver !== 0 ? ' inkl. Übertrag' : ''}</td>
                   <td className="px-3 py-2 text-center">{y.entitlement}</td>
                   <td colSpan={3} />
                 </tr>
+                {y.entries.length === 0 && (
+                  <tr><td colSpan={6} className="px-4 py-3 text-gray-400">Keine Anträge in diesem Jahr.</td></tr>
+                )}
                 {y.entries.map((e) => {
                   const st = STATUS[e.status]
                   return (

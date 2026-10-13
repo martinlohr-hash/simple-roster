@@ -105,6 +105,7 @@ export default function EmployeeForm({ action, locations, defaults }: Props) {
         <select name="role" defaultValue={defaults?.role || 'EMPLOYEE'} className={selectClass}>
           <option value="EMPLOYEE">Mitarbeiter</option>
           <option value="ADMIN">Admin</option>
+          {defaults?.role === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">Super-Admin</option>}
         </select>
       </div>
 

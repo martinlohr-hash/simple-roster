@@ -145,10 +145,8 @@ export async function resendInvite(
 export async function updateEmployee(id: string, formData: FormData) {
   const session = await getSession()
   if (!session || !isAdmin(session.role)) throw new Error('Unauthorized')
-  if (!isSuperAdmin(session.role)) {
-    const target = await prisma.user.findUnique({ where: { id }, select: { role: true } })
-    if (target && isSuperAdmin(target.role)) throw new Error('Unauthorized')
-  }
+  const target = await prisma.user.findUnique({ where: { id }, select: { role: true } })
+  if (!isSuperAdmin(session.role) && target && isSuperAdmin(target.role)) throw new Error('Unauthorized')
 
   const salaryType = formData.get('salaryType') as string
   // Kanonische Werte + Spiegel in die Personalbogen-Spalten (eine Quelle, überall gleich)
@@ -200,6 +198,10 @@ export async function updateEmployee(id: string, formData: FormData) {
     primaryLocationId: (formData.get('locationId') as string) || null,
     role: (formData.get('role') as 'ADMIN' | 'EMPLOYEE') || 'EMPLOYEE',
   }
+
+  // Super-Admin-Rolle wird nie über das Formular geändert (Dropdown kennt sie nicht →
+  // sonst Downgrade auf EMPLOYEE beim Speichern des eigenen Profils).
+  if (target && isSuperAdmin(target.role)) delete data.role
 
   const newPassword = formData.get('password') as string
   if (newPassword) {

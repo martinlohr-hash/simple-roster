@@ -191,6 +191,7 @@ export default function EmployeeDetailTabs({
             <h2 className="text-sm font-semibold text-gray-700 mb-3">Dokumente erstellen</h2>
             <DocumentGenerator
               userId={userId}
+              gender={personalbogenUser.gender}
               contractMissing={contractMissing}
               probezeitMissing={probezeitMissing}
               regulaerMissing={regulaerMissing}

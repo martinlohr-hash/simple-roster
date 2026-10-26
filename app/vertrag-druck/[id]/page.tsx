@@ -9,7 +9,31 @@ import {
 
 export const metadata = { title: 'Arbeitsvertrag (Druck)' }
 
-type Props = { params: Promise<{ id: string }> }
+type Props = {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ anrede?: string }>
+}
+
+// Geschlechtsabhängige Wortformen für den Vertragstext (divers = neutrale Umschreibung)
+const FEM = {
+  label: 'Angestellte', sign: 'Angestellte',
+  nom: 'Die Angestellte', dat: 'der Angestellten', von: 'von der Angestellten',
+  er: 'Sie', poss: 'ihre', possDat: 'ihren', possGen: 'ihrer', possDatSg: 'ihrem',
+}
+const WORDS = {
+  herr: {
+    label: 'Angestellter', sign: 'Angestellter',
+    nom: 'Der Angestellte', dat: 'dem Angestellten', von: 'vom Angestellten',
+    er: 'Er', poss: 'seine', possDat: 'seinen', possGen: 'seiner', possDatSg: 'seinem',
+  },
+  frau: FEM,
+  divers: {
+    ...FEM,
+    label: 'Mitarbeitende Person', sign: 'mitarbeitende Person',
+    nom: 'Die mitarbeitende Person', dat: 'der mitarbeitenden Person',
+    von: 'von der mitarbeitenden Person',
+  },
+}
 
 // Abschnitts-Überschrift (röm. Ziffer + Titel)
 function H({ no, children }: { no: string; children: React.ReactNode }) {
@@ -29,11 +53,12 @@ function P({ n, children }: { n?: number; children: React.ReactNode }) {
   )
 }
 
-export default async function ArbeitsvertragPrintPage({ params }: Props) {
+export default async function ArbeitsvertragPrintPage({ params, searchParams }: Props) {
   const session = await getSession()
   if (!session || !isAdmin(session.role)) redirect('/login')
 
   const { id } = await params
+  const { anrede: anredeParam } = await searchParams
   const u = await prisma.user.findUnique({
     where: { id },
     include: { primaryLocation: true },
@@ -42,7 +67,13 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
 
   const name = fullName(u)
   const anschrift = [u.street, [u.postalCode, u.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
-  const anrede = herrFrau(u.gender) // "Herr"/"Frau"/""
+  // Gewählte Form per ?anrede=herr|frau|divers, sonst aus dem Geschlecht im Personalbogen
+  const form: 'herr' | 'frau' | 'divers' =
+    anredeParam === 'herr' || anredeParam === 'frau' || anredeParam === 'divers'
+      ? anredeParam
+      : u.gender === 'MALE' ? 'herr' : u.gender === 'FEMALE' ? 'frau' : 'divers'
+  const anrede = form === 'herr' ? 'Herr' : form === 'frau' ? 'Frau' : ''
+  const w = WORDS[form]
   const einsatzort = u.primaryLocation?.name
   const urlaub = urlaubSplit(u.vacationDaysPerYear)
   const missing = missingFields(u, 'arbeitsvertrag')
@@ -63,7 +94,7 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
       <p className="mb-1">
         {[anrede, name].filter(Boolean).join(' ')}{anschrift ? `, ${anschrift}` : ''}
       </p>
-      <p className="mb-3">– nachstehend „Angestellter" genannt –</p>
+      <p className="mb-3">– nachstehend „{w.label}" genannt –</p>
       <p className="mb-1">und</p>
       <p className="mb-1">
         {COMPANY.name}, {COMPANY.street}, {COMPANY.city}
@@ -74,17 +105,18 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
       {/* I. Aufgabengebiet */}
       <H no="I">Aufgabengebiet und Zuständigkeit</H>
       <P n={1}>
-        Der Angestellte wird ab {dLong(u.startDate) || '________'} als{' '}
+        {w.nom} wird ab {dLong(u.startDate) || '________'} als{' '}
         {u.jobTitle || '________'} eingestellt.
         {einsatzort ? ` Einsatzort ist der Betrieb „${einsatzort}".` : ''}
       </P>
       <P n={2}>
-        Der Angestellte hat seine Aufgaben nach Maßgabe der Unternehmensrichtlinien und nach den
-        Weisungen der Geschäftsführung wahrzunehmen. Er untersteht unmittelbar der Geschäftsführung.
+        {w.nom} hat {w.poss} Aufgaben nach Maßgabe der Unternehmensrichtlinien und nach den
+        Weisungen der Geschäftsführung wahrzunehmen. {w.er} untersteht unmittelbar der
+        Geschäftsführung.
       </P>
       <P n={3}>
-        Das Unternehmen ist berechtigt, dem Angestellten auch eine andere, gleichwertige Tätigkeit zu
-        übertragen – auch an einem anderen Ort –, die seinen Vorkenntnissen und Fähigkeiten entspricht
+        Das Unternehmen ist berechtigt, {w.dat} auch eine andere, gleichwertige Tätigkeit zu
+        übertragen – auch an einem anderen Ort –, die {w.possDat} Vorkenntnissen und Fähigkeiten entspricht
         und nicht mit einer Minderung des Arbeitsentgelts verbunden ist. Die Berechtigung erstreckt
         sich auch auf eine Beschäftigung in einem anderen Betrieb, an einem anderen Ort oder bei einer
         Tochtergesellschaft der Firma.
@@ -93,7 +125,7 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
       {/* II. Arbeitszeit */}
       <H no="II">Arbeitszeit</H>
       <P n={1}>
-        Die Arbeit erfolgt im Rahmen von Arbeit auf Abruf. Der Angestellte wird nach betrieblichem
+        Die Arbeit erfolgt im Rahmen von Arbeit auf Abruf. {w.nom} wird nach betrieblichem
         Bedarf zum Einsatz abgerufen. Eine durchschnittliche Arbeitszeit von{' '}
         {u.weeklyWorkTime || '________'} dient als Planungsorientierung, begründet jedoch keinen
         Anspruch auf eine Mindestarbeitszeit oder ein Mindestentgelt. Vergütet werden ausschließlich
@@ -105,14 +137,13 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
         auf mindestens 45 Minuten. Nach Beendigung der täglichen Arbeitszeit ist eine ununterbrochene
         Ruhezeit von mindestens elf Stunden einzuhalten.
       </P>
-      <P n={3}>Der Arbeitnehmer ist zur täglichen Arbeitszeiterfassung verpflichtet.</P>
+      <P n={3}>{w.nom} ist zur täglichen Arbeitszeiterfassung verpflichtet.</P>
 
       {/* III. Vergütung */}
       <H no="III">Vergütung</H>
       <P n={1}>
-        Als Vergütung für seine Tätigkeit erhält der Angestellte ein Bruttoentgelt von{' '}
-        {u.grossSalary || '________'}, das jeweils zum Ende eines Monats fällig und auf ein vom
-        Angestellten anzugebendes Konto überwiesen wird.
+        Als Vergütung für {w.poss} Tätigkeit erhält {w.nom.toLowerCase()} ein Bruttoentgelt von{' '}
+        {u.grossSalary || '________'}, das jeweils zum Ende eines Monats fällig und auf ein {w.von} anzugebendes Konto überwiesen wird.
       </P>
       {u.additionalSalaryComponents && (
         <P n={2}>Sonstige Gehaltsbestandteile: {u.additionalSalaryComponents}.</P>
@@ -126,8 +157,8 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
       {/* IV. Nebentätigkeit */}
       <H no="IV">Nebentätigkeit</H>
       <P n={1}>
-        Dem Angestellten ist die Übernahme einer Nebentätigkeit, die den Interessen des Unternehmens
-        zuwiderläuft oder seine Arbeitskraft beeinträchtigt, untersagt. Die Geschäftsführung ist vor
+        {w.dat.replace(/^./, (c) => c.toUpperCase())} ist die Übernahme einer Nebentätigkeit, die den Interessen des
+        Unternehmens zuwiderläuft oder {w.poss} Arbeitskraft beeinträchtigt, untersagt. Die Geschäftsführung ist vor
         Aufnahme einer Nebentätigkeit in Textform zu unterrichten; sie bedarf grundsätzlich der
         Zustimmung des Unternehmens.
       </P>
@@ -158,7 +189,7 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
       <P n={1}>
         Die Entgeltfortzahlung im Krankheitsfall richtet sich nach den gesetzlichen Bestimmungen. Die
         Arbeitsverhinderung ist dem Arbeitgeber unverzüglich mitzuteilen. Dauert die
-        Arbeitsunfähigkeit länger als drei Kalendertage, hat der Angestellte die Arbeitsunfähigkeit
+        Arbeitsunfähigkeit länger als drei Kalendertage, hat {w.nom.toLowerCase()} die Arbeitsunfähigkeit
         ärztlich feststellen zu lassen. Der Arbeitgeber ist berechtigt, die Feststellung früher zu
         verlangen.
       </P>
@@ -166,7 +197,7 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
       {/* VII. Verschwiegenheit */}
       <H no="VII">Verschwiegenheitspflicht</H>
       <P n={1}>
-        Der Arbeitnehmer verpflichtet sich, über alle Betriebs- und Geschäftsgeheimnisse sowie über
+        {w.nom} verpflichtet sich, über alle Betriebs- und Geschäftsgeheimnisse sowie über
         sonstige vertrauliche betriebliche Angelegenheiten Stillschweigen zu bewahren und diese keinem
         Dritten zugänglich zu machen. Die Verpflichtung besteht auch nach Beendigung des
         Anstellungsvertrages fort.
@@ -194,12 +225,12 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
       </P>
       <P n={3}>
         Nach Ablauf der Probezeit finden die gesetzlichen Kündigungsfristen (§ 622 BGB) Anwendung.
-        Jede gesetzliche Verlängerung der Kündigungsfrist zugunsten des Angestellten gilt in gleicher
+        Jede gesetzliche Verlängerung der Kündigungsfrist zugunsten {w.dat} gilt in gleicher
         Weise auch zugunsten des Arbeitgebers.
       </P>
       <P n={4}>
-        Das Arbeitsverhältnis endet ohne Kündigung spätestens mit Ablauf des Monats, in dem der
-        Angestellte das gesetzlich festgelegte Renteneintrittsalter vollendet hat.
+        Das Arbeitsverhältnis endet ohne Kündigung spätestens mit Ablauf des Monats, in dem
+        {w.nom.toLowerCase()} das gesetzlich festgelegte Renteneintrittsalter vollendet hat.
       </P>
 
       {/* X. Verfallfristen */}
@@ -214,17 +245,17 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
       {/* XI. Bild- und Tonaufnahmen, Datenschutz */}
       <H no="XI">Bild- und Tonaufnahmen, Datenschutz</H>
       <P n={1}>
-        Der Arbeitnehmer willigt ein, dass der Arbeitgeber Bild- und Tonaufnahmen seiner Person, die im
+        {w.nom} willigt ein, dass der Arbeitgeber Bild- und Tonaufnahmen {w.possGen} Person, die im
         Rahmen der Tätigkeit entstehen, für Zwecke der Unternehmenskommunikation (z. B. Website,
         Social-Media-Kanäle, Printmedien) unentgeltlich nutzen darf. Die Einwilligung erfolgt freiwillig
         und kann jederzeit mit Wirkung für die Zukunft widerrufen werden.
       </P>
       <P n={2}>
-        Der Arbeitnehmer erteilt die Erlaubnis, dass seine Daten, solange sie für die Planung,
+        {w.nom} erteilt die Erlaubnis, dass {w.poss} Daten, solange sie für die Planung,
         Abrechnung und Kommunikation nötig sind, elektronisch verarbeitet und gespeichert werden.
       </P>
       <P n={3}>
-        Sofern es gesetzlich vorgeschrieben ist, werden diese Daten auch nach seinem Ausscheiden
+        Sofern es gesetzlich vorgeschrieben ist, werden diese Daten auch nach {w.possDatSg} Ausscheiden
         digital aufbewahrt (z. B. zum Nachweis der Arbeitszeiten).
       </P>
 
@@ -240,7 +271,7 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
         Wirksamkeit des Vertrages im Übrigen nicht berührt.
       </P>
       <P n={3}>
-        Der Arbeitnehmer verpflichtet sich, dem Arbeitgeber Veränderungen der persönlichen Verhältnisse
+        {w.nom} verpflichtet sich, dem Arbeitgeber Veränderungen der persönlichen Verhältnisse
         (Familienstand, Kinderzahl, Adresse) unverzüglich mitzuteilen.
       </P>
 
@@ -257,7 +288,7 @@ export default async function ArbeitsvertragPrintPage({ params }: Props) {
           </div>
           <div className="flex-1">
             <div className="border-t border-black pt-1 text-[11px]">
-              Unterschrift Angestellter
+              Unterschrift {w.sign}
               <br />
               {name}
             </div>

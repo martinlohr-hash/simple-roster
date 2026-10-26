@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 
+type Anrede = 'herr' | 'frau' | 'divers'
+
 type DocCard = {
   key: string
   title: string
   desc: string
-  href?: (form: 'du' | 'sie') => string
+  href?: (form: 'du' | 'sie', anrede: Anrede) => string
   missing: string[]
   soon?: boolean
 }
@@ -31,23 +33,28 @@ function ReadyBadge({ missing }: { missing: string[] }) {
 
 export default function DocumentGenerator({
   userId,
+  gender,
   contractMissing,
   probezeitMissing,
   regulaerMissing,
 }: {
   userId: string
+  gender?: string | null
   contractMissing: string[]
   probezeitMissing: string[]
   regulaerMissing: string[]
 }) {
   const [form, setForm] = useState<'du' | 'sie'>('du')
+  const [anrede, setAnrede] = useState<Anrede>(
+    gender === 'MALE' ? 'herr' : gender === 'FEMALE' ? 'frau' : 'divers',
+  )
 
   const cards: DocCard[] = [
     {
       key: 'vertrag',
       title: 'Arbeitsvertrag',
       desc: 'Universeller Anstellungsvertrag aus den Personalbogen-Daten.',
-      href: () => `/vertrag-druck/${userId}`,
+      href: (_f, a) => `/vertrag-druck/${userId}?anrede=${a}`,
       missing: contractMissing,
     },
     {
@@ -84,7 +91,7 @@ export default function DocumentGenerator({
     <div>
       {/* Anrede-Umschalter (nur Kündigungen) */}
       <div className="flex items-center gap-2 mb-4">
-        <span className="text-sm text-gray-500">Anrede in Kündigungen:</span>
+        <span className="text-sm text-gray-500">Du/Sie in Kündigungen:</span>
         <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
           {(['du', 'sie'] as const).map((f) => (
             <button
@@ -96,6 +103,25 @@ export default function DocumentGenerator({
               }`}
             >
               {f === 'du' ? 'Du' : 'Sie'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Anrede im Vertragskopf */}
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-sm text-gray-500">Arbeitsvertrag für:</span>
+        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+          {([['herr', 'Mann (der Angestellte)'], ['frau', 'Frau (die Angestellte)'], ['divers', 'Divers (neutral)']] as const).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setAnrede(k)}
+              className={`px-3 py-1 text-sm transition ${
+                anrede === k ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {label}
             </button>
           ))}
         </div>
@@ -129,7 +155,7 @@ export default function DocumentGenerator({
               </button>
             ) : (
               <a
-                href={c.href!(form)}
+                href={c.href!(form, anrede)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-3 py-2 text-sm font-medium rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition self-start"

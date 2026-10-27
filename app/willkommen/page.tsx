@@ -57,7 +57,7 @@ export default async function WelcomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-8">
+    <div className="min-h-dvh bg-gray-50 px-4 py-8">
       <div className="w-full max-w-xl mx-auto">
         <div className="mb-6 text-center">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-600 mb-4">

@@ -51,7 +51,7 @@ export default async function EmployeeVacationPage() {
             <div className="text-xs text-gray-500 mt-0.5">Verbraucht</div>
           </div>
           <div className="bg-gray-50 rounded-xl p-4">
-            <div className={`text-2xl font-bold ${light === 'red' ? 'text-red-600' : light === 'yellow' ? 'text-yellow-600' : 'text-green-600'}`}>
+            <div className={`text-2xl font-bold ${light === 'red' ? 'text-red-600' : light === 'yellow' ? 'text-yellow-700' : 'text-green-700'}`}>
               {remaining}
             </div>
             <div className="text-xs text-gray-500 mt-0.5">Verbleibend</div>
@@ -83,7 +83,7 @@ export default async function EmployeeVacationPage() {
                     <div className="text-sm font-medium text-gray-900">
                       {format(v.startDate, 'd. MMM', { locale: de })} – {format(v.endDate, 'd. MMM yyyy', { locale: de })}
                     </div>
-                    <div className="text-xs text-gray-400 mt-0.5">
+                    <div className="text-xs text-gray-500 mt-0.5">
                       {v.workdays} Werktag{v.workdays !== 1 ? 'e' : ''}
                       {v.note ? ` · ${v.note}` : ''}
                     </div>

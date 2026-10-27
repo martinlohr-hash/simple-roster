@@ -9,7 +9,7 @@ function Badge({ children, tone = 'gray' }: { children: React.ReactNode; tone?: 
     amber: 'bg-amber-50 text-amber-700',
     green: 'bg-green-50 text-green-700',
   }
-  return <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${tones[tone]}`}>{children}</span>
+  return <span className={`text-[11px] px-1.5 py-0.5 rounded font-medium ${tones[tone]}`}>{children}</span>
 }
 
 function RecipeCard({ r, placeholder = '🥪' }: { r: RecipeSummary; placeholder?: string }) {
@@ -87,11 +87,11 @@ export default async function RecipesPage() {
       </header>
 
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
-          Sandwiches <span className="text-gray-300">· {sandwiches.length}</span>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+          Sandwiches <span className="text-gray-500">· {sandwiches.length}</span>
         </h2>
         {sandwiches.length === 0 ? (
-          <p className="text-sm text-gray-400">Keine Sandwiches gefunden.</p>
+          <p className="text-sm text-gray-500">Keine Sandwiches gefunden.</p>
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {sandwiches.map((r) => (
@@ -103,8 +103,8 @@ export default async function RecipesPage() {
 
       {sauces.length > 0 && (
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
-            Saucen & Dips <span className="text-gray-300">· {sauces.length}</span>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+            Saucen & Dips <span className="text-gray-500">· {sauces.length}</span>
           </h2>
           <div className="grid grid-cols-2 gap-3">
             {sauces.map((r) => (
@@ -116,8 +116,8 @@ export default async function RecipesPage() {
 
       {drinks.length > 0 && (
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
-            Getränke <span className="text-gray-300">· {drinks.length}</span>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+            Getränke <span className="text-gray-500">· {drinks.length}</span>
           </h2>
           <div className="grid grid-cols-2 gap-3">
             {drinks.map((r) => (

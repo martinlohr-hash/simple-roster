@@ -61,9 +61,9 @@ export default function OpenShiftsList({ shifts }: { shifts: ShiftItem[] }) {
       {Object.entries(byWeek).map(([kw, weekShifts]) => (
         <div key={kw}>
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">KW {kw}</span>
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">KW {kw}</span>
             <div className="flex-1 h-px bg-gray-100" />
-            <span className="text-xs text-green-600 font-medium">freigegeben</span>
+            <span className="text-xs text-green-700 font-medium">freigegeben</span>
           </div>
           <div className="space-y-2">
             {weekShifts.map((shift) => {
@@ -84,7 +84,7 @@ export default function OpenShiftsList({ shifts }: { shifts: ShiftItem[] }) {
                     <div className="text-xs text-gray-500 mt-0.5">
                       {shift.startTime} – {shift.endTime} · {shift.location.name}
                     </div>
-                    {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+                    {error && <p className="text-xs text-red-700 mt-1">{error}</p>}
                   </div>
 
                   {app === null && (
@@ -101,7 +101,7 @@ export default function OpenShiftsList({ shifts }: { shifts: ShiftItem[] }) {
                     <button
                       onClick={() => handleWithdraw(shift.id, app.id)}
                       disabled={isLoading}
-                      className="shrink-0 px-3 py-1.5 border border-gray-300 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50 transition active:scale-[0.97]"
+                      className="shrink-0 min-h-11 px-4 py-2 border border-gray-500 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 disabled:opacity-50 transition active:scale-[0.97]"
                     >
                       {isLoading ? '...' : 'Zurückziehen'}
                     </button>
@@ -114,7 +114,7 @@ export default function OpenShiftsList({ shifts }: { shifts: ShiftItem[] }) {
                   )}
 
                   {app?.status === 'REJECTED' && (
-                    <span className="shrink-0 px-3 py-1.5 bg-gray-50 text-gray-400 text-xs font-medium rounded-lg">
+                    <span className="shrink-0 px-3 py-1.5 bg-gray-50 text-gray-500 text-xs font-medium rounded-lg">
                       Nicht berücksichtigt
                     </span>
                   )}

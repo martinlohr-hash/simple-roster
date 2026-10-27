@@ -89,7 +89,7 @@ export default function CalendarFeedCard({ feedUrl: initialUrl }: Props) {
             type="button"
             onClick={() => createOrRotate('Neuen Link erstellen? Der alte Kalender-Link funktioniert danach nicht mehr.')}
             disabled={busy}
-            className="mt-3 text-[11px] text-gray-400 hover:text-gray-600 underline disabled:opacity-50"
+            className="mt-3 text-[11px] text-gray-500 hover:text-gray-600 underline disabled:opacity-50"
           >
             {busy ? 'Bitte warten…' : 'Link zurücksetzen (alter Link wird ungültig)'}
           </button>

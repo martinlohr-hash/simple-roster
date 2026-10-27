@@ -95,14 +95,14 @@ function ColleaguesSection({
           {shown.map((c, i) => (
             <div
               key={i}
-              className="w-7 h-7 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-[10px] font-semibold text-gray-600"
+              className="w-7 h-7 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-[11px] font-semibold text-gray-600"
               title={c.name}
             >
               {initials(c.name)}
             </div>
           ))}
         </div>
-        {rest > 0 && <span className="text-xs text-gray-400">+{rest} weitere</span>}
+        {rest > 0 && <span className="text-xs text-gray-500">+{rest} weitere</span>}
         <svg
           className={`w-3.5 h-3.5 text-gray-300 ml-auto transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
           fill="none"
@@ -122,7 +122,7 @@ function ColleaguesSection({
             {everyone.map((c, i) => (
               <div key={i} className="flex items-center justify-between text-xs">
                 <span className={c.name === 'Du' ? 'font-semibold text-gray-800' : 'text-gray-600'}>{c.name}</span>
-                <span className="text-gray-400 tabular-nums">
+                <span className="text-gray-500 tabular-nums">
                   {c.startTime} – {c.endTime}
                 </span>
               </div>
@@ -184,7 +184,7 @@ function FreeDayCard() {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6" />
       </svg>
-      <span className="text-sm text-gray-400 font-medium">Freier Tag</span>
+      <span className="text-sm text-gray-500 font-medium">Freier Tag</span>
     </div>
   )
 }
@@ -245,7 +245,7 @@ export default function WeekPlanView({ weekStart, days, userName, userId }: Prop
       {/* Name header */}
       <div>
         <h1 className="text-xl font-bold text-gray-900">Mein Plan</h1>
-        <p className="text-sm text-gray-400">{firstName}</p>
+        <p className="text-sm text-gray-500">{firstName}</p>
       </div>
 
       {/* Week navigator */}
@@ -260,7 +260,7 @@ export default function WeekPlanView({ weekStart, days, userName, userId }: Prop
           </svg>
         </button>
         <div className="flex-1 text-center">
-          <p className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wide">KW {kw}</p>
+          <p className="text-[11px] font-semibold text-indigo-500 uppercase tracking-wide">KW {kw}</p>
           <p className="text-sm font-semibold text-gray-800 leading-tight">{weekLabel}</p>
         </div>
         <button
@@ -282,9 +282,9 @@ export default function WeekPlanView({ weekStart, days, userName, userId }: Prop
             <div key={day.date} className="flex items-start gap-3">
               {/* Date column */}
               <div className="w-10 flex-shrink-0 pt-2.5 text-center">
-                <p className="text-[11px] font-medium text-gray-400 leading-none">{DAY_SHORT[i]}</p>
+                <p className="text-[11px] font-medium text-gray-500 leading-none">{DAY_SHORT[i]}</p>
                 <p className="text-xl font-bold text-gray-800 leading-tight mt-0.5">{format(date, 'd')}</p>
-                <p className="text-[10px] text-gray-400 leading-none mt-0.5">{format(date, 'MMM', { locale: de })}</p>
+                <p className="text-[11px] text-gray-500 leading-none mt-0.5">{format(date, 'MMM', { locale: de })}</p>
               </div>
 
               {/* Card(s) – bei Doppelschichten alle untereinander */}

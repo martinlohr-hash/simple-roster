@@ -10,7 +10,7 @@ export default async function OnboardingPage({ params }: Props) {
 
   if (!user || !user.inviteTokenExpiry || user.inviteTokenExpiry < new Date()) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="min-h-dvh flex items-center justify-center bg-gray-50 px-4">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-amber-100 mb-4">
             <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -25,7 +25,7 @@ export default async function OnboardingPage({ params }: Props) {
           <div className="space-y-3">
             <Link
               href="/login"
-              className="block w-full py-2.5 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition active:scale-[0.97]"
+              className="block w-full min-h-11 py-2.5 px-4 bg-indigo-600 text-white text-base font-semibold rounded-xl hover:bg-indigo-700 transition active:scale-[0.97]"
             >
               Zur Anmeldung
             </Link>
@@ -45,7 +45,7 @@ export default async function OnboardingPage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-dvh flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <div className="mb-6">
           <h1 className="text-xl font-semibold text-gray-900 mb-1">Willkommen, {user.name}</h1>

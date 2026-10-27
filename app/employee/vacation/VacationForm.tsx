@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { createVacationRequest } from '@/app/actions/vacations'
 
 const inputClass =
-  'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
+  'w-full min-h-11 px-3.5 py-2.5 border border-gray-500 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent'
 
 export default function VacationForm() {
   const [pending, startTransition] = useTransition()
@@ -30,20 +30,20 @@ export default function VacationForm() {
       <h2 className="text-sm font-semibold text-gray-900">Urlaub beantragen</h2>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Von</label>
+          <label className="block text-sm font-medium text-gray-800 mb-1.5">Von</label>
           <input type="date" name="startDate" required className={inputClass} />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Bis</label>
+          <label className="block text-sm font-medium text-gray-800 mb-1.5">Bis</label>
           <input type="date" name="endDate" required className={inputClass} />
         </div>
       </div>
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Notiz (optional)</label>
+        <label className="block text-sm font-medium text-gray-800 mb-1.5">Notiz (optional)</label>
         <input type="text" name="note" placeholder="z.B. Sommerurlaub" className={inputClass} />
       </div>
-      {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
-      {success && <p className="text-sm text-green-600 bg-green-50 rounded-lg px-3 py-2">Antrag wurde eingereicht.</p>}
+      {error && <p role="alert" className="text-sm text-red-800 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+      {success && <p className="text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2">Antrag wurde eingereicht.</p>}
       <button
         type="submit"
         disabled={pending}

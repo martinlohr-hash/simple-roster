@@ -109,7 +109,7 @@ export default function WelcomeModal({ userId, name }: { userId: string; name: s
             {platform === 'ios' && <IOSSteps />}
             {platform === 'android' && <AndroidSteps />}
             {platform === 'desktop' && <DesktopHint />}
-            <p className="text-xs text-gray-400 mt-3">
+            <p className="text-xs text-gray-500 mt-3">
               So öffnest du SimpleRoster mit einem Tipp – ohne Browser.
             </p>
           </div>

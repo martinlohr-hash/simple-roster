@@ -44,12 +44,12 @@ export default async function HoursPage() {
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100">
           <h2 className="text-sm font-medium text-gray-900">Diese Woche</h2>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-xs text-gray-500 mt-0.5">
             {formatBerlin(weekStart, 'd. MMM', { locale: de })} – {formatBerlin(new Date(weekEnd.getTime() - 1), 'd. MMM', { locale: de })}
           </p>
         </div>
         {weekEntries.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-gray-400 text-center">Noch keine Einträge diese Woche</p>
+          <p className="px-4 py-6 text-sm text-gray-500 text-center">Noch keine Einträge diese Woche</p>
         ) : (
           <div className="divide-y divide-gray-50">
             {weekEntries.map((entry) => {
@@ -76,7 +76,7 @@ export default async function HoursPage() {
 }
 
 function StatCard({ label, hours, max, light }: { label: string; hours: number; max: number | null | undefined; light: 'green' | 'yellow' | 'red' }) {
-  const colors = { green: 'text-green-600 bg-green-50', yellow: 'text-yellow-600 bg-yellow-50', red: 'text-red-600 bg-red-50' }
+  const colors = { green: 'text-green-700 bg-green-50', yellow: 'text-yellow-700 bg-yellow-50', red: 'text-red-800 bg-red-50' }
   const dotColors = { green: 'bg-green-500', yellow: 'bg-yellow-500', red: 'bg-red-500' }
 
   return (

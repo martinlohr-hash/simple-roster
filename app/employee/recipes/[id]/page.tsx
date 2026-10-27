@@ -70,7 +70,7 @@ function renderBlocks(blocks: RecipeBlock[]) {
           <figure key={i} className="my-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={b.url} alt={b.caption || 'Rezeptbild'} className="w-full rounded-xl border border-gray-200" loading="lazy" />
-            {b.caption && <figcaption className="text-xs text-gray-400 mt-1 text-center">{b.caption}</figcaption>}
+            {b.caption && <figcaption className="text-xs text-gray-500 mt-1 text-center">{b.caption}</figcaption>}
           </figure>,
         )
         break

@@ -83,41 +83,41 @@ export default function ProfileForm({ user }: Props) {
         </div>
         <div>
           <p className="font-semibold text-gray-900">{user.name}</p>
-          <p className="text-sm text-gray-400">Mitarbeiter</p>
+          <p className="text-sm text-gray-500">Mitarbeiter</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">E-Mail</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">E-Mail</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full min-h-11 px-3.5 py-2.5 rounded-xl border border-gray-500 bg-white text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Telefon</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Telefon</label>
           <input
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+49 …"
-            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full min-h-11 px-3.5 py-2.5 rounded-xl border border-gray-500 bg-white text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Adresse</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Adresse</label>
           <textarea
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             rows={3}
             placeholder="Straße, PLZ Ort"
-            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            className="w-full min-h-11 px-3.5 py-2.5 rounded-xl border border-gray-500 bg-white text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
           />
         </div>
 
@@ -128,8 +128,8 @@ export default function ProfileForm({ user }: Props) {
           latestEnd={user.latestEnd}
         />
 
-        {error && <p className="text-sm text-red-500">{error}</p>}
-        {saved && <p className="text-sm text-green-600">Gespeichert ✓</p>}
+        {error && <p className="text-sm text-red-700">{error}</p>}
+        {saved && <p className="text-sm text-green-700">Gespeichert ✓</p>}
 
         <button
           type="submit"

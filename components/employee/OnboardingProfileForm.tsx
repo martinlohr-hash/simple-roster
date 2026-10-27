@@ -22,7 +22,7 @@ type Initial = {
 }
 
 const inputClass =
-  'w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+  'w-full min-h-11 px-3.5 py-2.5 rounded-xl border border-gray-500 bg-white text-base focus:outline-none focus:ring-2 focus:ring-indigo-500'
 
 function Field({
   label,
@@ -47,8 +47,8 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={name} className="block text-xs font-medium text-gray-500 mb-1.5">
-        {label} {required && <span className="text-red-400">*</span>}
+      <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1.5">
+        {label} {required && <span className="text-red-700">*</span>}
       </label>
       <input
         id={name}
@@ -61,7 +61,7 @@ function Field({
         placeholder={placeholder}
         className={inputClass}
       />
-      {hint && <p className="text-[11px] text-gray-400 mt-1">{hint}</p>}
+      {hint && <p className="text-[11px] text-gray-500 mt-1">{hint}</p>}
     </div>
   )
 }
@@ -108,7 +108,7 @@ export default function OnboardingProfileForm({ initial }: { initial: Initial })
       </div>
 
       <div>
-        <span className="block text-xs font-medium text-gray-500 mb-1.5">Geschlecht <span className="text-red-400">*</span></span>
+        <span className="block text-sm font-medium text-gray-700 mb-1.5">Geschlecht <span className="text-red-700">*</span></span>
         <div className="flex gap-2">
           {[
             { v: 'MALE', l: 'männlich' },
@@ -144,7 +144,7 @@ export default function OnboardingProfileForm({ initial }: { initial: Initial })
       <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 p-4 space-y-4">
         <div>
           <h3 className="text-sm font-semibold text-gray-700">Kannst du auch später nachreichen</h3>
-          <p className="text-[11px] text-gray-400 mt-0.5">
+          <p className="text-[11px] text-gray-500 mt-0.5">
             Diese Angaben brauchen wir für die Abrechnung. Hast du sie nicht zur Hand, lass sie einfach leer –
             du kommst trotzdem direkt rein und wirst später kurz daran erinnert.
           </p>
@@ -169,7 +169,7 @@ export default function OnboardingProfileForm({ initial }: { initial: Initial })
         <Field label="Bankverbindung / IBAN" name="iban" value={f.iban} onChange={set('iban')} placeholder="DE.." />
       </div>
 
-      {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-800 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
 
       <button
         type="submit"
@@ -178,7 +178,7 @@ export default function OnboardingProfileForm({ initial }: { initial: Initial })
       >
         {isPending ? 'Speichern …' : 'Daten speichern & loslegen'}
       </button>
-      <p className="text-center text-[11px] text-gray-400">* Pflichtfeld</p>
+      <p className="text-center text-[11px] text-gray-500">* Pflichtfeld</p>
     </form>
   )
 }

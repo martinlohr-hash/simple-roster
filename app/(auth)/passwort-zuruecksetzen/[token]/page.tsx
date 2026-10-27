@@ -11,7 +11,7 @@ export default async function ResetPasswordPage({ params }: Props) {
   const valid = user && user.resetTokenExpiry && user.resetTokenExpiry >= new Date()
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-dvh flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         {valid ? (
           <>
@@ -34,7 +34,7 @@ export default async function ResetPasswordPage({ params }: Props) {
             </div>
             <Link
               href="/passwort-vergessen"
-              className="block w-full text-center py-2.5 px-4 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition active:scale-[0.97]"
+              className="block w-full text-center min-h-11 py-2.5 px-4 bg-indigo-600 text-white text-base font-semibold rounded-xl hover:bg-indigo-700 transition active:scale-[0.97]"
             >
               Neuen Link anfordern
             </Link>

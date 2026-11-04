@@ -5,6 +5,7 @@ import { randomBytes } from 'crypto'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { sendResetEmail } from '@/lib/email/reset'
+import { isCurrentTeamMember } from '@/lib/activeUser'
 
 // Schritt 1: Reset anfordern. Verschickt einen zeitlich begrenzten Link per Mail.
 // Gibt aus Datenschutzgründen IMMER dieselbe Erfolgsmeldung zurück (kein Verraten,
@@ -20,7 +21,7 @@ export async function requestPasswordReset(
 
     // Nur aktive Konten mit gesetztem Passwort können zurückgesetzt werden.
     // Noch nicht aktivierte (PENDING) MA nutzen weiterhin den Einladungslink.
-    if (user && user.passwordHash && user.status === 'ACTIVE') {
+    if (user && user.passwordHash && user.status === 'ACTIVE' && isCurrentTeamMember(user)) {
       const resetToken = randomBytes(32).toString('hex')
       const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000) // 1 Stunde
 

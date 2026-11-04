@@ -1,5 +1,6 @@
 'use server'
 
+import { isLoginBlocked } from '@/lib/activeUser'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import bcrypt from 'bcryptjs'
@@ -37,6 +38,9 @@ export async function login(formData: FormData) {
 
   const valid = await bcrypt.compare(password, user.passwordHash)
   if (!valid) return { error: 'E-Mail oder Passwort falsch.' }
+
+  // 4 Wochen nach Austritt ist der Zugang gesperrt
+  if (isLoginBlocked(user)) return { error: 'Dein Zugang ist beendet.' }
 
   // Nur EMPLOYEEs ohne abgeschlossenen Personalbogen werden auf /willkommen geleitet.
   const onboardingDone = user.role !== 'EMPLOYEE' || user.onboardingCompletedAt != null

@@ -1,4 +1,5 @@
 import 'server-only'
+import { currentTeamWhere } from '@/lib/activeUser'
 import { prisma } from '@/lib/db'
 import { sendMail, isMailConfigured } from '@/lib/mail'
 import { getBaseUrl } from '@/lib/baseUrl'
@@ -98,6 +99,7 @@ export async function runDrip(): Promise<DripResult> {
     where: {
       role: 'EMPLOYEE',
       status: 'ACTIVE',
+      ...currentTeamWhere(),
       onboardingDripStartedAt: { not: null },
     },
     select: { ...USER_SELECT, onboardingDripStartedAt: true },

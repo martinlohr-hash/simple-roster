@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
+import { currentTeamWhere } from '@/lib/activeUser'
 
 // Fachliche Fehler als Rückgabewert statt throw: geworfene Errors werden von
 // Next.js in Production maskiert und kämen beim Nutzer nie an.
@@ -11,6 +12,10 @@ export type TimeclockResult = { error?: string }
 export async function checkin(locationId: string, shiftId?: string): Promise<TimeclockResult> {
   const session = await getSession()
   if (!session) return { error: 'Nicht angemeldet' }
+
+  // Ausgeschiedene MA dürfen nicht mehr einstempeln (Ausstempeln bleibt möglich)
+  const member = await prisma.user.findFirst({ where: { id: session.userId, ...currentTeamWhere() }, select: { id: true } })
+  if (!member) return { error: 'Du bist nicht mehr im Team – Einstempeln nicht möglich.' }
 
   // Schicht darf nur dem eingeloggten Mitarbeiter gehören – sonst könnte man
   // fremde Schichten aktivieren bzw. seinen Stempel daran hängen.

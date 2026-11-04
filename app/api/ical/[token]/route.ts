@@ -1,3 +1,4 @@
+import { isLoginBlocked } from '@/lib/activeUser'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { buildIcsFeed } from '@/lib/ical-feed'
@@ -14,9 +15,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
 
   const user = await prisma.user.findUnique({
     where: { icalToken: token },
-    select: { id: true, name: true },
+    select: { id: true, name: true, endDate: true },
   })
-  if (!user) return new NextResponse('Not found', { status: 404 })
+  if (!user || isLoginBlocked(user)) return new NextResponse('Not found', { status: 404 })
 
   // 60 Tage Rückblick (für Nacharbeit/Stundenabgleich) + alles Geplante
   const from = new Date()

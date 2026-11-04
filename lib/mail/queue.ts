@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { sendMail } from '@/lib/mail'
 import { buildShiftChangesEmail, type ShiftChange } from '@/lib/email/shift-changes'
 import { buildWeekReleasedEmail } from '@/lib/email/week-released'
+import { currentTeamWhere, isCurrentTeamMember } from '@/lib/activeUser'
 
 export async function queueShiftEmail(
   userId: string,
@@ -10,6 +11,10 @@ export async function queueShiftEmail(
   delayMinutes = 15
 ): Promise<void> {
   if (!changes.length) return
+
+  // Ausgeschiedene MA bekommen keine Schicht-Mails
+  const recipient = await prisma.user.findFirst({ where: { id: userId, ...currentTeamWhere() }, select: { id: true } })
+  if (!recipient) return
 
   const scheduledFor = new Date(Date.now() + delayMinutes * 60_000)
 
@@ -56,7 +61,7 @@ export async function queueWeekReleasedEmail(
 ): Promise<void> {
   // Finde alle EMPLOYEE-User, die nicht der Admin sind
   const employees = await prisma.user.findMany({
-    where: { role: 'EMPLOYEE' },
+    where: { role: 'EMPLOYEE', ...currentTeamWhere() },
     select: { id: true },
   })
 
@@ -80,7 +85,7 @@ export async function sendPendingEmails() {
       sentAt: null,
       scheduledFor: { lte: now },
     },
-    include: { user: { select: { id: true, email: true, firstName: true, lastName: true, name: true } } },
+    include: { user: { select: { id: true, email: true, firstName: true, lastName: true, name: true, endDate: true } } },
     orderBy: { createdAt: 'asc' },
   })
 
@@ -90,6 +95,12 @@ export async function sendPendingEmails() {
 
   for (const item of pending) {
     try {
+      // Ausgeschiedene MA (archiviert) bekommen keine Mails mehr, auch nicht aus der Warteschlange
+      if (!isCurrentTeamMember(item.user)) {
+        await prisma.pendingEmail.update({ where: { id: item.id }, data: { sentAt: now } })
+        results.skipped++
+        continue
+      }
       if (item.type === 'shifts' && item.metadata && typeof item.metadata === 'object' && 'changes' in item.metadata) {
         const changes = (item.metadata as Record<string, unknown>).changes as ShiftChange[]
         const emailContent = buildShiftChangesEmail(changes, {

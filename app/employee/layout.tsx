@@ -6,6 +6,7 @@ import BottomNav from '@/components/employee/BottomNav'
 import WelcomeModal from '@/components/employee/WelcomeModal'
 import MissingDataNag, { type DeferredField } from '@/components/employee/MissingDataNag'
 import { prisma } from '@/lib/db'
+import { isLoginBlocked } from '@/lib/activeUser'
 
 export default async function EmployeeLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession()
@@ -14,8 +15,19 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
   // Nachreichbare Abrechnungs-Daten: prüfen, welche noch fehlen (für den Nag-Screen).
   const profile = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { taxId: true, socialSecurityNo: true, iban: true, onboardingCompletedAt: true },
+    select: { taxId: true, socialSecurityNo: true, iban: true, onboardingCompletedAt: true, endDate: true },
   })
+  // Bestehende Sessions (7 Tage JWT) nach Ablauf der Frist ebenfalls aussperren
+  if (profile && isLoginBlocked(profile)) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center bg-gray-50 p-6">
+        <form action={logout} className="text-center space-y-4">
+          <p className="text-gray-700">Dein Zugang ist beendet.</p>
+          <button className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm">Abmelden</button>
+        </form>
+      </div>
+    )
+  }
   const missingData: DeferredField[] = []
   if (profile?.onboardingCompletedAt) {
     if (!profile.taxId) missingData.push('taxId')

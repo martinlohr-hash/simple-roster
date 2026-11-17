@@ -65,8 +65,9 @@ export function computeSuggestions(input: {
   coverageRules: CoverageRuleData[]
   locations: SuggestionLocation[]
   weekDates: string[] // 7 Einträge yyyy-MM-dd, Mo..So
+  closedDates?: Set<string> // geschlossene Tage → keine Vorschläge
 }): Suggestion[] {
-  const { shifts, users, vacations, coverageRules, locations, weekDates } = input
+  const { shifts, users, vacations, coverageRules, locations, weekDates, closedDates } = input
   if (coverageRules.length === 0) return []
 
   // Bereits verplante Stunden je MA in dieser Woche.
@@ -95,6 +96,7 @@ export function computeSuggestions(input: {
 
   weekDates.forEach((date, dayIndex) => {
     // dayIndex: 0=Mo..6=So, da weekDates von Mo..So aufgebaut ist.
+    if (closedDates?.has(date)) return
     const dayShifts = shifts.filter((s) => s.date.slice(0, 10) === date)
     const warnings = computeCoverageWarnings(dayShifts, coverageRules, new Date(date + 'T12:00:00'))
 

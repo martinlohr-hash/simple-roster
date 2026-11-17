@@ -245,6 +245,12 @@ model DayNote {
   content String
 }
 
+// Ganzer Tag geschlossen (z. B. Betriebsferien) – keine Schichten möglich
+model ClosedDay {
+  date      String   @id // yyyy-MM-dd
+  createdAt DateTime @default(now())
+}
+
 model ShiftTemplate {
   id        String               @id @default(cuid())
   name      String

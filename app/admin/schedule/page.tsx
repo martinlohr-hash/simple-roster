@@ -14,6 +14,7 @@ import WeekGrid from '@/components/schedule/WeekGrid'
 import WeekJumper from '@/components/schedule/WeekJumper'
 import SuggestionsPanel from '@/components/schedule/SuggestionsPanel'
 import { computeSuggestions } from '@/lib/suggestions'
+import { getClosedDaySet } from '@/lib/closedDays'
 
 type Props = {
   searchParams: Promise<{ week?: string; costMode?: string }>
@@ -94,7 +95,7 @@ export default async function SchedulePage({ searchParams }: Props) {
     budgetMonthNum = getMonth(monthAnchor) + 1
   }
 
-  const [shifts, users, locations, templates, dayNotes, coverageRules, weekBudget, weekRelease, applications, vacations, timesheetReleases, dayActuals, unplannedTimeEntries, funnelEvents, unconfirmedDays, monthShifts, adjacentShiftsRaw, monthBudget] = await Promise.all([
+  const [shifts, users, locations, templates, dayNotes, closedDaySet, coverageRules, weekBudget, weekRelease, applications, vacations, timesheetReleases, dayActuals, unplannedTimeEntries, funnelEvents, unconfirmedDays, monthShifts, adjacentShiftsRaw, monthBudget] = await Promise.all([
     prisma.shift.findMany({
       where: { date: { gte: weekStart, lt: weekEnd }, status: { not: 'CANCELLED' } },
       include: { user: true, location: true, timeEntry: true },
@@ -110,6 +111,7 @@ export default async function SchedulePage({ searchParams }: Props) {
       include: { _count: { select: { entries: true } } },
     }),
     prisma.dayNote.findMany({ where: { date: { in: weekDates } } }),
+    getClosedDaySet(weekDates),
     prisma.coverageRule.findMany({ orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }] }),
     prisma.budget.findUnique({
       where: { period_year_weekOrMonth: { period: 'WEEKLY', year: weekYear, weekOrMonth: weekNumber } },
@@ -160,17 +162,21 @@ export default async function SchedulePage({ searchParams }: Props) {
         include: { entries: true },
       })
       if (full && full.entries.length > 0) {
-        await prisma.shift.createMany({
-          data: full.entries.map((e) => ({
-            userId: e.userId ?? null,
-            locationId: e.locationId,
-            date: new Date(Date.UTC(weekStart.getUTCFullYear(), weekStart.getUTCMonth(), weekStart.getUTCDate() + e.dayOfWeek)),
-            startTime: e.startTime,
-            endTime: e.endTime,
-            status: 'PLANNED' as const,
-          })),
-        })
-        redirect(`/admin/schedule?week=${format(weekStart, 'yyyy-MM-dd')}`)
+        // Geschlossene Tage bekommen keine Vorlagen-Schichten
+        const openEntries = full.entries.filter((e) => !closedDaySet.has(weekDates[e.dayOfWeek]))
+        if (openEntries.length > 0) {
+          await prisma.shift.createMany({
+            data: openEntries.map((e) => ({
+              userId: e.userId ?? null,
+              locationId: e.locationId,
+              date: new Date(Date.UTC(weekStart.getUTCFullYear(), weekStart.getUTCMonth(), weekStart.getUTCDate() + e.dayOfWeek)),
+              startTime: e.startTime,
+              endTime: e.endTime,
+              status: 'PLANNED' as const,
+            })),
+          })
+          redirect(`/admin/schedule?week=${format(weekStart, 'yyyy-MM-dd')}`)
+        }
       }
     }
   }
@@ -380,6 +386,7 @@ export default async function SchedulePage({ searchParams }: Props) {
     coverageRules: coverageRulesJson,
     locations: locationsJson,
     weekDates,
+    closedDates: closedDaySet,
   })
 
   return (
@@ -478,6 +485,7 @@ export default async function SchedulePage({ searchParams }: Props) {
         locations={locationsJson}
         weekStart={weekStart}
         dayNotes={dayNotesMap}
+        closedDays={[...closedDaySet]}
         funnelEvents={funnelEvents}
         coverageRules={coverageRulesJson}
         prevWeekHref={`/admin/schedule?week=${format(prevWeek, 'yyyy-MM-dd')}`}

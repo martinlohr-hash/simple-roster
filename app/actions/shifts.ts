@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
 import { isAdmin } from '@/lib/session'
 import { queueShiftEmail } from '@/lib/mail/queue'
+import { isClosedDay, CLOSED_DAY_ERROR } from '@/lib/closedDays'
 
 // Fachliche Fehler als Rückgabewert statt throw: geworfene Errors werden von
 // Next.js in Production maskiert und kämen beim Nutzer nie an.
@@ -19,6 +20,7 @@ export async function createShift(data: {
 }): Promise<ShiftActionResult> {
   const session = await getSession()
   if (!session || !isAdmin(session.role)) return { error: 'Keine Berechtigung' }
+  if (await isClosedDay(data.date)) return { error: CLOSED_DAY_ERROR }
 
   if (data.userId) {
     const conflict = await checkOverlap({ userId: data.userId, date: data.date, startTime: data.startTime, endTime: data.endTime })
@@ -68,6 +70,9 @@ export async function updateShift(id: string, data: { userId?: string | null; da
     : existing.date.toISOString().slice(0, 10)
   const effectiveStart = data.startTime ?? existing.startTime
   const effectiveEnd = data.endTime ?? existing.endTime
+  if (data.date && effectiveDate !== existing.date.toISOString().slice(0, 10) && await isClosedDay(effectiveDate)) {
+    return { error: CLOSED_DAY_ERROR }
+  }
 
   if (effectiveUserId) {
     const conflict = await checkOverlap({
@@ -149,6 +154,7 @@ export async function duplicateShift(id: string): Promise<ShiftActionResult> {
 
   const original = await prisma.shift.findUnique({ where: { id } })
   if (!original) return { error: 'Schicht nicht gefunden' }
+  if (await isClosedDay(original.date)) return { error: CLOSED_DAY_ERROR }
 
   await prisma.shift.create({
     data: {
@@ -179,7 +185,8 @@ export async function deleteShift(id: string): Promise<ShiftActionResult> {
 
     const remaining = await prisma.shift.count({ where: { date: { gte: dayStart, lt: dayEnd } } })
 
-    if (remaining === 0) {
+    // Leerer Tag → Standardvorlage nachfüllen, außer der Tag ist geschlossen
+    if (remaining === 0 && !(await isClosedDay(shift.date))) {
       const defaultTemplate = await prisma.shiftTemplate.findFirst({
         where: { isDefault: true },
         include: { entries: true },

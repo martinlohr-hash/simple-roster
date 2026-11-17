@@ -5,6 +5,7 @@ import { addDays, format, startOfWeek } from 'date-fns'
 import { prisma } from '@/lib/db'
 import { getSession } from '@/app/actions/auth'
 import { isAdmin } from '@/lib/session'
+import { getClosedDaySet } from '@/lib/closedDays'
 
 export async function saveWeekAsTemplate(weekStart: string, name: string) {
   const session = await getSession()
@@ -48,9 +49,11 @@ export async function applyTemplate(templateId: string, weekStart: string) {
   if (!template) throw new Error('Vorlage nicht gefunden')
 
   const start = new Date(weekStart + 'T00:00:00.000Z')
+  const dateOf = (dow: number) => new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate() + dow))
+  const closed = await getClosedDaySet([0, 1, 2, 3, 4, 5, 6].map((d) => dateOf(d).toISOString().slice(0, 10)))
 
   await prisma.shift.createMany({
-    data: template.entries.map((e) => ({
+    data: template.entries.filter((e) => !closed.has(dateOf(e.dayOfWeek).toISOString().slice(0, 10))).map((e) => ({
       userId: e.userId ?? null,
       locationId: e.locationId,
       date: new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate() + e.dayOfWeek)),

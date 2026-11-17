@@ -3,6 +3,7 @@ import { getSession } from '@/app/actions/auth'
 import { redirect } from 'next/navigation'
 import { startOfWeek, endOfWeek, eachDayOfInterval, format, parseISO } from 'date-fns'
 import WeekPlanView from '@/components/employee/WeekPlanView'
+import { getClosedDaySet } from '@/lib/closedDays'
 
 type Props = {
   searchParams: Promise<{ week?: string }>
@@ -19,7 +20,8 @@ export default async function SchedulePage({ searchParams }: Props) {
 
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 })
 
-  const [myShifts, allShifts, myVacations] = await Promise.all([
+  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd })
+  const [myShifts, allShifts, myVacations, closedDays] = await Promise.all([
     prisma.shift.findMany({
       where: {
         userId: session.userId,
@@ -44,9 +46,10 @@ export default async function SchedulePage({ searchParams }: Props) {
         endDate: { gte: weekStart },
       },
     }),
+    getClosedDaySet(weekDays.map((d) => format(d, 'yyyy-MM-dd'))),
   ])
 
-  const days = eachDayOfInterval({ start: weekStart, end: weekEnd }).map((day) => {
+  const days = weekDays.map((day) => {
     const dateStr = format(day, 'yyyy-MM-dd')
     // Alle eigenen Schichten des Tages (Doppelschichten möglich)
     const dayShifts = myShifts.filter((s) => format(s.date, 'yyyy-MM-dd') === dateStr)
@@ -62,6 +65,7 @@ export default async function SchedulePage({ searchParams }: Props) {
     return {
       date: dateStr,
       isVacation,
+      isClosed: closedDays.has(dateStr),
       shifts: dayShifts.map((shift) => ({
         startTime: shift.startTime,
         endTime: shift.endTime,

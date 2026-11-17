@@ -18,6 +18,8 @@ type ShiftData = {
 type DayData = {
   date: string
   isVacation: boolean
+  // Laden an diesem Tag geschlossen (z. B. Betriebsferien)
+  isClosed: boolean
   // Alle Schichten des Tages (Doppelschichten möglich, z. B. zwei Standorte)
   shifts: ShiftData[]
 }
@@ -189,6 +191,20 @@ function FreeDayCard() {
   )
 }
 
+function ClosedDayCard() {
+  return (
+    <div
+      className="flex-1 rounded-xl border border-gray-200 flex items-center gap-2.5 px-4 py-3"
+      style={{ backgroundImage: 'repeating-linear-gradient(135deg, #f3f4f6 0 6px, #f9fafb 6px 12px)' }}
+    >
+      <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+      </svg>
+      <span className="text-sm text-gray-700 font-semibold">Geschlossen</span>
+    </div>
+  )
+}
+
 function VacationCard() {
   return (
     <div className="flex-1 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-2.5 px-4 py-3">
@@ -299,6 +315,8 @@ export default function WeekPlanView({ weekStart, days, userName, userId }: Prop
                     />
                   ))}
                 </div>
+              ) : day.isClosed ? (
+                <ClosedDayCard />
               ) : day.isVacation ? (
                 <VacationCard />
               ) : (

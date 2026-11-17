@@ -26,6 +26,7 @@ import Link from 'next/link'
 import { updateShift, deleteShift, createShift, duplicateShift } from '@/app/actions/shifts'
 import { releaseWeek, revokeWeekRelease, assignShiftToApplicant } from '@/app/actions/bidding'
 import { releaseDay, unreleaseDay } from '@/app/actions/timesheets'
+import { setDayClosed } from '@/app/actions/closedDays'
 import { unwrap } from '@/lib/actionResult'
 import { addMinutesToTime, shiftDurationHours } from '@/lib/timeUtils'
 import CoverageWarningsBar from './CoverageWarningsBar'
@@ -83,6 +84,7 @@ type Props = {
   weekStart: Date
   weekStartStr: string
   dayNotes: Record<string, string>
+  closedDays: string[]
   funnelEvents?: Record<string, BookedEvent[]>
   coverageRules: CoverageRuleData[]
   prevWeekHref: string
@@ -138,7 +140,7 @@ function getInitials(name: string): string {
     .join('')
 }
 
-export default function WeekGrid({ shifts: serverShifts, users, locations, weekStart, weekStartStr, dayNotes, funnelEvents, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays, isSuperAdmin, dayStats, unplannedEntries, monthInfo, adjacentShifts }: Props) {
+export default function WeekGrid({ shifts: serverShifts, users, locations, weekStart, weekStartStr, dayNotes, closedDays, funnelEvents, coverageRules, prevWeekHref, nextWeekHref, isWeekReleased, applications, vacations, holidays, isSuperAdmin, dayStats, unplannedEntries, monthInfo, adjacentShifts }: Props) {
   const router = useRouter()
   // Optimistische Sicht auf die Schichten: Drag/Resize wird sofort angezeigt,
   // der Server-Roundtrip läuft im Hintergrund. Schlägt die Action fehl (oder
@@ -160,6 +162,75 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
   const [editEmployeeId, setEditEmployeeId] = useState<string | null>(null)
   const [busyDay, setBusyDay] = useState<string | null>(null)
   const [editEntry, setEditEntry] = useState<UnplannedEntryData | null>(null)
+  // Geschlossene Tage: Schalter reagiert sofort, Server-Stand kommt per refresh
+  const [closedSet, applyClosedPatch] = useOptimistic(
+    new Set(closedDays),
+    (state: Set<string>, patch: { date: string; closed: boolean }) => {
+      const next = new Set(state)
+      if (patch.closed) next.add(patch.date)
+      else next.delete(patch.date)
+      return next
+    },
+  )
+  const isClosed = (dateStr: string) => closedSet.has(dateStr)
+
+  function toggleDayClosed(dateStr: string) {
+    const closing = !isClosed(dateStr)
+    startTransition(async () => {
+      applyClosedPatch({ date: dateStr, closed: closing })
+      try {
+        let res = await setDayClosed(dateStr, closing)
+        if (res.pendingShifts && res.pendingShifts.length > 0) {
+          const list = res.pendingShifts.map((p) => `– ${p.name}: ${p.time}`).join('\n')
+          const ok = window.confirm(
+            `An diesem Tag sind noch Schichten geplant:\n\n${list}\n\n` +
+              `OK = Tag schließen und diese Schichten löschen, Abbrechen = nichts ändern.`,
+          )
+          if (!ok) return
+          res = await setDayClosed(dateStr, true, true)
+        }
+        unwrap(res)
+        if (res.keptWorked) {
+          setDragError(`${res.keptWorked} Schicht(en) mit Stempel bleiben stehen – gearbeitete Zeit wird nicht gelöscht.`)
+          setTimeout(() => setDragError(null), 6000)
+        }
+        router.refresh()
+      } catch (e) {
+        setDragError(e instanceof Error ? e.message : 'Ändern fehlgeschlagen')
+        setTimeout(() => setDragError(null), 5000)
+      }
+    })
+  }
+
+  // Kleiner Schieberegler „geöffnet / geschlossen" im Tageskopf
+  function renderClosedSwitch(dateStr: string, compact = false) {
+    const closed = isClosed(dateStr)
+    return (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={closed}
+        aria-label={closed ? `${dateStr} wieder öffnen` : `${dateStr} schließen`}
+        title={closed ? 'Geschlossen – klicken zum Öffnen' : 'Geöffnet – klicken zum Schließen'}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={() => toggleDayClosed(dateStr)}
+        className={`mt-1 inline-flex items-center gap-1 ${compact ? '' : 'px-1 py-0.5'} rounded-full`}
+      >
+        <span className={`relative inline-flex h-3.5 w-6 shrink-0 rounded-full transition-colors duration-150 ${closed ? 'bg-gray-600' : 'bg-gray-200'}`}>
+          <span className={`absolute top-0.5 h-2.5 w-2.5 rounded-full bg-white shadow transition-transform duration-150 ${closed ? 'translate-x-3' : 'translate-x-0.5'}`} />
+        </span>
+        {!compact && (
+          <span className={`text-[10px] font-medium ${closed ? 'text-gray-700' : 'text-gray-400'}`}>
+            {closed ? 'Geschlossen' : 'Geöffnet'}
+          </span>
+        )}
+      </button>
+    )
+  }
+
+  const closedCellStyle = {
+    backgroundImage: 'repeating-linear-gradient(135deg, rgba(229,231,235,0.7) 0 6px, rgba(249,250,251,0.7) 6px 12px)',
+  }
 
   function getUnplannedForCell(userId: string, dateStr: string) {
     return unplannedEntries.filter((e) => e.userId === userId && e.date === dateStr)
@@ -220,6 +291,13 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
   function renderDayRelease(dateStr: string) {
     const stat = dayStats[dateStr]
     if (!stat) return null
+    if (isClosed(dateStr) && stat.actual === 0 && stat.open === 0) {
+      return (
+        <div className="px-2 py-2 text-center">
+          <div className="text-[10px] font-medium text-gray-400">geschlossen</div>
+        </div>
+      )
+    }
     const released = stat.releasedHours != null
     const future = dateStr > todayStr
     const needsAction = dateStr < todayStr && !released // vergangener Tag, noch nicht bestätigt
@@ -408,6 +486,11 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
       const newDateStr = parts[1]
       const shift = shifts.find((s) => s.id === active.id)
       if (!shift) return
+      if (closedSet.has(newDateStr) && !shift.date.startsWith(newDateStr)) {
+        setDragError('An diesem Tag ist geschlossen – keine Schichten möglich.')
+        setTimeout(() => setDragError(null), 5000)
+        return
+      }
       const targetUser = newUserId ? users.find((u) => u.id === newUserId) ?? null : null
       startTransition(async () => {
         applyShiftPatch({
@@ -422,7 +505,7 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
         }
       })
     },
-    [resizingShift, shifts, users, applyShiftPatch],
+    [resizingShift, shifts, users, applyShiftPatch, closedSet],
   )
 
   async function handleDelete(id: string) {
@@ -593,10 +676,13 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                   </th>
                   {days.map((day, i) => {
                     const count = getUnassignedForDay(day).length
+                    const closed = isClosed(format(day, 'yyyy-MM-dd'))
                     return (
                       <th key={i} className="text-center px-1 py-2 min-w-[52px]">
                         <div className="h-4 flex items-center justify-center">
-                          {count === 0 ? (
+                          {closed && count === 0 ? (
+                            <span className="text-[9px] font-semibold text-gray-400 uppercase">zu</span>
+                          ) : count === 0 ? (
                             <svg className="w-3.5 h-3.5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
@@ -623,6 +709,7 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                         <div className={`text-sm font-bold ${today ? 'text-indigo-600' : 'text-gray-800'}`}>
                           {format(day, 'd')}
                         </div>
+                        {renderClosedSwitch(format(day, 'yyyy-MM-dd'), true)}
                       </th>
                     )
                   })}
@@ -694,6 +781,7 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                             borderRightStyle: isSunday && hasMondayShift ? 'solid' : undefined,
                             backgroundColor: isConfirmed(dateStr) ? 'rgba(229, 231, 235, 0.7)' : undefined,
                             opacity: isConfirmed(dateStr) ? 0.6 : undefined,
+                            ...(isClosed(dateStr) ? closedCellStyle : {}),
                           }}>
                             {onVacation ? (
                               <span className="text-[9px] font-semibold text-emerald-600 uppercase tracking-tight">
@@ -723,6 +811,8 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                                   </button>
                                 ))}
                               </div>
+                            ) : isClosed(dateStr) ? (
+                              <span className="sr-only">geschlossen</span>
                             ) : (
                               <button
                                 onClick={() => setModalCell({ userId: user.id, date: dateStr })}
@@ -890,6 +980,7 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                           {holiday}
                         </div>
                       )}
+                      <div>{renderClosedSwitch(dateStr)}</div>
                     </th>
                   )
                 })}
@@ -904,6 +995,9 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                   {days.map((day, i) => {
                     const dateStr = format(day, 'yyyy-MM-dd')
                     const dayShifts = shifts.filter((s) => s.date.startsWith(dateStr))
+                    if (isClosed(dateStr)) {
+                      return <td key={i} className="align-top border-l border-gray-100 first:border-l-0 py-1" style={closedCellStyle} />
+                    }
                     const warnings = computeCoverageWarnings(dayShifts, coverageRules, day)
                     const dow = (day.getDay() + 6) % 7
                     const dayRules = coverageRules.filter((r) => r.dayOfWeek === dow)
@@ -949,7 +1043,7 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                     const dayShifts = getUnassignedForDay(day)
                     const dateStr = format(day, 'yyyy-MM-dd')
                     return (
-                      <td key={di} className={`p-0 align-top ${isConfirmed(dateStr) ? 'bg-gray-100/70' : ''}`}>
+                      <td key={di} className={`p-0 align-top ${isConfirmed(dateStr) ? 'bg-gray-100/70' : ''}`} style={isClosed(dateStr) ? closedCellStyle : undefined}>
                         <DropCell id={`unassigned__${dateStr}`}>
                           <div className={`flex flex-col gap-1 p-1.5 min-h-[56px] ${isConfirmed(dateStr) ? 'opacity-60' : ''}`}>
                             {dayShifts.map((shift) => (
@@ -963,6 +1057,11 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                                 applications={applications.filter((a) => a.shiftId === shift.id && a.status === 'PENDING')}
                               />
                             ))}
+                            {isClosed(dateStr) ? (
+                              <div className="py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide select-none">
+                                Geschlossen
+                              </div>
+                            ) : (
                             <button
                               onPointerDown={(e) => e.stopPropagation()}
                               onClick={() => setModalCell({ userId: null, date: dateStr })}
@@ -970,6 +1069,7 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                             >
                               + Schicht
                             </button>
+                            )}
                           </div>
                         </DropCell>
                       </td>
@@ -1033,6 +1133,7 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                           borderRightColor: mondayColor,
                           borderRightStyle: isSunday && hasMondayShift ? 'solid' : undefined,
                           backgroundColor: isConfirmed(dateStr) ? 'rgba(229, 231, 235, 0.7)' : undefined,
+                          ...(isClosed(dateStr) ? closedCellStyle : {}),
                         }}>
                           <DropCell id={`${user.id}__${dateStr}`}>
                             <div className={`flex flex-col gap-1 p-1.5 min-h-[56px] ${isConfirmed(dateStr) ? 'opacity-60' : ''}`}>
@@ -1055,7 +1156,7 @@ export default function WeekGrid({ shifts: serverShifts, users, locations, weekS
                               {getUnplannedForCell(user.id, dateStr).map((entry) => (
                                 <UnplannedBlock key={entry.id} entry={entry} onEdit={setEditEntry} />
                               ))}
-                              {!onVacation && (
+                              {!onVacation && !isClosed(dateStr) && (
                                 <button
                                   onPointerDown={(e) => e.stopPropagation()}
                                   onClick={() => setModalCell({ userId: user.id, date: dateStr })}

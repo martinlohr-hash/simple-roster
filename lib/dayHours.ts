@@ -127,6 +127,15 @@ function locationWhere(locationId?: LocationFilter) {
   return Array.isArray(locationId) ? { locationId: { in: locationId } } : { locationId }
 }
 
+// Stempel, die zu einer Schicht gehören, zählen zum Standort der SCHICHT – sonst
+// bliebe ein Stempel nach dem Umstellen der Schicht (z. B. auf Event) beim alten
+// Standort hängen. Nur ungeplante Stempel nutzen ihren eigenen Standort.
+function entryLocationWhere(locationId?: LocationFilter) {
+  if (!locationId) return {}
+  const loc = locationWhere(locationId)
+  return { OR: [{ shiftId: null, ...loc }, { shift: loc }] }
+}
+
 export async function computeDaysStats(days: string[]): Promise<Record<string, DayStat>> {
   const { perDay } = await computeDaysStatsDetailed(days)
   return perDay
@@ -192,7 +201,7 @@ async function computeDaysStatsRaw(
 
   const [entries, shifts] = await Promise.all([
     prisma.timeEntry.findMany({
-      where: { checkinAt: { gte: windowStart, lt: windowEnd }, ...locationWhere(locationId) },
+      where: { checkinAt: { gte: windowStart, lt: windowEnd }, ...entryLocationWhere(locationId) },
       select: {
         userId: true,
         checkinAt: true,

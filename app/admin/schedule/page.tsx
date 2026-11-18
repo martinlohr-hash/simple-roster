@@ -15,6 +15,7 @@ import WeekJumper from '@/components/schedule/WeekJumper'
 import SuggestionsPanel from '@/components/schedule/SuggestionsPanel'
 import { computeSuggestions } from '@/lib/suggestions'
 import { getClosedDaySet } from '@/lib/closedDays'
+import { budgetLocationIds, budgetScopeLabel } from '@/lib/budgetScope'
 
 type Props = {
   searchParams: Promise<{ week?: string; costMode?: string }>
@@ -136,7 +137,7 @@ export default async function SchedulePage({ searchParams }: Props) {
     getUnconfirmedDays(),
     prisma.shift.findMany({
       where: { date: { gte: new Date(monthStartStr), lt: new Date(monthEndStr) }, status: { not: 'CANCELLED' }, userId: { not: null } },
-      select: { userId: true, date: true, startTime: true, endTime: true },
+      select: { userId: true, date: true, startTime: true, endTime: true, locationId: true },
     }),
     prisma.shift.findMany({
       where: {
@@ -181,12 +182,16 @@ export default async function SchedulePage({ searchParams }: Props) {
     }
   }
 
-  // Budget banner calculation
-  const plannedHours = shifts.reduce((sum, s) => {
+  // Budget banner calculation – Event-Schichten zählen nicht ins Budget
+  // (werden über das Event mitfinanziert), siehe lib/budgetScope.ts.
+  const budgetLocIds = new Set(budgetLocationIds(locations))
+  const budgetScope = budgetScopeLabel(locations)
+  const budgetShifts = shifts.filter((s) => budgetLocIds.has(s.locationId))
+  const plannedHours = budgetShifts.reduce((sum, s) => {
     return sum + shiftDurationHours(s.startTime, s.endTime)
   }, 0)
   const userRateMap = Object.fromEntries(users.map((u) => [u.id, { hourlyRate: u.hourlyRate, overheadPercent: u.overheadPercent }]))
-  const plannedCost = shifts.reduce((sum, s) => {
+  const plannedCost = budgetShifts.reduce((sum, s) => {
     const h = shiftDurationHours(s.startTime, s.endTime)
     const rates = s.userId ? userRateMap[s.userId] : null
     return sum + (rates ? h * rates.hourlyRate * (1 + rates.overheadPercent / 100) : 0)
@@ -201,7 +206,7 @@ export default async function SchedulePage({ searchParams }: Props) {
   // – jeweils zu Lohnkosten (Stundenlohn + Nebenkosten) verrechnet.
   const todayStr = berlinDay(new Date())
   const pastDaysInPeriod = daysInRange(monthStartStr, monthEndStr).filter((d) => d <= todayStr)
-  const actualUserHours = pastDaysInPeriod.length > 0 ? await computeDaysUserHours(pastDaysInPeriod) : {}
+  const actualUserHours = pastDaysInPeriod.length > 0 ? await computeDaysUserHours(pastDaysInPeriod, [...budgetLocIds]) : {}
   let actualMonthCost = 0
   for (const dayHours of Object.values(actualUserHours)) {
     for (const [userId, hours] of Object.entries(dayHours)) {
@@ -211,7 +216,7 @@ export default async function SchedulePage({ searchParams }: Props) {
   }
   let plannedRemainingMonthCost = 0
   for (const s of monthShifts) {
-    if (!s.userId) continue
+    if (!s.userId || !budgetLocIds.has(s.locationId)) continue
     const day = s.date.toISOString().slice(0, 10)
     if (day <= todayStr) continue
     const rates = userRateMap[s.userId]
@@ -400,7 +405,7 @@ export default async function SchedulePage({ searchParams }: Props) {
         <div className="mb-4 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <div className="text-sm font-medium text-gray-700">Personalkosten {monthLabel}</div>
+              <div className="text-sm font-medium text-gray-700">Personalkosten {monthLabel} · {budgetScope}</div>
               <CostModeSwitch weekStart={format(weekStart, 'yyyy-MM-dd')} costMode={costMode} />
             </div>
             <Link href={`/admin/costs?period=${costMode}`} className="text-xs text-gray-400 hover:text-gray-600 underline">
@@ -426,7 +431,7 @@ export default async function SchedulePage({ searchParams }: Props) {
             </span>
           </div>
           <div className="mt-1 text-[11px] text-gray-400">
-            Ist: {actualMonthCost.toFixed(0)} € · geplant (Rest): {plannedRemainingMonthCost.toFixed(0)} €
+            Ist: {actualMonthCost.toFixed(0)} € · geplant (Rest): {plannedRemainingMonthCost.toFixed(0)} € · ohne Event-Schichten
           </div>
         </div>
       ) : (

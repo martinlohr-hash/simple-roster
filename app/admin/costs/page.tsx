@@ -3,9 +3,10 @@ import { de } from 'date-fns/locale'
 import { prisma } from '@/lib/db'
 import { calcLaborCost, getTrafficLight } from '@/lib/calculations'
 import { shiftDurationHours } from '@/lib/timeUtils'
-import { formatBerlin, computeDaysUserHours, daysInRangeInclusive } from '@/lib/dayHours'
+import { formatBerlin, computeDaysUserHours, daysInRangeInclusive, type DayUserHours } from '@/lib/dayHours'
 import CostsFilter from '@/components/admin/CostsFilter'
 import BudgetProgress from '@/components/admin/BudgetProgress'
+import { budgetLocationIds, budgetScopeLabel } from '@/lib/budgetScope'
 
 type Props = {
   searchParams: Promise<{ from?: string; to?: string; period?: string; locationId?: string }>
@@ -51,7 +52,7 @@ export default async function CostsPage({ searchParams }: Props) {
 
   const days = daysInRangeInclusive(formatBerlin(from, 'yyyy-MM-dd'), formatBerlin(to, 'yyyy-MM-dd'))
 
-  const [actualUserHours, shifts, users, locations, budget] = await Promise.all([
+  const [actualUserHours, shifts, users, locations, budget, budgetUserHours] = await Promise.all([
     computeDaysUserHours(days, sp.locationId || undefined),
     prisma.shift.findMany({
       where: {
@@ -60,7 +61,7 @@ export default async function CostsPage({ searchParams }: Props) {
         userId: { not: null },
         ...(sp.locationId ? { locationId: sp.locationId } : {}),
       },
-      select: { userId: true, startTime: true, endTime: true },
+      select: { userId: true, startTime: true, endTime: true, locationId: true },
     }),
     prisma.user.findMany({
       where: { OR: [{ endDate: null }, { endDate: { gte: new Date() } }] },
@@ -78,6 +79,13 @@ export default async function CostsPage({ searchParams }: Props) {
           },
         })
       : Promise.resolve(null),
+    // Budget zählt unabhängig vom Standort-Filter nur Nicht-Event-Standorte
+    // (lib/budgetScope.ts) – gleiche Zahl wie der Balken im Dienstplan.
+    showBudget
+      ? prisma.location
+          .findMany({ select: { id: true, name: true } })
+          .then((locs) => computeDaysUserHours(days, budgetLocationIds(locs)))
+      : Promise.resolve({} as DayUserHours),
   ])
 
   type UserStats = {
@@ -122,6 +130,37 @@ export default async function CostsPage({ searchParams }: Props) {
   const totalPlannedCost = Object.values(byUser).reduce((s, u) => s + u.plannedCost, 0)
   const totalHours = Object.values(byUser).reduce((s, u) => s + u.hours, 0)
   const totalCost = Object.values(byUser).reduce((s, u) => s + u.cost, 0)
+  // Budget-Werte: nur Standorte ohne Event (Plan-Schichten des Zeitraums laden wir
+  // ohne Filter nach, falls oben auf einen Standort gefiltert ist).
+  const budgetLocIds = new Set(budgetLocationIds(locations))
+  const budgetScope = budgetScopeLabel(locations)
+  let budgetHours = 0
+  let budgetCost = 0
+  for (const dayHours of Object.values(budgetUserHours)) {
+    for (const [userId, hours] of Object.entries(dayHours)) {
+      const r = rateById.get(userId)
+      if (!r || !byUser[userId]) continue
+      budgetHours += hours
+      budgetCost += calcLaborCost(hours, r.rate, r.overhead)
+    }
+  }
+  const budgetPlanShifts = !showBudget
+    ? []
+    : sp.locationId
+      ? await prisma.shift.findMany({
+          where: { date: { gte: from, lte: to }, status: { not: 'CANCELLED' }, userId: { not: null } },
+          select: { userId: true, startTime: true, endTime: true, locationId: true },
+        })
+      : shifts
+  let budgetPlannedHours = 0
+  let budgetPlannedCost = 0
+  for (const s of budgetPlanShifts) {
+    if (!s.userId || !byUser[s.userId] || !budgetLocIds.has(s.locationId)) continue
+    const h = shiftDurationHours(s.startTime, s.endTime)
+    const r = rateById.get(s.userId)
+    budgetPlannedHours += h
+    if (r) budgetPlannedCost += calcLaborCost(h, r.rate, r.overhead)
+  }
   const lightDot = { green: 'bg-green-500', yellow: 'bg-yellow-500', red: 'bg-red-500' }
 
   return (
@@ -145,10 +184,11 @@ export default async function CostsPage({ searchParams }: Props) {
       {showBudget && (
         <BudgetProgress
           budget={budget}
-          actualHours={totalHours}
-          actualEuros={totalCost}
-          plannedHours={totalPlannedHours}
-          plannedEuros={totalPlannedCost}
+          actualHours={budgetHours}
+          actualEuros={budgetCost}
+          plannedHours={budgetPlannedHours}
+          plannedEuros={budgetPlannedCost}
+          scopeLabel={budgetScope}
           period={budgetPeriod}
           year={budgetYear}
           weekOrMonth={budgetWeekOrMonth}

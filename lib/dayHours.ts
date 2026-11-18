@@ -120,24 +120,32 @@ export type DayStat = { actual: number; open: number; entries: number }
 /** Ist-Stunden je Tag + Mitarbeiter (nur Tage/User mit Stunden > 0), für Kostenberechnung mit individuellem Stundenlohn. */
 export type DayUserHours = Record<string, Record<string, number>>
 
+type LocationFilter = string | string[]
+
+function locationWhere(locationId?: LocationFilter) {
+  if (!locationId) return {}
+  return Array.isArray(locationId) ? { locationId: { in: locationId } } : { locationId }
+}
+
 export async function computeDaysStats(days: string[]): Promise<Record<string, DayStat>> {
   const { perDay } = await computeDaysStatsDetailed(days)
   return perDay
 }
 
 /**
- * `locationId` filtert Stempel UND Fallback-Schichten auf einen Standort – für
- * die Kosten-Übersicht (Standort-Filter). Ohne Angabe zählen alle Standorte,
+ * `locationId` filtert Stempel UND Fallback-Schichten auf einen oder mehrere
+ * Standorte – für die Kosten-Übersicht (Standort-Filter) und das
+ * Personalkosten-Budget (ohne Event). Ohne Angabe zählen alle Standorte,
  * wie bisher (Dienstplan, Freigabe, Export).
  */
-export async function computeDaysUserHours(days: string[], locationId?: string): Promise<DayUserHours> {
+export async function computeDaysUserHours(days: string[], locationId?: LocationFilter): Promise<DayUserHours> {
   const { perUser } = await computeDaysStatsDetailed(days, locationId)
   return perUser
 }
 
 async function computeDaysStatsDetailed(
   days: string[],
-  locationId?: string,
+  locationId?: LocationFilter,
 ): Promise<{ perDay: Record<string, DayStat>; perUser: DayUserHours }> {
   const { perDay, perUser } = await computeDaysStatsRaw(days, locationId)
   if (days.length === 0) return { perDay, perUser }
@@ -162,7 +170,7 @@ async function computeDaysStatsDetailed(
 
 async function computeDaysStatsRaw(
   days: string[],
-  locationId?: string,
+  locationId?: LocationFilter,
 ): Promise<{ perDay: Record<string, DayStat>; perUser: DayUserHours }> {
   const out: Record<string, DayStat> = {}
   const perUser: DayUserHours = {}
@@ -184,7 +192,7 @@ async function computeDaysStatsRaw(
 
   const [entries, shifts] = await Promise.all([
     prisma.timeEntry.findMany({
-      where: { checkinAt: { gte: windowStart, lt: windowEnd }, ...(locationId ? { locationId } : {}) },
+      where: { checkinAt: { gte: windowStart, lt: windowEnd }, ...locationWhere(locationId) },
       select: {
         userId: true,
         checkinAt: true,
@@ -197,7 +205,7 @@ async function computeDaysStatsRaw(
         date: { in: days.map((d) => new Date(`${d}T00:00:00Z`)) },
         status: { not: 'CANCELLED' },
         userId: { not: null },
-        ...(locationId ? { locationId } : {}),
+        ...locationWhere(locationId),
       },
       select: {
         userId: true,

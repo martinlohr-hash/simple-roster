@@ -21,6 +21,8 @@ type Props = {
   period: 'WEEKLY' | 'MONTHLY'
   year: number
   weekOrMonth: number
+  /** Standorte, die ins Budget zählen (Event-Schichten sind ausgenommen). */
+  scopeLabel?: string
 }
 
 const inputClass =
@@ -35,6 +37,7 @@ export default function BudgetProgress({
   period,
   year,
   weekOrMonth,
+  scopeLabel,
 }: Props) {
   const [editing, setEditing] = useState(false)
   const [type, setType] = useState<'HOURS' | 'EUROS'>(budget?.type ?? 'EUROS')
@@ -66,6 +69,7 @@ export default function BudgetProgress({
       <div className="flex items-center justify-between mb-3">
         <div className="text-xs font-medium text-gray-500">
           {period === 'WEEKLY' ? 'Wochenbudget' : 'Monatsbudget'}
+          {scopeLabel && <span className="font-normal text-gray-400"> · nur {scopeLabel}, ohne Event-Schichten</span>}
         </div>
         <button
           onClick={() => {

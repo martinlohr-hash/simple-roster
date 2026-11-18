@@ -161,14 +161,22 @@ async function computeDaysStatsDetailed(
 
   // Bestätigte Pausenabzüge (BreakDeduction) ziehen die Ist-Stunden dieses MA an
   // diesem Tag überall ab – unabhängig vom Freigabe-Status des Tages.
-  const deductions = await prisma.breakDeduction.findMany({
-    where: { day: { in: days } },
-    select: { day: true, userId: true, minutes: true },
-  })
+  // Mit Standortfilter wird die Tagespause anteilig nach Stunden verteilt – sonst
+  // zöge jeder Standort die volle Pause ab, wenn ein MA an einem Tag an zwei
+  // Standorten gearbeitet hat (z. B. Laden mittags + Event abends).
+  const [deductions, allUser] = await Promise.all([
+    prisma.breakDeduction.findMany({
+      where: { day: { in: days } },
+      select: { day: true, userId: true, minutes: true },
+    }),
+    locationId ? computeDaysStatsRaw(days).then((r) => r.perUser) : Promise.resolve(perUser),
+  ])
   for (const bd of deductions) {
     const cur = perUser[bd.day]?.[bd.userId]
     if (cur == null) continue
-    const ded = Math.min(cur, bd.minutes / 60)
+    const dayTotal = allUser[bd.day]?.[bd.userId] ?? cur
+    const share = dayTotal > 0 ? Math.min(1, cur / dayTotal) : 1
+    const ded = Math.min(cur, (bd.minutes / 60) * share)
     perUser[bd.day][bd.userId] = cur - ded
     perDay[bd.day].actual -= ded
   }
